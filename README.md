@@ -24,7 +24,7 @@ The PES Raspberry Pi image has the following features:
   * Nintendo Super Entertainment System (SNES)
   * Sega Game Gear
   * Sega Master System
-  * Sega Meda Drive (aka Genesis)
+  * Sega Mega Drive (aka Genesis)
   * Sony PlayStation
   * 
   
