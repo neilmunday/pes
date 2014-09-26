@@ -795,9 +795,7 @@ class Console(object):
 		return self.__name
 
 	def updateDatabase(self):
-		#apiKey = '25154e0b8db97e115d9df0f349a79dd60a36929b'
 		#url = 'http://www.giantbomb.com/api/'
-		#url = 'http://192.168.0.5/MundayWeb.com/pes/api.php?'
 		url = 'http://www.mundayweb.com/pes/api.php?'
 
 		try:
