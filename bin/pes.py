@@ -258,6 +258,7 @@ class PES(object):
 		try:
 			cur = con.cursor()
 			cur.execute('CREATE TABLE IF NOT EXISTS `games`(`game_id` INTEGER PRIMARY KEY, `api_id`, `exists` INT, `console_id` INT, `name` TEXT, `cover_art` TEXT, `game_path` TEXT)')
+			cur.execute('CREATE TABLE IF NOT EXISTS `consoles`(`console_id` INTEGER PRIMARY KEY, `name` TEXT)')
 		except sqlite3.Error, e:
 			self.__exit("Error: %s" % e.args[0], True)
 		finally:
@@ -753,6 +754,24 @@ class Console(object):
 		self.__db = db
 		self.__imgCacheDir = imgCacheDir
 		self.__gameTotal = 0
+
+		try:
+			con = sqlite3.connect(self.__db)
+			con.row_factory = sqlite3.Row
+			cur = con.cursor()
+			cur.execute('SELECT `name` FROM `consoles` WHERE `console_id` = %d;' % self.__id)
+			row = cur.fetchone()
+			if row == None:
+				printMsg('Adding console %s to database' % self.__name)
+				cur.execute('INSERT INTO `consoles` VALUES (%d, "%s")' % (self.__id, self.__name))
+				con.commit()
+		except sqlite3.Error, e:
+			print "Error: %s" % e.args[0]
+			sys.exit(1)
+		finally:
+			if con:
+				con.close()
+
 
 	def getCommand(self, game):
 		return self.__command.replace('%%GAME%%', "\"%s\"" % game.getPath())
