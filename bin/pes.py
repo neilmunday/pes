@@ -815,7 +815,7 @@ class Console(object):
 
 	def updateDatabase(self):
 		#url = 'http://www.giantbomb.com/api/'
-		url = 'http:/pes.mundayweb.com/api.php?'
+		url = 'http://pes.mundayweb.com/api.php?'
 
 		try:
 			con = sqlite3.connect(self.__db)
