@@ -29,7 +29,13 @@ import pygame
 from pygame.locals import *
 import peslib
 
+def handleCecEvent(event, *args):
+	global pes
+	if pes:
+		pes.handleCecEvent(event, args)
+
 if __name__ == "__main__":
+	global pes
 
 	scriptDir = os.path.dirname(os.path.realpath(__file__)) # the absolute path of the directory containing pes.py
 	commandFile = scriptDir + os.sep + 'commands.sh'
@@ -40,13 +46,12 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 
 	peslib.verbose = args.verbose
+	cecEnabled = False
 	
 	try:
 		import cec
-		printMsg("enabling CEC...")
-		cec.init()
-		printMsg("adding CEC callback...")
-		cec.add_callback(handleCecEvent, cec.EVENT_KEYPRESS)
+		peslib.printMsg("enabling CEC...")
+		cecEnabled = True
 	except ImportError, e:
 		peslib.printMsg("CEC module not found, disabling CEC functions")
 
@@ -55,14 +60,14 @@ if __name__ == "__main__":
 	if not pygame.font: print 'Warning, fonts disabled'
 	if not pygame.mixer: print 'Warning, sound disabled'
 
-	pesActive = False
-
 	peslib.printMsg("script dir is: %s" % scriptDir)
 	peslib.printMsg("loading GUI...")
 	pes = peslib.PES(args.window, commandFile)
-	pesActive = True
+	if cecEnabled:
+		cec.init()
+		peslib.printMsg("adding CEC callback...")
+		cec.add_callback(handleCecEvent, cec.EVENT_KEYPRESS)
 	command = pes.run()
-	pesActive = False
 
 	launchArgs = ''
 	if peslib.verbose:

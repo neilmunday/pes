@@ -68,13 +68,6 @@ def get_ip_address(ifname):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
     return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s', ifname[:15]))[20:24])
 
-def handleCecEvent(event, *args):
-	global pes, pesActive
-	#print("Event: ", event, " Args: ", args)
-	#subprocess.call('echo "cec event: " %s >> /home/pi/cec.log' % args[0], shell=True)
-	if pes and pesActive:
-		pes.handleCecEvent(event, args)
-
 def scaleImage(img, (bx,by)):
 	"""
 	Original author: Frank Raiser (crashchaos@gmx.net)
