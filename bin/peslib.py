@@ -50,6 +50,7 @@ CEC_EXIT = 13
 CEC_RETURN = 145
 
 EVENT_DATABASE_UPDATED = 1
+EVENT_JOYSTICKS_UPDATED = 2
 
 VERSION_NUMBER = '1.1'
 VERSION_DATE = '2014-10-01'
@@ -439,6 +440,8 @@ class PES(object):
 		activeMenu.setActive(False)
 		activeMenu = JoyStickConfigurationPanel(self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 18, self.__fontColour, self.__bgColour, self.__joysticksConfigFile)
 		activeMenu.setActive(True)
+		activeMenu.addListener(self)
+		activeMenu.setActive(True)
 		self.__menuStack.append(activeMenu)
 		self.__header.setTitle('%s: %s' % (self.__name, 'JoyStick Configuration'))
 
@@ -487,6 +490,9 @@ class PES(object):
 				if len(c.getGames(True)) > 0:
 					consoleMenuItems.append(MenuItem(c.getName(), self.__loadGamesMenu, c))
 			self.__mainMenu.setConsoles(consoleMenuItems)
+		elif event == EVENT_JOYSTICKS_UPDATED:
+			self.loadJoysticks()
+			self.detectJoysticks()
 
 	def __resetDb(self):
 		pass
@@ -522,7 +528,10 @@ class PES(object):
 
 			# handle events
 			for event in pygame.event.get():
-				if event.type == pygame.QUIT:
+				print event
+				if event.type != pygame.KEYDOWN and event.type != pygame.JOYBUTTONDOWN:
+					pass
+				elif event.type == pygame.QUIT:
 					ok = False
 				elif event.type == KEYDOWN:
 					if event.key == K_ESCAPE:
@@ -1394,8 +1403,10 @@ JoyStick.BTN_Y, JoyStick.BTN_SHOULDER_LEFT, JoyStick.BTN_SHOULDER_RIGHT, JoyStic
 					configParser.write(configfile)
 					# emulator joystick settings will be generated on the fly prior to each game launch
 
-				pes.loadJoysticks()
-				pes.detectJoysticks()
+				#pes.loadJoysticks()
+				#pes.detectJoysticks()
+				self.fireEvent(EVENT_JOYSTICKS_UPDATED)
+				
 				self.setHandleJoyStickEvents(False)
 
 				for l in self.getLabels(['Configuration of joystick %d is complete and has been saved! Press the button you have assigned as B to go back.' % (self.__jsIdx + 1)], self.__font, self.__colour, self.getBackgroundColour(), self.getWidth() - x, self.getHeight()):
