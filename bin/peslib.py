@@ -528,7 +528,6 @@ class PES(object):
 
 			# handle events
 			for event in pygame.event.get():
-				print event
 				if event.type != pygame.KEYDOWN and event.type != pygame.JOYBUTTONDOWN:
 					pass
 				elif event.type == pygame.QUIT:
