@@ -29,9 +29,11 @@ source /home/pi/pes/setup/arch/functions.sh
 run sudo pacman -S bluez bluez-libs bluez-utils \
 	gcc git make pkg-config scons \
 	libusb-compat \
-	python2 python2-pygame python2-levenshtein \
+	python2 python2-pygame python2-levenshtein python2-pip \
 	samba \
 	sdl sdl_mixer sdl_ttf sdl_image 
+
+run sudo pip2 install python-uinput
 
 #run sudo pacman -R mesa mesa-libgl
 
