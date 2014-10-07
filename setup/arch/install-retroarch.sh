@@ -51,7 +51,7 @@ retroArchCoresDir="$retroArchInstallDir/lib"
 run mkdir -p $retroArchCoresDir
 run mkdir -p $retroArchConfigDir
 
-run ./configure --prefix="$retroArchInstallDir" --disable-ffmpeg --disable-x11
+run ./configure --prefix="$retroArchInstallDir" --disable-udev --disable-ffmpeg --disable-netplay --disable-pulse
 run make GLOBAL_CONFIG_DIR="$retroArchConfigDir"
 run make GLOBAL_CONFIG_DIR="$retroArchConfigDir" install
 
