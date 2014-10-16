@@ -191,7 +191,7 @@ class PES(object):
 			self.__ip = get_ip_address(defaultInterface)
 		if self.__ip == None:
                         self.__ip = '127.0.0.1'
-                
+
 		# do sanity checks first before we draw the screen
 		self.__userDir = os.path.expanduser('~') + os.sep + '.pes'
 		self.__userDb = self.__userDir + os.sep + 'pes.db'
@@ -239,6 +239,7 @@ class PES(object):
 			self.__exit("Error: %s is not a directory!" % self.__imgCacheDir, True)
 		elif not os.access(self.__imgCacheDir, os.W_OK):
 			self.__exit("Error: %s is not writable!" % self.__imgCacheDir, True)
+
 
 		# create database (if needed)
 		con = sqlite3.connect(self.__userDb)
@@ -511,7 +512,21 @@ class PES(object):
 			self.detectJoysticks()
 
 	def __resetDb(self):
-		pass
+		con = sqlite3.connect(self.__userDb)
+		try:
+			cur = con.cursor()
+			cur.execute('DELETE FROM `games`;')
+			cur.execute('VACUUM;')
+		except sqlite3.Error, e:
+			self.__exit("Error: %s" % e.args[0], True)
+		finally:
+			if con:
+				con.close()
+
+		self.processEvent(EVENT_DATABASE_UPDATED)
+		# generate two backspace key events to return to the main menu
+		pygame.event.post(pygame.event.Event(KEYDOWN, {'key': K_BACKSPACE}))
+		pygame.event.post(pygame.event.Event(KEYDOWN, {'key': K_BACKSPACE}))		
 			
 	def run(self):
                 pygame.mouse.set_visible(False)
