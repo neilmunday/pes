@@ -39,10 +39,13 @@ header "Setting up RetroArch..."
 run $setupDir/install-retroarch.sh
 
 header "Setting up auto login..."
-run $setupDir/auto-login.sh"
+run $setupDir/auto-login.sh
 
 header "Setting up Samba..."
 run $setupDir/install-samba.sh
+
+header "Setting up PESPad..."
+run $setupDir/install-pespad.sh
 
 header "Done!"
 exit 0
