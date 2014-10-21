@@ -1,7 +1,7 @@
 pes
 ===
 
-PES is a graphical front end for a variety of games console emulators that has been written in Python by Neil Munday which is intended for use on the Raspberry Pi.
+PES is a graphical front end for a variety of games console emulators that has been written in Python which is intended for use on the Raspberry Pi.
 
 At the heart of PES is the pes.py GUI. This can be used on any OS that supports Python and PyGame.
 
