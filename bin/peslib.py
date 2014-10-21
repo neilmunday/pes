@@ -363,7 +363,8 @@ class PES(object):
 						if j.isMatch(js.get_name()):
 							# we recognise this joystick
 							f.write(j.getRetroArchConfig(i))
-				f.write("input_exit_emulator_btn = \"%s\"\n"  % self.__joystick.getButtonValue(JoyStick.BTN_EXIT))
+				if self.__joystick:
+					f.write("input_exit_emulator_btn = \"%s\"\n"  % self.__joystick.getButtonValue(JoyStick.BTN_EXIT))
 
 	def __dbManagement(self):
 		activeMenu = self.__getActiveMenu()
