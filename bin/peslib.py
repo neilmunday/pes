@@ -264,8 +264,9 @@ class PES(object):
 			try:
 				extensions = configParser.get(c, 'extensions').split(' ')
 				command = configParser.get(c, 'command')
+				nocoverart = configParser.get(c, 'nocoverart')
 				consoleId = configParser.get(c, 'id')
-				console = Console(c, consoleId, extensions, self.__romsDir + os.sep + c, command.replace('%%BASE%%', self.__baseDir), self.__userDb, self.__imgCacheDir)
+				console = Console(c, consoleId, extensions, self.__romsDir + os.sep + c, command.replace('%%BASE%%', self.__baseDir), self.__userDb, nocoverart.replace('%%BASE%%', self.__baseDir), self.__imgCacheDir)
 				console.getGames(True)
 				self.__consoles.append(console)
 			except ConfigParser.NoOptionError, e:
@@ -690,23 +691,31 @@ class UpdateDbThread(threading.Thread):
 						data = urllib.urlencode(obj)
 						printMsg("loading: " + url + data)
 						response = urllib2.urlopen(url + data)
-						results = json.loads(response.read())
 
-						gameId = None
-						thumbPath = 0
-						nameLower = name.lower()
+						jsonOk = False
 
-						bestResultDistance = -1
-						bestName = name
+						try:
+							results = json.loads(response.read())
+							jsonOk = True
+						except ValueError, e:
+							printMsg("error parsing JSON: %s", e)
+							
+						if jsonOk:
+							gameId = None
+							thumbPath = 0
+							nameLower = name.lower()
 
-						for r in results['results']:
-							printMsg("potential result: %s" % r['name'])
-							stringMatcher = StringMatcher(str(nameLower), str(r['name'].lower()))
-							distance = stringMatcher.distance()
-							if bestResultDistance == -1 or distance < bestResultDistance:
-								bestResultDistance = distance
-								bestName = r['name']
-								gameId = r['id']
+							bestResultDistance = -1
+							bestName = name
+
+							for r in results['results']:
+								printMsg("potential result: %s" % r['name'])
+								stringMatcher = StringMatcher(str(nameLower), str(r['name'].lower()))
+								distance = stringMatcher.distance()
+								if bestResultDistance == -1 or distance < bestResultDistance:
+									bestResultDistance = distance
+									bestName = r['name']
+									gameId = r['id']
 
 						if self.__stopCheck(con, cur):
 							return
@@ -870,11 +879,12 @@ class JoyStick(object):
 
 class Console(object):
 
-	def __init__(self, name, consoleId, extensions, romDir, command, db, imgCacheDir):
+	def __init__(self, name, consoleId, extensions, romDir, command, db, noCoverArtImg, imgCacheDir):
 		self.__id = int(consoleId)
 		self.__name = name
 		self.__extensions = extensions
 		self.__romDir = romDir
+		self.__noCoverArtImg = noCoverArtImg
 		self.__games = []
 		self.__refresh = True
 		self.__command = command
@@ -921,6 +931,8 @@ class Console(object):
 					coverArt = None
 					if row['cover_art'] != '0':
 						coverArt = row['cover_art']
+					else:
+						coverArt = self.__noCoverArtImg
 					self.__games.append(Game(row['name'], row['game_path'], self, coverArt))
 			except sqlite3.Error, e:
 				print "Error: %s" % e.args[0]
