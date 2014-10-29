@@ -667,139 +667,143 @@ class UpdateDbThread(threading.Thread):
 		self.__stop = False
 		printMsg('UpdateDbThread created')
 
-	def __stopCheck(self, con=None, cur=None):
-		if self.__stop:
-			if cur != None and con != None:
-				cur.execute('DELETE FROM `games` WHERE `exists` = 0')
-				con.commit()
-				con.close()
-			self.__progress = 'Update interrupted!'
-			self.__finished = True
-			printMsg('UpdateDbThread: finished (interrupted)')
-			return True
-		return False
-
 	def run(self):
 		printMsg('UpdateDbThread: started')
 		self.__started = True
+		url = 'http://pes.mundayweb.com/api.php?'
+
+		con = None
+		cur = None
+
+		try:
+			con = sqlite3.connect(self.__db)
+			con.row_factory = sqlite3.Row
+			cur = con.cursor()
+		except sqlite3.Error, e:
+			if con:
+				con.rollback()
+			print "Error: %s" % e.args[0]
+			sys.exit(1)
+
 		for c in self.__consoles:
 			consoleName = c.getName()
 			consoleId = c.getId()
 			printMsg('UpdateDbThread: processing games for %s' % consoleName)
 			self.__progress = 'Processing games for %s' % consoleName
 
-			url = 'http://pes.mundayweb.com/api.php?'
-
 			if self.__stopCheck():
 				return
 
 			try:
-				con = sqlite3.connect(self.__db)
-				con.row_factory = sqlite3.Row
-				cur = con.cursor()
 				cur.execute('UPDATE `games` SET `exists` = 0 WHERE `console_id` = %d;' % consoleId)
 				con.commit()
-				self.__games = []
-				files = []
+
 				for e in c.getExtensions():
 					for f in glob.glob('%s%s*%s' % (c.getRomDir(), os.sep, e)):
 						if os.path.isfile(f):
-							files.append(f)
 
-				files.sort()
-				for f in files:
-					if self.__stopCheck(con, cur):
-						return
+							if self.__stopCheck(con, cur):
+								return
 
-					name = os.path.split(c.getRomDir() + os.sep + f)[1]
-					for e in c.getExtensions():
-						name = name.replace(e, '')
+							name = os.path.split(c.getRomDir() + os.sep + f)[1]
+							for e in c.getExtensions():
+								name = name.replace(e, '')
 
-					self.__progress = 'Found game: %s' % name
+							self.__progress = 'Found game: %s' % name
 
-					cur.execute('SELECT `game_id`, `name`, `cover_art`, `game_path` FROM `games` WHERE `game_path` = "%s";' % f)
-					row = cur.fetchone()
-					if row == None:
-						self.__progress = 'Downloading data for game: %s' % name
-						printMsg('downloading game info for %s' % name)
-						# now grab thumbnail
-						obj = { 'game_name': '%s' % name, 'platform_id': consoleId }
-						data = urllib.urlencode(obj)
-						printMsg("loading: " + url + data)
-						response = urllib2.urlopen(url + data)
+							cur.execute('SELECT `game_id`, `name`, `cover_art`, `game_path` FROM `games` WHERE `game_path` = "%s";' % f)
+							row = cur.fetchone()
+							if row == None:
+								self.__progress = 'Downloading data for game: %s' % name
+								printMsg('downloading game info for %s' % name)
+								# now grab thumbnail
+								obj = { 'game_name': '%s' % name, 'platform_id': consoleId }
+								data = urllib.urlencode(obj)
+								printMsg("loading: " + url + data)
+								response = urllib2.urlopen(url + data)
 
-						jsonOk = False
+								jsonOk = False
 
-						try:
-							results = json.loads(response.read())
-							jsonOk = True
-						except ValueError, e:
-							printMsg("error parsing JSON: %s", e)
+								try:
+									results = json.loads(response.read())
+									jsonOk = True
+								except ValueError, e:
+									printMsg("error parsing JSON: %s", e)
 							
-						if jsonOk:
-							gameId = None
-							thumbPath = 0
-							nameLower = name.lower()
+								if jsonOk:
+									gameId = None
+									thumbPath = 0
+									nameLower = name.lower()
 
-							bestResultDistance = -1
-							bestName = name
+									bestResultDistance = -1
+									bestName = name
 
-							for r in results['results']:
-								printMsg("potential result: %s" % r['name'])
-								stringMatcher = StringMatcher(str(nameLower), str(r['name'].lower()))
-								distance = stringMatcher.distance()
-								if bestResultDistance == -1 or distance < bestResultDistance:
-									bestResultDistance = distance
-									bestName = r['name']
-									gameId = r['id']
+									for r in results['results']:
+										printMsg("potential result: %s" % r['name'])
+										stringMatcher = StringMatcher(str(nameLower), str(r['name'].lower()))
+										distance = stringMatcher.distance()
+										if bestResultDistance == -1 or distance < bestResultDistance:
+											bestResultDistance = distance
+											bestName = r['name']
+											gameId = r['id']
 
-						if self.__stopCheck(con, cur):
-							return
+								if self.__stopCheck(con, cur):
+									return
 
-						if gameId != None:
-							self.__progress = 'Match found: %s' % bestName
-							printMsg("best match was: \"%s\" with a match rating of %d" % (bestName, bestResultDistance))
-							obj = { 'game_id': gameId }
-							data = urllib.urlencode(obj)
-							response = urllib2.urlopen(url + data)
-							results = json.loads(response.read())
+								if gameId != None:
+									self.__progress = 'Match found: %s' % bestName
+									printMsg("best match was: \"%s\" with a match rating of %d" % (bestName, bestResultDistance))
+									obj = { 'game_id': gameId }
+									data = urllib.urlencode(obj)
+									response = urllib2.urlopen(url + data)
+									results = json.loads(response.read())
 
-							if results['results']['image']['small_url']:
-								printMsg('Downloading cover art for %s' % name)
-								self.__downloading = name
-								self.__progress = 'Downloading cover art for %s' % name
-								imgUrl = results['results']['image']['small_url']
-								extension = imgUrl[imgUrl.rfind('.'):]
-								thumbPath = c.getImgCacheDir() + os.sep + str(gameId) + extension
-								urllib.urlretrieve(imgUrl, thumbPath)
-						else:
-							self.__progress = 'Could not find game data for %s' % name
-							printMsg("Could not find game info for %s " % name)
-							gameId = -1
-						self.__progress = 'Adding %s to database...' % name
-						cur.execute('INSERT INTO `games`(`exists`, `console_id`, `name`, `game_path`, `api_id`, `cover_art`) VALUES (1, %d, "%s", "%s", %d, "%s");' % (consoleId, bestName, f, gameId, thumbPath))
-					else:
-						self.__progress = 'No need to update %s' % name
-						printMsg("no need to download for %s" % name)
-						coverArt = None
-						if row['cover_art'] != '0':
-							coverArt = row['cover_art']
-						cur.execute('UPDATE `games` SET `exists` = 1 WHERE `game_id` = %s;' % row["game_id"])
+									if results['results']['image']['small_url']:
+										printMsg('Downloading cover art for %s' % name)
+										self.__downloading = name
+										self.__progress = 'Downloading cover art for %s' % name
+										imgUrl = results['results']['image']['small_url']
+										extension = imgUrl[imgUrl.rfind('.'):]
+										thumbPath = c.getImgCacheDir() + os.sep + str(gameId) + extension
+										urllib.urlretrieve(imgUrl, thumbPath)
+								else:
+									self.__progress = 'Could not find game data for %s' % name
+									printMsg("Could not find game info for %s " % name)
+									gameId = -1
+								self.__progress = 'Adding %s to database...' % name
+								cur.execute('INSERT INTO `games`(`exists`, `console_id`, `name`, `game_path`, `api_id`, `cover_art`) VALUES (1, %d, "%s", "%s", %d, "%s");' % (consoleId, bestName, f, gameId, thumbPath))
+								con.commit()
+							else:
+								self.__progress = 'No need to update %s' % name
+								printMsg("no need to download for %s" % name)
+								coverArt = None
+								if row['cover_art'] != '0':
+									coverArt = row['cover_art']
+								cur.execute('UPDATE `games` SET `exists` = 1 WHERE `game_id` = %s;' % row["game_id"])
+								con.commit()
 
-					if self.__stopCheck(con, cur):
-						return
-
-				cur.execute('DELETE FROM `games` WHERE `exists` = 0')
-				con.commit()
+							if self.__stopCheck(con, cur):
+								return
 
 			except sqlite3.Error, e:
+				print "Error: %s" % e.args[0]
 				if con:
 					con.rollback()
-				print "Error: %s" % e.args[0]
-				sys.exit(1)
-			finally:
-				if con:
-					con.close()
+				self.__progress = 'An error occurred whilst updating the database'
+				self.__finished = True
+				return
+
+		try:
+			cur.execute('DELETE FROM `games` WHERE `exists` = 0')
+			con.commit()
+			printMsg('Closing database')
+			con.close()
+		except sqlite3.Error, e:
+			print "Error: %s" % e.args[0]
+			if con:
+				con.rollback()
+			self.__progress = 'An error occurred whilst updating the database'
+			self.__finished = True
 
 		self.__progress = 'Update complete'
 		self.__finished = True
@@ -817,6 +821,22 @@ class UpdateDbThread(threading.Thread):
 
 	def stop(self):
 		self.__stop = True
+
+	def __stopCheck(self, con=None, cur=None):
+		if self.__stop:
+			if cur != None and con != None:
+				try:
+					cur.execute('DELETE FROM `games` WHERE `exists` = 0')
+					con.commit()
+					con.close()
+				except sqlite3.Error, e:
+					print "Error: %s" % e.args[0]
+				
+			self.__progress = 'Update interrupted!'
+			self.__finished = True
+			printMsg('UpdateDbThread: finished (interrupted)')
+			return True
+		return False
 
 class JoyStick(object):
 
@@ -1599,6 +1619,7 @@ class UpdateDbPanel(Panel):
 			currentY += 20
 
 			if not self.__updateStarted and not self.__updateThread.hasStarted() and not self.__updateThread.hasFinished():
+				printMsg('Starting update thread')
 				self.lock()
 				self.__updateThread.start()
 				self.__updateStarted = True
@@ -1622,6 +1643,7 @@ class UpdateDbPanel(Panel):
 				self.blit(label, (0, currentY))
 					
 			elif self.__updateThread.hasFinished():
+				printMsg('Update thread finished')
 				self.fireEvent(EVENT_DATABASE_UPDATED)
 				self.__redraw = False
 				self.unlock()
