@@ -29,7 +29,7 @@ source /home/pi/pes/setup/arch/functions.sh
 run sudo pacman -S bluez bluez-libs bluez-utils \
 	gcc git make pkg-config scons \
 	libusb-compat linuxconsole \
-	python2 python2-pygame python2-levenshtein python2-pip \
+	python2 python2-pygame python2-levenshtein python2-pip python2-imaging \
 	samba \
 	sdl sdl_mixer sdl_ttf sdl_image 
 
