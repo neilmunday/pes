@@ -38,6 +38,7 @@ import csv
 import socket
 import fcntl
 import struct
+from PIL import Image
 from collections import OrderedDict
 from Levenshtein import *
 
@@ -51,6 +52,7 @@ CEC_RETURN = 145
 
 EVENT_DATABASE_UPDATED = 1
 EVENT_JOYSTICKS_UPDATED = 2
+EVENT_MESSAGE_BOX_OK = 3
 
 VERSION_NUMBER = '1.1'
 VERSION_DATE = '2014-10-01'
@@ -263,10 +265,13 @@ class PES(object):
 			# check the console definition from the config file
 			try:
 				extensions = configParser.get(c, 'extensions').split(' ')
-				command = configParser.get(c, 'command')
-				nocoverart = configParser.get(c, 'nocoverart')
+				command = configParser.get(c, 'command').replace('%%BASE%%', self.__baseDir)
+				consoleImg = configParser.get(c, 'image').replace('%%BASE%%', self.__baseDir)
+				self.__checkFile(consoleImg)
+				nocoverart = configParser.get(c, 'nocoverart').replace('%%BASE%%', self.__baseDir)
+				self.__checkFile(nocoverart)
 				consoleId = configParser.get(c, 'id')
-				console = Console(c, consoleId, extensions, self.__romsDir + os.sep + c, command.replace('%%BASE%%', self.__baseDir), self.__userDb, nocoverart.replace('%%BASE%%', self.__baseDir), self.__imgCacheDir)
+				console = Console(c, consoleId, extensions, self.__romsDir + os.sep + c, command, self.__userDb, consoleImg, nocoverart, self.__imgCacheDir)
 				console.getGames(True)
 				self.__consoles.append(console)
 			except ConfigParser.NoOptionError, e:
@@ -277,7 +282,7 @@ class PES(object):
 		if window == False:
                         self.__screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
                 else:
-                        self.__screen = pygame.display.set_mode((800, 600))
+                        self.__screen = pygame.display.set_mode((1024, 768))
                         pygame.display.set_caption("PES")
 		self.__screenWidth = self.__screen.get_rect().width
 		self.__screenHeight = self.__screen.get_rect().height
@@ -300,28 +305,36 @@ class PES(object):
 		self.__checkTemp()
 
 		# create settings menu
-		menuItems = [MenuItem("Configure Joystick", self.__loadJoyStickConfiguration), MenuItem("Database Management", self.__dbManagement)]
-		#menuItems = [MenuItem("Configure Joystick", self.__loadJoyStickConfiguration)]
+		menuItems = [MenuItem("Configure Joystick", self.__loadJoyStickConfiguration), MenuItem("Reset Database", self.__resetDb)]
                 self.__settingsMenu = Menu(menuItems, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 20, self.__fontColour, self.__bgColour)
 
 		# create about menu
 		self.__aboutMenu = None
 		
+		# create consoles menu
+		consoleMenuItems = []
+		for c in self.__consoles:
+			gameTotal = c.getGameTotal()
+			consoleMenuItems.append(MenuImgItem("%s (%d)" % (c.getName(), gameTotal), c.getImg(), self.__loadGamesMenu, c))
+		self.__consolesMenu = ThumbnailMenu(consoleMenuItems, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 20, self.__fontColour, self.__bgColour)
+
                 # create main menu
 		menuItems = []
-		consoleMenuItems = []
+		#consoleMenuItems = []
 
-		for c in self.__consoles:
-			if c.getGameTotal() > 0:
-				consoleMenuItems.append(MenuItem(c.getName(), self.__loadGamesMenu, c))
+		#for c in self.__consoles:
+		#	if c.getGameTotal() > 0:
+		#		consoleMenuItems.append(MenuItem(c.getName(), self.__loadGamesMenu, c))
 
+		menuItems.append(MenuItem("Games", self.__loadConsolesMenu))	
+		menuItems.append(MenuItem('Update Database', self.__updateDb))
 		menuItems.append(MenuItem("Settings", self.__loadSettingsMenu))
 		menuItems.append(MenuItem("Reboot", self.__reboot))
 		menuItems.append(MenuItem("Power Off", self.__poweroff))
 		menuItems.append(MenuItem("About", self.__loadAboutMenu))
 		menuItems.append(MenuItem("Exit to command line", self.__exit))
 
-		self.__mainMenu = MainMenu(consoleMenuItems, menuItems, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 20, self.__fontColour, self.__bgColour)
+		self.__mainMenu = Menu(menuItems, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 20, self.__fontColour, self.__bgColour)
 		self.__menuStack = [self.__mainMenu]
 		self.__mainMenu.setActive(True)
 
@@ -364,17 +377,9 @@ class PES(object):
 							# we recognise this joystick
 							f.write(j.getRetroArchConfig(i))
 				if self.__joystick:
-					f.write("input_exit_emulator_btn = \"%s\"\n"  % self.__joystick.getButtonValue(JoyStick.BTN_EXIT))
-
-	def __dbManagement(self):
-		activeMenu = self.__getActiveMenu()
-		activeMenu.setActive(False)
-		#activeMenu = DatabasePanel((self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 18, self.__fontColour, self.__bgColour, self.__userDb)
-		menuItems = [MenuItem('Update Database', self.__updateDb), MenuItem('Reset Database', self.__resetDb)]
-		activeMenu = Menu(menuItems, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 20, self.__fontColour, self.__bgColour)
-		activeMenu.setActive(True)
-		self.__menuStack.append(activeMenu)
-		self.__header.setTitle('%s: %s' % (self.__name, 'Database Management'))
+					f.write("input_load_state_btn = \"%s\"\n" % self.__joystick.getRetroArchButtonValue(JoyStick.BTN_LOAD_STATE))
+					f.write("input_save_state_btn = \"%s\"\n" % self.__joystick.getRetroArchButtonValue(JoyStick.BTN_SAVE_STATE))
+					f.write("input_exit_emulator_btn = \"%s\"\n" % self.__joystick.getRetroArchButtonValue(JoyStick.BTN_EXIT))
 
 	def detectJoysticks(self):
 		printMsg("Looking for joysticks...")
@@ -438,14 +443,25 @@ class PES(object):
 		self.__menuStack.append(activeMenu)
 		self.__header.setTitle('%s: About' % self.__name)
 
-	def __loadGamesMenu(self, args):
-		console = args[0]
+	def __loadConsolesMenu(self):
 		activeMenu = self.__getActiveMenu()
 		activeMenu.setActive(False)
-		activeMenu = GamesMenu(console, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 18, self.__fontColour, self.__bgColour, self.__nocoverImage)
+		activeMenu = self.__consolesMenu
 		activeMenu.setActive(True)
 		self.__menuStack.append(activeMenu)
-		self.__header.setTitle('%s: %s' % (self.__name, console.getName()))
+		self.__header.setTitle('%s: Games' % self.__name)
+
+	def __loadGamesMenu(self, args):
+		console = args[0]
+		if console.getGameTotal() > 0:
+			activeMenu = self.__getActiveMenu()
+			activeMenu.setActive(False)
+			activeMenu = GamesMenu(console, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 18, self.__fontColour, self.__bgColour, self.__nocoverImage)
+			activeMenu.setActive(True)
+			self.__menuStack.append(activeMenu)
+			self.__header.setTitle('%s: %s' % (self.__name, console.getName()))
+		else:
+			self.__showMessageBox('No games have been added for %s' % console.getName())
 
 	def loadJoysticks(self):
 		self.__joysticks = []
@@ -501,17 +517,31 @@ class PES(object):
 			if btn == CEC_RETURN:
 				pygame.event.post(pygame.event.Event(KEYDOWN, {'key': K_BACKSPACE}))
 
+	def __goBack(self):
+		activeMenu = self.__getActiveMenu()
+		activeMenu.setActive(False)
+		self.__menuStack.pop()
+		activeMenu = self.__getActiveMenu()
+		activeMenu.setActive(True)
+		if activeMenu == self.__mainMenu:
+			self.__header.setTitle(self.__name)
+
 	def processEvent(self, event):
 		if event == EVENT_DATABASE_UPDATED:
 			printMsg("Trapping PES event: database update")
-			consoleMenuItems = []
+			i = 0
 			for c in self.__consoles:
-				if len(c.getGames(True)) > 0:
-					consoleMenuItems.append(MenuItem(c.getName(), self.__loadGamesMenu, c))
-			self.__mainMenu.setConsoles(consoleMenuItems)
+				c.getGames(True)
+				self.__consolesMenu.setLabelText(i, "%s (%d)" % (c.getName(), c.getGameTotal()))
+				i += 1
+			
 		elif event == EVENT_JOYSTICKS_UPDATED:
 			self.loadJoysticks()
 			self.detectJoysticks()
+		elif event == EVENT_MESSAGE_BOX_OK:
+			printMsg("Trapping PES event: Message Box OK")
+			self.__getActiveMenu().removeListener(self)
+			self.__goBack()
 
 	def __resetDb(self):
 		con = sqlite3.connect(self.__userDb)
@@ -525,10 +555,12 @@ class PES(object):
 			if con:
 				con.close()
 
+		self.__showMessageBox("Database reset to defaults!")
+
 		self.processEvent(EVENT_DATABASE_UPDATED)
-		# generate two backspace key events to return to the main menu
-		pygame.event.post(pygame.event.Event(KEYDOWN, {'key': K_BACKSPACE}))
-		pygame.event.post(pygame.event.Event(KEYDOWN, {'key': K_BACKSPACE}))		
+		# generate a backspace key events to return to the main menu
+		#pygame.event.post(pygame.event.Event(KEYDOWN, {'key': K_BACKSPACE}))
+		#pygame.event.post(pygame.event.Event(KEYDOWN, {'key': K_BACKSPACE}))		
 			
 	def run(self):
                 pygame.mouse.set_visible(False)
@@ -570,12 +602,7 @@ class PES(object):
 						ok = False
 					if event.key == K_BACKSPACE:
 						if not activeMenu.isLocked() and len(self.__menuStack) > 1:
-							activeMenu.setActive(False)
-							self.__menuStack.pop()
-							activeMenu = self.__getActiveMenu()
-							activeMenu.setActive(True)
-							if activeMenu == self.__mainMenu:
-								self.__header.setTitle(self.__name)
+							self.__goBack()
 					else:
                                                 rtn = activeMenu.handleEvent(event)
                                                 if rtn != None:
@@ -610,6 +637,14 @@ class PES(object):
 		pygame.display.quit()
 		pygame.quit()
 		return rtn
+
+	def __showMessageBox(self, message):
+		activeMenu = self.__getActiveMenu()
+		activeMenu.setActive(False)
+		activeMenu = MessageBox(self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 18, self.__fontColour, self.__bgColour, message)
+		activeMenu.addListener(self)
+		activeMenu.setActive(True)
+		self.__menuStack.append(activeMenu)
 
 	def __updateDb(self):
 		activeMenu = self.__getActiveMenu()
@@ -791,13 +826,19 @@ class JoyStick(object):
         BTN_B = 'btn_b'
 	BTN_X = 'btn_x'
 	BTN_Y = 'btn_y'
-        BTN_EXIT = 'btn_exit'
         BTN_LEFT = 'btn_left'
         BTN_RIGHT = 'btn_right'
         BTN_UP = 'btn_up'
         BTN_DOWN = 'btn_down'
 	BTN_SHOULDER_LEFT = 'btn_shoulder_left'
 	BTN_SHOULDER_RIGHT = 'btn_shoulder_right'
+	BTN_SHOULDER_LEFT2 = 'btn_shoulder_left2'
+	BTN_SHOULDER_RIGHT2 = 'btn_shoulder_right2'
+	BTN_SHOULDER_LEFT3 = 'btn_shoulder_left3'
+	BTN_SHOULDER_RIGHT3 = 'btn_shoulder_right3'
+        BTN_SAVE_STATE = 'btn_save_state'
+	BTN_LOAD_STATE = 'btn_load_state'
+	BTN_EXIT = 'btn_exit'
 
         def __init__(self, name, buttons):
 		self.__name = name
@@ -811,8 +852,6 @@ class JoyStick(object):
 				if key[0:4] == 'btn_':
 					self.__eventMap[int(value)] = key
 					self.__btnMap[key] = value
-				elif key == 'matches':
-					self.__matches = value.split(',')
 
         def getButton(self, event):
                 if event in self.__eventMap:
@@ -827,7 +866,7 @@ class JoyStick(object):
         def getName(self):
                 return self.__name
 
-	def __getRetroArchBtnMap(self, btn):
+	def getRetroArchButtonValue(self, btn):
 		if not btn in self.__btnMap:
 			return 'nul'
 		try:
@@ -839,18 +878,22 @@ class JoyStick(object):
 	def getRetroArchConfig(self, index):
 		prefix = "input_player%d" % (index + 1) 
 		cfg = "%s_joypad_index = \"%d\"\n" % (prefix, index)
-		cfg += "%s_b_btn = \"%s\"\n" % (prefix, self.__getRetroArchBtnMap(JoyStick.BTN_B))
-		cfg += "%s_a_btn = \"%s\"\n" % (prefix, self.__getRetroArchBtnMap(JoyStick.BTN_A))
-		cfg += "%s_y_btn = \"%s\"\n" % (prefix, self.__getRetroArchBtnMap(JoyStick.BTN_Y))
-		cfg += "%s_x_btn = \"%s\"\n" % (prefix, self.__getRetroArchBtnMap(JoyStick.BTN_X))
-		cfg += "%s_l_btn = \"%s\"\n" % (prefix, self.__getRetroArchBtnMap(JoyStick.BTN_SHOULDER_LEFT))
-		cfg += "%s_r_btn = \"%s\"\n" % (prefix, self.__getRetroArchBtnMap(JoyStick.BTN_SHOULDER_RIGHT))
-		cfg += "%s_start_btn = \"%s\"\n" % (prefix, self.__getRetroArchBtnMap(JoyStick.BTN_START))
-		cfg += "%s_select_btn = \"%s\"\n" % (prefix, self.__getRetroArchBtnMap(JoyStick.BTN_SELECT))
-		cfg += "%s_up_btn = \"%s\"\n" % (prefix, self.__getRetroArchBtnMap(JoyStick.BTN_UP))
-		cfg += "%s_down_btn = \"%s\"\n" % (prefix, self.__getRetroArchBtnMap(JoyStick.BTN_DOWN))
-		cfg += "%s_left_btn = \"%s\"\n" % (prefix, self.__getRetroArchBtnMap(JoyStick.BTN_LEFT))
-		cfg += "%s_right_btn = \"%s\"\n" % (prefix, self.__getRetroArchBtnMap(JoyStick.BTN_RIGHT))
+		cfg += "%s_b_btn = \"%s\"\n" % (prefix, self.getRetroArchButtonValue(JoyStick.BTN_B))
+		cfg += "%s_a_btn = \"%s\"\n" % (prefix, self.getRetroArchButtonValue(JoyStick.BTN_A))
+		cfg += "%s_y_btn = \"%s\"\n" % (prefix, self.getRetroArchButtonValue(JoyStick.BTN_Y))
+		cfg += "%s_x_btn = \"%s\"\n" % (prefix, self.getRetroArchButtonValue(JoyStick.BTN_X))
+		cfg += "%s_l_btn = \"%s\"\n" % (prefix, self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_LEFT))
+		cfg += "%s_r_btn = \"%s\"\n" % (prefix, self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_RIGHT))
+		cfg += "%s_l2_btn = \"%s\"\n" % (prefix, self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_LEFT2))
+		cfg += "%s_r2_btn = \"%s\"\n" % (prefix, self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_RIGHT2))
+		cfg += "%s_l3_btn = \"%s\"\n" % (prefix, self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_LEFT3))
+		cfg += "%s_r3_btn = \"%s\"\n" % (prefix, self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_RIGHT3))
+		cfg += "%s_start_btn = \"%s\"\n" % (prefix, self.getRetroArchButtonValue(JoyStick.BTN_START))
+		cfg += "%s_select_btn = \"%s\"\n" % (prefix, self.getRetroArchButtonValue(JoyStick.BTN_SELECT))
+		cfg += "%s_up_btn = \"%s\"\n" % (prefix, self.getRetroArchButtonValue(JoyStick.BTN_UP))
+		cfg += "%s_down_btn = \"%s\"\n" % (prefix, self.getRetroArchButtonValue(JoyStick.BTN_DOWN))
+		cfg += "%s_left_btn = \"%s\"\n" % (prefix, self.getRetroArchButtonValue(JoyStick.BTN_LEFT))
+		cfg += "%s_right_btn = \"%s\"\n" % (prefix, self.getRetroArchButtonValue(JoyStick.BTN_RIGHT))
 		return cfg
 
 	def isMatch(self, js):
@@ -880,11 +923,12 @@ class JoyStick(object):
 
 class Console(object):
 
-	def __init__(self, name, consoleId, extensions, romDir, command, db, noCoverArtImg, imgCacheDir):
+	def __init__(self, name, consoleId, extensions, romDir, command, db, consoleImg, noCoverArtImg, imgCacheDir):
 		self.__id = int(consoleId)
 		self.__name = name
 		self.__extensions = extensions
 		self.__romDir = romDir
+		self.__consoleImg = consoleImg
 		self.__noCoverArtImg = noCoverArtImg
 		self.__games = []
 		self.__refresh = True
@@ -955,6 +999,9 @@ class Console(object):
 
 	def getImgCacheDir(self):
 		return self.__imgCacheDir
+	
+	def getImg(self):
+		return self.__consoleImg
 
 	def getName(self):
 		return self.__name
@@ -1062,6 +1109,9 @@ class Panel(object):
 	def processEvent(self, event):
 		pass
 
+	def removeListener(self, l):
+		self.__listeners.remove(l)
+
 	def setActive(self, active):
 		self.__active = active
 
@@ -1074,6 +1124,62 @@ class Panel(object):
 	def update(self, x, y):
 		screen = pygame.display.get_surface()
 		screen.blit(self.getBackground(), (x, y))
+
+class MessageBox(Panel):
+
+	def __init__(self, width, height, font, fontSize, colour, bgColour, message):
+		self.__transparentColour = (255, 174, 201) # pink
+		super(MessageBox, self).__init__(width, height, self.__transparentColour)
+		self.getBackground().set_colorkey(self.__transparentColour) # set background of the surface to be transparent
+		self.__colour = colour
+		self.__bgColour = bgColour
+		self.__font = pygame.font.Font(font, fontSize)
+		self.__message = message
+		self.__redraw = True
+		self.__lineWidth = 2
+		self.__boxWidth = (width / 2) + (self.__lineWidth * 2)
+		self.__labels = self.getLabels([message], self.__font, self.__colour, bgColour, self.__boxWidth, height)
+		self.__okLabel = label = self.__font.render('OK', 1, bgColour, self.__colour)
+		self.__okLabelWidth = self.__okLabel.get_rect().width
+		self.__btnMargin = 20
+		self.__boxHeight = (self.__labels[0].get_rect().height * len(self.__labels)) + (self.__lineWidth * 2) + self.__btnMargin + self.__okLabel.get_rect().height + 5
+
+	def draw(self, x, y):
+		if self.isActive() and self.__redraw:
+			self.fillBackground()
+			# draw in center of the screen
+			currentX = (self.getWidth() - self.__boxWidth) / 2
+			currentY = (self.getHeight() - self.__boxHeight) / 2
+
+			pygame.draw.rect(self.getBackground(), self.__bgColour, (currentX, currentY, self.__boxWidth, self.__boxHeight), 0)
+			pygame.draw.rect(self.getBackground(), self.__colour, (currentX, currentY, self.__boxWidth, self.__boxHeight), self.__lineWidth)
+
+			currentX += self.__lineWidth
+			currentY += self.__lineWidth
+
+			for l in self.__labels:
+				labelRec = l.get_rect()
+				currentX = (self.getWidth() - labelRec.width) / 2
+				self.blit(l, (currentX, currentY))
+				currentY += labelRec.height
+
+			currentY += self.__btnMargin
+			currentX = (self.getWidth() - self.__okLabelWidth) / 2
+			self.blit(self.__okLabel, (currentX, currentY))
+			
+			self.update(x, y)
+			self.__redraw = False
+
+	def handleEvent(self, event):
+		if self.isActive():
+			if event.type == KEYDOWN and event.key == K_RETURN:
+				if event.key == K_RETURN:
+					self.fireEvent(EVENT_MESSAGE_BOX_OK)
+
+	def setActive(self, active):
+		if active:
+			self.__redraw = True
+		super(MessageBox, self).setActive(active)
 
 class Footer(Panel):
 
@@ -1157,18 +1263,166 @@ class Header(Panel):
 		self.__label = self.__font.render(self.__title, 1, self.__colour)
 		self.__redraw = True
 
+class ThumbnailMenu(Panel):
+
+	def __init__(self, menuItems, width, height, font, fontSize, colour, bgColour, thumbsPerRow=3, fitToHeight=True):
+		super(ThumbnailMenu, self).__init__(width, height, bgColour)
+
+		self.__thumbMargin = 30
+		self.__menuItems = menuItems
+		self.__menuItemsTotal = len(menuItems)
+		self.__font = pygame.font.Font(font, fontSize)
+		self.__fontHeight = self.__font.size('A')[1]
+
+		# use first thumbnail to work out image ratios
+		imgWidth, imgHeight = menuItems[0].getImageDimensions()
+		#self.__imgRatio = float(imgHeight) / float(imgWidth)
+
+		marginSpace = self.__thumbMargin * thumbsPerRow
+
+		if fitToHeight:
+			# we need to fit ALL thumbnails on the first page, therefore need to use
+			# image dimensions to work out scaling
+			self.__thumbsInY = int((self.__menuItemsTotal / thumbsPerRow) + 0.5)
+			marginSpace = (self.__fontHeight + self.__thumbMargin) * (self.__thumbsInY + 1)
+			self.__thumbHeight = (height - marginSpace) / self.__thumbsInY
+			imgRatio = float(imgWidth) / float(imgHeight)
+			self.__thumbWidth = int(self.__thumbHeight * imgRatio)
+			self.__thumbsInX = thumbsPerRow
+		else:
+			imgRatio = float(imgHeight) / float(imgWidth)
+			self.__thumbWidth = int((width - marginSpace) / thumbsPerRow)
+			self.__thumbHeight = int(self.__thumbWidth * imgRatio)		
+			self.__thumbsInY = self.getHeight() / (self.__thumbHeight + self.__thumbMargin + (self.__fontHeight * 2))
+			self.__thumbsInX = int(self.getWidth() / (self.__thumbWidth + self.__thumbMargin))
+		
+		self.__colour = colour
+		self.__selected = 0
+		self.__startIndex = 0
+		self.__menuItems[self.__selected].setSelected(True)
+		
+		#printMsg("thumbs in X: %d" % self.__thumbsInX)
+		#
+		#printMsg("thumbs in Y: %d" % self.__thumbsInY)
+		self.__visibleItems = self.__thumbsInX * self.__thumbsInY
+		self.__pageTotal = int(self.__menuItemsTotal / self.__visibleItems)
+		self.__redraw = True
+
+	def __getStartIndex(self, index):
+		return (index / self.__visibleItems) * self.__visibleItems
+
+	def draw(self, x, y):
+		x = 0 # ignore screen margin
+		if self.isActive() and self.__redraw:
+			self.fillBackground()
+			thumbsWidth = (self.__thumbsInX * self.__thumbWidth) + ((self.__thumbsInX - 1) * self.__thumbMargin)
+			startX = (self.getWidth() - thumbsWidth) / 2 
+			nextX = startX
+
+			nextY = y
+			i = self.__startIndex
+			col = 0
+			label = None
+
+			while i < self.__visibleItems + self.__startIndex and i < self.__menuItemsTotal:
+				if self.__menuItems[i].isSelected():
+					pygame.draw.rect(self.getBackground(), self.__colour, (nextX - 2, nextY - 2, self.__thumbWidth + 4, self.__thumbHeight + (self.__fontHeight * 2) + 4), 0)
+					labelY = nextY + self.__thumbHeight
+					for l in self.getLabels([self.__menuItems[i].getText()], self.__font, self.getBackgroundColour(), self.__colour, self.__thumbWidth, self.__fontHeight * 2):
+						self.blit(l, (nextX, labelY))
+						labelY += l.get_rect().height
+				else:
+					labelY = nextY + self.__thumbHeight
+					for l in self.getLabels([self.__menuItems[i].getText()], self.__font, self.__colour, self.getBackgroundColour(), self.__thumbWidth, self.__fontHeight * 2):
+						self.blit(l, (nextX, labelY))
+						labelY += l.get_rect().height
+
+				image = self.__menuItems[i].getThumbnail(self.__thumbWidth, self.__thumbHeight)
+				self.blit(image, (nextX, nextY))
+				col += 1
+				nextX += self.__thumbWidth + self.__thumbMargin
+				if col == self.__thumbsInX:
+					nextY += self.__thumbHeight + self.__thumbMargin + self.__fontHeight
+					nextX = startX
+					col = 0
+				i += 1
+
+			self.update(x, y)
+			self.__redraw = False
+
+	def handleEvent(self, event):
+		if self.isActive():
+			if event.type == KEYDOWN:
+				if event.key == K_UP:
+					self.__menuItems[self.__selected].setSelected(False)
+					self.__selected -= self.__thumbsInX
+					if self.__selected < 0:
+						self.__selected = self.__menuItemsTotal - 1
+						self.__startIndex = self.__getStartIndex(self.__selected)
+					elif self.__selected < self.__startIndex:
+						self.__startIndex = self.__getStartIndex(self.__selected)
+					self.__menuItems[self.__selected].setSelected(True)
+					self.__redraw = True
+				elif event.key == K_DOWN:
+					self.__menuItems[self.__selected].setSelected(False)
+					self.__selected += self.__thumbsInX
+					if self.__selected > self.__startIndex + self.__visibleItems - 1:
+						self.__startIndex = self.__getStartIndex(self.__selected)
+						if self.__startIndex < self.__menuItemsTotal:
+							if self.__selected > self.__menuItemsTotal - 1:
+								self.__selected = self.__startIndex
+						else:
+							self.__startIndex = 0
+							self.__selected = 0
+					elif self.__selected > self.__menuItemsTotal - 1:
+						self.__startIndex = 0
+						self.__selected = 0
+					self.__menuItems[self.__selected].setSelected(True)
+					self.__redraw = True
+				elif event.key == K_LEFT:
+					self.__menuItems[self.__selected].setSelected(False)
+					self.__selected -= 1
+					if self.__selected < 0:
+						self.__selected = self.__menuItemsTotal - 1
+						self.__startIndex = self.__getStartIndex(self.__selected)
+					elif self.__selected < self.__startIndex:
+						self.__startIndex = self.__selected - self.__visibleItems + 1
+					self.__menuItems[self.__selected].setSelected(True)
+					self.__redraw = True
+				elif event.key == K_RIGHT:
+					self.__menuItems[self.__selected].setSelected(False)
+					self.__selected += 1
+					if self.__selected > self.__menuItemsTotal - 1:
+						self.__selected = 0
+						self.__startIndex = 0
+					elif self.__selected > self.__startIndex + self.__visibleItems - 1:
+						self.__startIndex = self.__selected
+					self.__menuItems[self.__selected].setSelected(True)
+					self.__redraw = True
+				elif event.key == K_RETURN:
+					return self.__menuItems[self.__selected].activate()
+		return None
+
+	def setActive(self, active):
+		if active:
+			self.__redraw = True
+		super(ThumbnailMenu, self).setActive(active)
+
+	def setLabelText(self, index, text):
+		if index >= 0 and index < self.__menuItemsTotal:
+			self.__menuItems[index].setText(text)
+
 class GamesMenu(Panel):
 
 	def __init__(self, console, width, height, font, fontSize, colour, bgColour, nocoverImage):
 		super(GamesMenu, self).__init__(width, height, bgColour)
-		#self.__thumbWidth = 252
-		#self.__thumbHeight = 300
 		self.__thumbWidth = int(width / 6)
 		self.__thumbHeight = int(self.__thumbWidth * 1.2)
 		self.__thumbMargin = 40
 		self.__entries = []
 		for g in console.getGames():
 			self.__entries.append(GameMenuItem(g))
+		self.__entriesTotal = len(self.__entries)
 		self.__colour = colour
 		self.__selected = 0
 		self.__startIndex = 0
@@ -1181,7 +1435,7 @@ class GamesMenu(Panel):
 		self.__thumbsInX = self.getWidth() / (self.__thumbWidth + self.__thumbMargin)
 		self.__thumbsInY = self.getHeight() / (self.__thumbHeight + self.__thumbMargin + (self.__fontHeight * 2))
 		self.__visibleItems = self.__thumbsInX * self.__thumbsInY
-		self.__pageTotal = int(len(self.__entries) / self.__visibleItems)
+		self.__pageTotal = int(self.__entriesTotal / self.__visibleItems)
 
 		self.__redraw = True
 
@@ -1201,7 +1455,7 @@ class GamesMenu(Panel):
 			col = 0
 			label = None
 
-			while i < self.__visibleItems + self.__startIndex and i < len(self.__entries):
+			while i < self.__visibleItems + self.__startIndex and i < self.__entriesTotal:
 				if self.__entries[i].isSelected():
 					pygame.draw.rect(self.getBackground(), self.__colour, (nextX - 2, nextY - 2, self.__thumbWidth + 4, self.__thumbHeight + (self.__fontHeight * 2) + 4), 0)
 					labelY = nextY + self.__thumbHeight
@@ -1225,6 +1479,7 @@ class GamesMenu(Panel):
 				if col == self.__thumbsInX:
 					nextY += self.__thumbHeight + self.__thumbMargin + self.__fontHeight
 					nextX = startX
+					col = 0
 				i += 1
 
 			self.update(x, y)
@@ -1237,7 +1492,7 @@ class GamesMenu(Panel):
 					self.__entries[self.__selected].setSelected(False)
 					self.__selected -= self.__thumbsInX
 					if self.__selected < 0:
-						self.__selected = len(self.__entries) - 1
+						self.__selected = self.__entriesTotal - 1
 						self.__startIndex = self.__getStartIndex(self.__selected)
 					elif self.__selected < self.__startIndex:
 						self.__startIndex = self.__getStartIndex(self.__selected)
@@ -1248,13 +1503,13 @@ class GamesMenu(Panel):
 					self.__selected += self.__thumbsInX
 					if self.__selected > self.__startIndex + self.__visibleItems - 1:
 						self.__startIndex = self.__getStartIndex(self.__selected)
-						if self.__startIndex < len(self.__entries):
-							if self.__selected > len(self.__entries) - 1:
+						if self.__startIndex < self.__entriesTotal:
+							if self.__selected > self.__entriesTotal - 1:
 								self.__selected = self.__startIndex
 						else:
 							self.__startIndex = 0
 							self.__selected = 0
-					elif self.__selected > len(self.__entries) - 1:
+					elif self.__selected > self.__entriesTotal - 1:
 						self.__startIndex = 0
 						self.__selected = 0
 					self.__entries[self.__selected].setSelected(True)
@@ -1263,7 +1518,7 @@ class GamesMenu(Panel):
 					self.__entries[self.__selected].setSelected(False)
 					self.__selected -= 1
 					if self.__selected < 0:
-						self.__selected = len(self.__entries) - 1
+						self.__selected = self.__entriesTotal - 1
 						self.__startIndex = self.__getStartIndex(self.__selected)
 					elif self.__selected < self.__startIndex:
 						self.__startIndex = self.__selected - self.__visibleItems + 1
@@ -1272,7 +1527,7 @@ class GamesMenu(Panel):
 				elif event.key == K_RIGHT:
 					self.__entries[self.__selected].setSelected(False)
 					self.__selected += 1
-					if self.__selected > len(self.__entries) - 1:
+					if self.__selected > self.__entriesTotal - 1:
 						self.__selected = 0
 						self.__startIndex = 0
 					elif self.__selected > self.__startIndex + self.__visibleItems - 1:
@@ -1282,6 +1537,7 @@ class GamesMenu(Panel):
 				elif event.key == K_RETURN:
 					return self.__entries[self.__selected].activate()
 		return None
+
 class AboutPanel(Panel):
 
 	def __init__(self, width, height, font, fontSize, colour, bgColour):
@@ -1336,7 +1592,7 @@ class UpdateDbPanel(Panel):
 
 			currentY = 10
 
-			for l in self.getLabels(['PES will now scan your ROMs directory for any changes and will update your database accordingly. Depending on the number of changes this may take a few minutes. You will not be able to exit this screen until the scan has completed or you decide to abort. The progress of the scan will be displayed below:'], self.__font, self.__colour, self.getBackgroundColour(), self.getWidth() - x, self.getHeight()):
+			for l in self.getLabels(['PES will now scan your ROMs directory for any changes and will update your database accordingly. Depending on the number of changes this may take several few minutes. You will not be able to exit this screen until the scan has completed or you decide to abort. The progress of the scan will be displayed below:'], self.__font, self.__colour, self.getBackgroundColour(), self.getWidth() - x, self.getHeight()):
 				self.blit(l, (0, currentY))
 				currentY += l.get_rect().height
 
@@ -1393,9 +1649,8 @@ class JoyStickConfigurationPanel(Panel):
 		self.__font = pygame.font.Font(font, fontSize)
 		self.__redraw = True
 		self.__lastBtn = None
-		self.__prompts = ['Start', 'Select', 'Up', 'Down', 'Left', 'Right', 'A', 'B', 'X', 'Y', 'Shoulder L', 'Shoulder R', 'Exit Game']
-		self.__btns = [JoyStick.BTN_START, JoyStick.BTN_SELECT, JoyStick.BTN_UP, JoyStick.BTN_DOWN, JoyStick.BTN_LEFT, JoyStick.BTN_RIGHT, JoyStick.BTN_A, JoyStick.BTN_B, JoyStick.BTN_X, 
-JoyStick.BTN_Y, JoyStick.BTN_SHOULDER_LEFT, JoyStick.BTN_SHOULDER_RIGHT, JoyStick.BTN_EXIT]
+		self.__prompts = ['Start', 'Select', 'Up', 'Down', 'Left', 'Right', 'A', 'B', 'X', 'Y', 'Shoulder L', 'Shoulder R', 'Shoulder L2', 'Shoulder R2', 'Exit Game', 'Save State', 'Load State']
+		self.__btns = [JoyStick.BTN_START, JoyStick.BTN_SELECT, JoyStick.BTN_UP, JoyStick.BTN_DOWN, JoyStick.BTN_LEFT, JoyStick.BTN_RIGHT, JoyStick.BTN_A, JoyStick.BTN_B, JoyStick.BTN_X, JoyStick.BTN_Y, JoyStick.BTN_SHOULDER_LEFT, JoyStick.BTN_SHOULDER_RIGHT, JoyStick.BTN_SHOULDER_RIGHT2, JoyStick.BTN_SHOULDER_LEFT2, JoyStick.BTN_EXIT, JoyStick.BTN_SAVE_STATE, JoyStick.BTN_LOAD_STATE]
 		self.__answers = []
 		i = 0
 		while i < len(self.__prompts):
@@ -1537,16 +1792,15 @@ class Menu(Panel):
 		self.__startIndex = 0
 		self.__maxVisibleItems = (self.getHeight() - self.__marginBottom - self.__marginTop) / (self.__fontHeight + self.__menuItemGap)
 		self.__visibleItems = self.__maxVisibleItems
-		if self.__visibleItems > len(self.__entries):
-			self.__visibleItems = len(self.__entries) 
+		self.__entriesTotal = len(self.__entries)
+		if self.__visibleItems > self.__entriesTotal:
+			self.__visibleItems = self.__entriesTotal 
 
 	def draw(self, x, y):
 		if self.isActive() and self.__redraw:
-			self.__redraw = False
 			self.fillBackground()
 			nextY = self.__marginTop
 			i = self.__startIndex
-			total = len(self.__entries)
 			while i < self.__visibleItems + self.__startIndex: 
 				if self.__entries[i].isSelected():
 					label = self.__font.render(self.__entries[i].getText(), 1, self.getBackgroundColour(), self.__colour)
@@ -1556,6 +1810,7 @@ class Menu(Panel):
 				nextY += self.__fontHeight + self.__menuItemGap
 				i += 1
 			self.update(x, y)
+			self.__redraw = False
 
 	def handleEvent(self, event):
 		if self.isActive():
@@ -1570,12 +1825,12 @@ class Menu(Panel):
 							self.__startIndex -= 1
 					else:
 						self.__entries[self.__selected].setSelected(False)
-						self.__selected = len(self.__entries) - 1
-						self.__startIndex = len(self.__entries) - self.__visibleItems
+						self.__selected = self.__entriesTotal - 1
+						self.__startIndex = self.__entriesTotal - self.__visibleItems
 						self.__entries[self.__selected].setSelected(True)
 				elif event.key == K_DOWN:
 					self.__redraw = True
-					if self.__selected + 1 < len(self.__entries):
+					if self.__selected + 1 < self.__entriesTotal:
 						self.__entries[self.__selected].setSelected(False)
 						self.__selected += 1
 						self.__entries[self.__selected].setSelected(True)
@@ -1601,8 +1856,9 @@ class Menu(Panel):
 		self.__entries = entries
 		self.__startIndex = 0
 		self.__visibleItems = self.__maxVisibleItems
-		if self.__visibleItems > len(self.__entries):
-			self.__visibleItems = len(self.__entries) 
+		self.__entriesTotal = len(self.__entries)
+		if self.__visibleItems > self.__entriesTotal:
+			self.__visibleItems = self.__entriesTotal 
 		self.__selected = 0
 		self.__entries[self.__selected].setSelected(True)
 		i = 1
@@ -1610,17 +1866,6 @@ class Menu(Panel):
 			self.__entries[i].setSelected(False)
 			i += 1
 		self.__redraw = True
-
-class MainMenu(Menu):
-
-	def __init__(self, consoles, entries, width, height, font, fontSize, colour, bgColour):
-		super(MainMenu, self).__init__(consoles + entries, width, height, font, fontSize, colour, bgColour)
-		self.__consoles = consoles
-		self.__entries = entries
-
-	def setConsoles(self, consoles):
-		self.__consoles = consoles
-		self.setEntries(self.__consoles + self.__entries)
 
 class MenuItem(object): 
 
@@ -1649,11 +1894,34 @@ class MenuItem(object):
 		if self.__selected != sel:
 			self.__selected = sel
 
-class GameMenuItem(MenuItem):
-	def __init__(self, game):
-		super(GameMenuItem, self).__init__(game.getName())
-		self.__game = game
+	def setText(self, text):
+		self.__text = text
+
+class MenuImgItem(MenuItem):
+
+	def __init__(self, text, img, callback = None, *callbackArgs):
+		super(MenuImgItem, self).__init__(text, callback, *callbackArgs)
+		self.__img = img
 		self.__thumbnail = None
+		self.__imgDimensions = None
+
+	def getImageDimensions(self):
+		if self.__imgDimensions == None:
+			img = Image.open(self.__img)
+			self.__imgDimensions = img.size
+		return self.__imgDimensions
+
+	def getThumbnail(self, width, height):
+		if self.__thumbnail == None:
+			if self.__img != None:
+				 self.__thumbnail = scaleImage(pygame.image.load(self.__img).convert_alpha(), (width, height))
+
+		return self.__thumbnail
+
+class GameMenuItem(MenuImgItem):
+	def __init__(self, game):
+		super(GameMenuItem, self).__init__(game.getName(), game.getImagePath())
+		self.__game = game
 
 	def activate(self):
 		return self.__game.getCommand()
@@ -1661,10 +1929,4 @@ class GameMenuItem(MenuItem):
 	def getGame(self):
 		return self.__game
 
-	def getThumbnail(self, width, height):
-                if self.__thumbnail == None:
-                        if self.__game.getImagePath() != None:
-                                self.__thumbnail = scaleImage(pygame.image.load(self.__game.getImagePath()).convert(), (width, height))
-                        
-                return self.__thumbnail
 
