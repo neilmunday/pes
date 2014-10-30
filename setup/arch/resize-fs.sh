@@ -34,6 +34,8 @@ if [ "$response" == "y" ]; then
 
 	fdisk /dev/mmcblk0 <<EOF
 d
+5
+d
 2
 n
 e
