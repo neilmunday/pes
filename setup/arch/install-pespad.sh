@@ -47,6 +47,13 @@ header "Copying files"
 
 run cp -rv pespad.py web $installDir
 
+header "Adding kernel module to system boot"
+
+sudo bash -c "cat > /etc/modules-load.d/uinput.conf" << 'EOF'
+uinput
+
+EOF
+
 header "Adding service"
 
 run cp -v systemd/pespad.service /etc/systemd/system/pespad.service
