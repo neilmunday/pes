@@ -26,15 +26,18 @@ source /home/pi/pes/setup/arch/functions.sh
 
 qtsixaTar=$baseDir/src/QtSixA-1.5.1-src.tar.gz
 qtsixaDir=$buildDir/QtSixA-1.5.1
+sixadPatchDir=$baseDir/src/sixad-patches
 
-header "Installing sixad..."
+checkDir $sixadPatchDir
+
+header "Downloading sixad..."
 
 run cd $baseDir/src
 
-#if [ ! -e $qtsixaTar ]; then
-#	echo "Downloading QTSixA..."
-#	run wget http://sourceforge.net/projects/qtsixa/files/QtSixA%201.5.1/QtSixA-1.5.1-src.tar.gz/download
-#fi
+if [ ! -e $qtsixaTar ]; then
+	echo "Downloading QTSixA..."
+	run wget http://sourceforge.net/projects/qtsixa/files/QtSixA%201.5.1/QtSixA-1.5.1-src.tar.gz
+fi
 
 checkFile $qtsixaTar
 
@@ -46,15 +49,12 @@ run cd $buildDir
 run tar xvfz $qtsixaTar
 run cd $qtsixaDir/sixad
 
-# patch shared.h
-if [[ `grep "#include <uninstd.h" shared.h` ]]; then
-	echo "No need to patch shared.h"
-else
-	echo "Patching shared.h..."
-	run mv shared.h shared.h-orig
-	run sed -e '/#define SHARED_H/a #include <unistd.h>' shared.h-orig > shared.h
-	run rm -f shared.h-orig
-fi
+header "Patching sixad..."
+
+for p in $sixadPatchDir/*.patch; do
+	echo "Applying patch ${p}..."
+	patch < $p
+done
 
 run make
 run sudo cp -v bins/* /usr/sbin/
@@ -91,5 +91,7 @@ run sudo cp sixpair /usr/sbin/sixpair
 run sudo bash -c "cat > /etc/udev/rules.d/97-sixpair.rules" << 'EOF'
 SUBSYSTEM=="usb", ATTRS{idVendor}=="054c", ENV{idProduct}="0268", RUN+="/usr/sbin/sixpair"
 EOF
+
+header "QtSixAd installation complete!"
 
 exit 0
