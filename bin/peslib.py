@@ -719,24 +719,30 @@ class UpdateDbThread(threading.Thread):
 								# now grab thumbnail
 								obj = { 'game_name': '%s' % name, 'platform_id': consoleId }
 								data = urllib.urlencode(obj)
-								printMsg("loading: " + url + data)
-								response = urllib2.urlopen(url + data)
-
+								urlLoaded = False
 								jsonOk = False
+								thumbPath = 0
+								gameId = None
+								nameLower = name.lower()
+								bestName = name
 
 								try:
-									results = json.loads(response.read())
-									jsonOk = True
-								except ValueError, e:
-									printMsg("error parsing JSON: %s", e)
-							
-								if jsonOk:
-									gameId = None
-									thumbPath = 0
-									nameLower = name.lower()
+									printMsg("loading: " + url + data)
+									response = urllib2.urlopen(url + data)
+									urlLoaded = True
+								except urllib2.URLError, e:
+									printMsg("an error occurred whilst trying to open: " + url + data)
+									print e
 
+								if urlLoaded:
+									try:
+										results = json.loads(response.read())
+										jsonOk = True
+									except ValueError, e:
+										printMsg("error parsing JSON: %s", e)
+							
+								if jsonOk and int(results['number_of_total_results']) > 0:
 									bestResultDistance = -1
-									bestName = name
 
 									for r in results['results']:
 										printMsg("potential result: %s" % r['name'])
@@ -755,17 +761,33 @@ class UpdateDbThread(threading.Thread):
 									printMsg("best match was: \"%s\" with a match rating of %d" % (bestName, bestResultDistance))
 									obj = { 'game_id': gameId }
 									data = urllib.urlencode(obj)
-									response = urllib2.urlopen(url + data)
-									results = json.loads(response.read())
 
-									if results['results']['image']['small_url']:
-										printMsg('Downloading cover art for %s' % name)
-										self.__downloading = name
-										self.__progress = 'Downloading cover art for %s' % name
-										imgUrl = results['results']['image']['small_url']
-										extension = imgUrl[imgUrl.rfind('.'):]
-										thumbPath = c.getImgCacheDir() + os.sep + str(gameId) + extension
-										urllib.urlretrieve(imgUrl, thumbPath)
+									urlLoaded = False
+
+									try:
+										response = urllib2.urlopen(url + data)
+										urlLoaded = True
+									except urllib2.URLError, e:
+										printMsg("an error occurred whilst trying to open: " + url + data)
+										print e
+
+									if urlLoaded:
+										jsonOk = False
+
+										try:
+											results = json.loads(response.read())
+											jsonOk = True
+										except ValueError, e:
+											printMsg("error parsing JSON: %s", e)
+
+										if jsonOk and results['results']['image']['small_url']:
+											printMsg('Downloading cover art for %s' % name)
+											self.__downloading = name
+											self.__progress = 'Downloading cover art for %s' % name
+											imgUrl = results['results']['image']['small_url']
+											extension = imgUrl[imgUrl.rfind('.'):]
+											thumbPath = c.getImgCacheDir() + os.sep + str(gameId) + extension
+											urllib.urlretrieve(imgUrl, thumbPath)
 								else:
 									self.__progress = 'Could not find game data for %s' % name
 									printMsg("Could not find game info for %s " % name)
