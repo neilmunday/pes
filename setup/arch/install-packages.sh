@@ -27,7 +27,7 @@ source /home/pi/pes/setup/arch/functions.sh
 # install packages
 
 run sudo pacman -S bluez bluez-libs bluez-utils \
-	gcc git make pkg-config scons \
+	gcc git make patch pkg-config scons \
 	libusb-compat linuxconsole \
 	python2 python2-pygame python2-levenshtein python2-pip python2-imaging \
 	samba \
