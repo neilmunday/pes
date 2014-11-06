@@ -61,11 +61,6 @@ run sudo cp -v bins/* /usr/sbin/
 run sudo cp -v sixad /usr/sbin/
 run sudo chmod 0755 /usr/sbin/sixad
 
-header "Enabling bluetooth adapter at boot time..."
-run sudo bash -c "cat > /etc/udev/rules.d/10-local.rules" << 'EOF'
-ACTION=="add", KERNEL="hci0", RUN+="/usr/bin/hciconfig hci0 up"
-EOF
-
 header "Enabling sixad at boot time..."
 
 run sudo bash -c "cat > /etc/systemd/system/sixad.service" << 'EOF'
@@ -87,6 +82,8 @@ header "Installing pairing utility..."
 run cd $qtsixaDir/utils
 run gcc -lusb -o sixpair sixpair.c
 run sudo cp sixpair /usr/sbin/sixpair
+
+header "Enabling auto pairing..."
 
 run sudo bash -c "cat > /etc/udev/rules.d/97-sixpair.rules" << 'EOF'
 SUBSYSTEM=="usb", ATTRS{idVendor}=="054c", ENV{idProduct}="0268", RUN+="/usr/sbin/sixpair"

@@ -32,6 +32,9 @@ run sudo pacman -Syu
 header "Installing additional packages..."
 run $setupDir/install-packages.sh
 
+header "Customising OS..."
+run $setupDir/customise-os.sh
+
 header "Setting up PS3 Bluetooth control pad support.."
 run $setupDir/install-ps3-control-pad.sh
 
