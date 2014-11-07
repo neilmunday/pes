@@ -770,7 +770,7 @@ class UpdateDbThread(threading.Thread):
 
 											stringMatcher = StringMatcher(str(nameLower), xname.lower())
 											distance = stringMatcher.distance()
-											if bestResultDistance == -1 or distance < bestResultDistance:
+											if distance < 5 and (bestResultDistance == -1 or distance < bestResultDistance):
 												bestResultDistance = distance
 												bestName = xname
 												gameId = xid
