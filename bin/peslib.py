@@ -41,6 +41,8 @@ import struct
 from PIL import Image
 from collections import OrderedDict
 from Levenshtein import *
+from xml.etree import ElementTree
+from xml.etree.ElementTree import Element, SubElement
 
 CEC_UP = 1
 CEC_DOWN = 2
@@ -247,7 +249,7 @@ class PES(object):
 		con = sqlite3.connect(self.__userDb)
 		try:
 			cur = con.cursor()
-			cur.execute('CREATE TABLE IF NOT EXISTS `games`(`game_id` INTEGER PRIMARY KEY, `api_id`, `exists` INT, `console_id` INT, `name` TEXT, `cover_art` TEXT, `game_path` TEXT)')
+			cur.execute('CREATE TABLE IF NOT EXISTS `games`(`game_id` INTEGER PRIMARY KEY, `api_id` INT, `exists` INT, `console_id` INT, `name` TEXT, `cover_art` TEXT, `game_path` TEXT)')
 			cur.execute('CREATE TABLE IF NOT EXISTS `consoles`(`console_id` INTEGER PRIMARY KEY, `name` TEXT)')
 		except sqlite3.Error, e:
 			self.__exit("Error: %s" % e.args[0], True)
@@ -670,7 +672,10 @@ class UpdateDbThread(threading.Thread):
 	def run(self):
 		printMsg('UpdateDbThread: started')
 		self.__started = True
-		url = 'http://pes.mundayweb.com/api.php?'
+		#url = 'http://pes.mundayweb.com/api.php?'
+		url = 'http://thegamesdb.net/api/'
+
+		headers = {'User-Agent': 'PES Scraper'}
 
 		con = None
 		cur = None
@@ -688,6 +693,22 @@ class UpdateDbThread(threading.Thread):
 		for c in self.__consoles:
 			consoleName = c.getName()
 			consoleId = c.getId()
+
+			urlLoaded = False
+			consoleApiName = None
+
+			try:
+				# get API name for this console
+				request = urllib2.Request("%sGetPlatform.php" % url, urllib.urlencode({ 'id': consoleId }), headers=headers)
+				response = urllib2.urlopen(request)
+				urlLoaded = True
+				xmlData = ElementTree.parse(response)
+				consoleApiName = xmlData.find('Platform/Platform').text
+				printMsg("Console API name: %s" % consoleApiName)
+			except urllib2.URLError, e:
+				printMsg("an error occurred whilst trying to open console url")
+				print e
+
 			printMsg('UpdateDbThread: processing games for %s' % consoleName)
 			self.__progress = 'Processing games for %s' % consoleName
 
@@ -714,44 +735,45 @@ class UpdateDbThread(threading.Thread):
 							cur.execute('SELECT `game_id`, `name`, `cover_art`, `game_path` FROM `games` WHERE `game_path` = "%s";' % f)
 							row = cur.fetchone()
 							if row == None:
-								self.__progress = 'Downloading data for game: %s' % name
-								printMsg('downloading game info for %s' % name)
-								# now grab thumbnail
-								obj = { 'game_name': '%s' % name, 'platform_id': consoleId }
-								data = urllib.urlencode(obj)
-								urlLoaded = False
-								jsonOk = False
-								thumbPath = 0
-								gameId = None
-								nameLower = name.lower()
-								bestName = name
+								if consoleApiName != None:
+									self.__progress = 'Downloading data for game: %s' % name
+									printMsg('downloading game info for %s' % name)
+									# now grab thumbnail
+									obj = { 'name': '%s' % name, 'platform': consoleApiName }
+									data = urllib.urlencode(obj)
+									urlLoaded = False
+									thumbPath = 0
+									gameId = None
+									nameLower = name.lower()
+									bestName = name
 
-								try:
-									printMsg("loading: " + url + data)
-									response = urllib2.urlopen(url + data)
-									urlLoaded = True
-								except urllib2.URLError, e:
-									printMsg("an error occurred whilst trying to open: " + url + data)
-									print e
-
-								if urlLoaded:
 									try:
-										results = json.loads(response.read())
-										jsonOk = True
-									except ValueError, e:
-										printMsg("error parsing JSON: %s", e)
-							
-								if jsonOk and int(results['number_of_total_results']) > 0:
-									bestResultDistance = -1
+										request = urllib2.Request("%sGetGamesList.php" % url, urllib.urlencode(obj), headers=headers)
+										response = urllib2.urlopen(request)
+										urlLoaded = True
+									except urllib2.URLError, e:
+										printMsg("an error occurred whilst trying to open url")
+										print e
 
-									for r in results['results']:
-										printMsg("potential result: %s" % r['name'])
-										stringMatcher = StringMatcher(str(nameLower), str(r['name'].lower()))
-										distance = stringMatcher.distance()
-										if bestResultDistance == -1 or distance < bestResultDistance:
-											bestResultDistance = distance
-											bestName = r['name']
-											gameId = r['id']
+									if urlLoaded:
+										bestResultDistance = -1
+										xmlData = ElementTree.parse(response)
+										for x in xmlData.findall("Game"):
+											xname = x.find("GameTitle").text
+											xid = int(x.find("id").text)
+											printMsg("potential result: %s (%s)" % (xname, xid))
+
+											if xname.lower() == nameLower:
+												printMsg("Exact match!")
+												gameId = xid
+												break
+
+											stringMatcher = StringMatcher(str(nameLower), xname.lower().encode('ascii', 'ignore'))
+											distance = stringMatcher.distance()
+											if bestResultDistance == -1 or distance < bestResultDistance:
+												bestResultDistance = distance
+												bestName = xname
+												gameId = xid
 
 								if self.__stopCheck(con, cur):
 									return
@@ -759,35 +781,50 @@ class UpdateDbThread(threading.Thread):
 								if gameId != None:
 									self.__progress = 'Match found: %s' % bestName
 									printMsg("best match was: \"%s\" with a match rating of %d" % (bestName, bestResultDistance))
-									obj = { 'game_id': gameId }
-									data = urllib.urlencode(obj)
-
 									urlLoaded = False
-
 									try:
-										response = urllib2.urlopen(url + data)
+										request = urllib2.Request("%sGetGame.php" % url, urllib.urlencode({"id": gameId}), headers=headers)
+										response = urllib2.urlopen(request)
 										urlLoaded = True
 									except urllib2.URLError, e:
-										printMsg("an error occurred whilst trying to open: " + url + data)
+										printMsg("an error occurred whilst trying to open url")
 										print e
 
 									if urlLoaded:
-										jsonOk = False
+										xmlData = ElementTree.parse(response)								
+										xboxart = xmlData.find("Game/Images/boxart[@side='front']")
+										if xboxart != None:
+											imageSaved = False
+											try:
+												imgUrl = "http://thegamesdb.net/banners/%s" % xboxart.text
+												printMsg("found cover art: %s" % imgUrl)
+												self.__downloading = name
+												self.__progress = 'Downloading cover art for %s' % name
+												extension = imgUrl[imgUrl.rfind('.'):]
+												thumbPath = c.getImgCacheDir() + os.sep + str(gameId) + extension
+												request = urllib2.Request(imgUrl, headers=headers)
+												response = urllib2.urlopen(request).read()
+												output = open(thumbPath, 'wb')
+												output.write(response)
+												output.close()
+												imageSaved = True
+											except urllib2.URLError, e:
+												printMsg("an error occurred whilst trying to open url")
+												print e
 
-										try:
-											results = json.loads(response.read())
-											jsonOk = True
-										except ValueError, e:
-											printMsg("error parsing JSON: %s", e)
-
-										if jsonOk and results['results']['image']['small_url']:
-											printMsg('Downloading cover art for %s' % name)
-											self.__downloading = name
-											self.__progress = 'Downloading cover art for %s' % name
-											imgUrl = results['results']['image']['small_url']
-											extension = imgUrl[imgUrl.rfind('.'):]
-											thumbPath = c.getImgCacheDir() + os.sep + str(gameId) + extension
-											urllib.urlretrieve(imgUrl, thumbPath)
+											if imageSaved:
+												# resize the image if it is too big
+												img = Image.open(thumbPath)
+												width, height = img.size
+												if width > 300 or height > 300:
+													# scale image
+													printMsg("scaling image: %s" % thumbPath)
+													ratio = min(float(400.0 / width), float(400.0 / height))
+													newWidth = width * ratio
+													newHeight = height * ratio
+													img.thumbnail((newWidth, newHeight), Image.ANTIALIAS)
+													img.save(thumbPath)
+														
 								else:
 									self.__progress = 'Could not find game data for %s' % name
 									printMsg("Could not find game info for %s " % name)
