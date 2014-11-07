@@ -759,7 +759,7 @@ class UpdateDbThread(threading.Thread):
 										bestResultDistance = -1
 										xmlData = ElementTree.parse(response)
 										for x in xmlData.findall("Game"):
-											xname = x.find("GameTitle").text
+											xname = x.find("GameTitle").text.encode('ascii', 'ignore')
 											xid = int(x.find("id").text)
 											printMsg("potential result: %s (%s)" % (xname, xid))
 
@@ -768,7 +768,7 @@ class UpdateDbThread(threading.Thread):
 												gameId = xid
 												break
 
-											stringMatcher = StringMatcher(str(nameLower), xname.lower().encode('ascii', 'ignore'))
+											stringMatcher = StringMatcher(str(nameLower), xname.lower())
 											distance = stringMatcher.distance()
 											if bestResultDistance == -1 or distance < bestResultDistance:
 												bestResultDistance = distance
@@ -818,6 +818,7 @@ class UpdateDbThread(threading.Thread):
 												width, height = img.size
 												if width > 300 or height > 300:
 													# scale image
+													self.__progress = 'Scaling cover art for %s' % name
 													printMsg("scaling image: %s" % thumbPath)
 													ratio = min(float(400.0 / width), float(400.0 / height))
 													newWidth = width * ratio
