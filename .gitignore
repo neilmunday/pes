@@ -1,0 +1,6 @@
+# Ignore Python byte code
+*.pyc
+
+# Ignore commands.sh as it dynamically created
+bin/commands.sh
+
