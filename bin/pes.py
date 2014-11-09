@@ -25,6 +25,7 @@
 import os
 import sys
 import argparse
+import logging
 import pygame
 from pygame.locals import *
 import peslib
@@ -43,29 +44,37 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Launch the Pi Entertainment System (PES)', add_help=True)
 	parser.add_argument('-w', '--window', help='Run PES in a window', dest='window', action='store_true')
 	parser.add_argument('-v', '--verbose', help='Turn on debug messages', dest='verbose', action='store_true')
+	parser.add_argument('-l', '--log', help='File to log messages to', type=str, dest='logfile')
 	args = parser.parse_args()
 
 	peslib.verbose = args.verbose
+
+	logLevel = logging.INFO
+	if args.verbose:
+		logLevel = logging.DEBUG
+
+	if args.logfile:
+		logging.basicConfig(format='%(asctime)s:%(levelname)s: %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logLevel, filename=args.logfile)
+	else:
+		logging.basicConfig(format='%(asctime)s:%(levelname)s: %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logLevel)
+	
 	cecEnabled = False
 	
 	try:
 		import cec
-		peslib.printMsg("enabling CEC...")
+		logging.info("CEC module enabled")
 		cecEnabled = True
 	except ImportError, e:
-		peslib.printMsg("CEC module not found, disabling CEC functions")
+		logging.info("CEC module not found, disabling CEC functions")
 
 	pygame.init()
 
-	if not pygame.font: print 'Warning, fonts disabled'
-	if not pygame.mixer: print 'Warning, sound disabled'
-
-	peslib.printMsg("script dir is: %s" % scriptDir)
-	peslib.printMsg("loading GUI...")
+	logging.debug("script dir is: %s" % scriptDir)
+	logging.info("loading GUI...")
 	pes = peslib.PES(args.window, commandFile)
 	if cecEnabled:
 		cec.init()
-		peslib.printMsg("adding CEC callback...")
+		loggin.debug("adding CEC callback...")
 		cec.add_callback(handleCecEvent, cec.EVENT_KEYPRESS)
 	command = pes.run()
 
