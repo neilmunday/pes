@@ -4,3 +4,5 @@
 # Ignore commands.sh as it dynamically created
 bin/commands.sh
 
+# Ignore log dir
+log/
