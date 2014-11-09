@@ -83,6 +83,8 @@ if __name__ == "__main__":
 		launchArgs += ' -v '
 	if args.window:
 		launchArgs += ' -w '
+	if args.logfile:
+		launchArgs += ' -l %s' % args.logfile
 
 	with open(commandFile, 'w') as f:
 		if command:
