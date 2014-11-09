@@ -74,7 +74,7 @@ if __name__ == "__main__":
 	pes = peslib.PES(args.window, commandFile)
 	if cecEnabled:
 		cec.init()
-		loggin.debug("adding CEC callback...")
+		logging.debug("adding CEC callback...")
 		cec.add_callback(handleCecEvent, cec.EVENT_KEYPRESS)
 	command = pes.run()
 
