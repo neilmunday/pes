@@ -243,10 +243,11 @@ class PES(object):
 
 
 		# create database (if needed)
+		logging.debug('connecting to database: %s' % self.__userDb)
 		con = sqlite3.connect(self.__userDb)
 		try:
 			cur = con.cursor()
-			cur.execute('CREATE TABLE IF NOT EXISTS `games`(`game_id` INTEGER PRIMARY KEY, `api_id` INT, `exists` INT, `console_id` INT, `name` TEXT, `cover_art` TEXT, `game_path` TEXT)')
+			cur.execute('CREATE TABLE IF NOT EXISTS `games`(`game_id` INTEGER PRIMARY KEY, `api_id` INT, `exists` INT, `console_id` INT, `name` TEXT, `cover_art` TEXT, `game_path` TEXT, `overview` TEXT)')
 			cur.execute('CREATE TABLE IF NOT EXISTS `consoles`(`console_id` INTEGER PRIMARY KEY, `name` TEXT)')
 		except sqlite3.Error, e:
 			self.__exit("Error: %s" % e.args[0], True)
@@ -555,9 +556,6 @@ class PES(object):
 		self.__showMessageBox("Database reset to defaults!")
 
 		self.processEvent(EVENT_DATABASE_UPDATED)
-		# generate a backspace key events to return to the main menu
-		#pygame.event.post(pygame.event.Event(KEYDOWN, {'key': K_BACKSPACE}))
-		#pygame.event.post(pygame.event.Event(KEYDOWN, {'key': K_BACKSPACE}))		
 			
 	def run(self):
                 pygame.mouse.set_visible(False)
@@ -727,12 +725,13 @@ class UpdateDbThread(threading.Thread):
 
 							self.__progress = 'Found game: %s' % name
 
-							cur.execute('SELECT `game_id`, `name`, `cover_art`, `game_path` FROM `games` WHERE `game_path` = "%s";' % f)
+							cur.execute('SELECT `game_id`, `name`, `cover_art`, `game_path`, `api_id` FROM `games` WHERE `game_path` = "%s";' % f)
 							row = cur.fetchone()
-							if row == None:
-								gameId = None
+							if row == None or (row['cover_art'] == "0" and row['api_id'] == -1):
+								gameApiId = None
 								bestName = name
 								thumbPath = 0
+								overview = ''
 								if consoleApiName != None:
 									self.__progress = 'Downloading data for game: %s' % name
 									logging.debug('downloading game info for %s' % name)
@@ -755,46 +754,51 @@ class UpdateDbThread(threading.Thread):
 										for x in xmlData.findall("Game"):
 											xname = x.find("GameTitle").text.encode('ascii', 'ignore')
 											xid = int(x.find("id").text)
-											logging.debug("potential result: %s (%s)" % (xname, xid))
+											logging.debug("potential result: %s (%d)" % (xname, xid))
 
 											if xname.lower() == nameLower:
 												logging.debug("exact match!")
-												gameId = xid
+												gameApiId = xid
 												break
 
 											stringMatcher = StringMatcher(str(nameLower), xname.lower())
 											distance = stringMatcher.distance()
-											if distance < 5 and (bestResultDistance == -1 or distance < bestResultDistance):
+											logging.debug("string distance: %d" % distance)
+
+											if bestResultDistance == -1 or distance < bestResultDistance:
 												bestResultDistance = distance
 												bestName = xname
-												gameId = xid
+												gameApiId = xid
 
 								if self.__stopCheck(con, cur):
 									return
 
-								if gameId != None:
+								if gameApiId != None:
 									self.__progress = 'Match found: %s' % bestName
 									logging.debug("best match was: \"%s\" with a match rating of %d" % (bestName, bestResultDistance))
 									urlLoaded = False
 									try:
-										request = urllib2.Request("%sGetGame.php" % url, urllib.urlencode({"id": gameId}), headers=headers)
+										request = urllib2.Request("%sGetGame.php" % url, urllib.urlencode({"id": gameApiId}), headers=headers)
 										response = urllib2.urlopen(request)
 										urlLoaded = True
 									except urllib2.URLError, e:
 										logging.debug("an error occurred whilst trying to open url: %s" % e.args)
 
 									if urlLoaded:
-										xmlData = ElementTree.parse(response)								
-										xboxart = xmlData.find("Game/Images/boxart[@side='front']")
-										if xboxart != None:
+										xmlData = ElementTree.parse(response)
+										overviewElement = xmlData.find("Game/Overview")
+										if overviewElement != None:
+											overview = overviewElement.text.encode('ascii', 'ignore')
+										boxartElement = xmlData.find("Game/Images/boxart[@side='front']")
+										if boxartElement != None:
 											imageSaved = False
 											try:
-												imgUrl = "http://thegamesdb.net/banners/%s" % xboxart.text
+												imgUrl = "http://thegamesdb.net/banners/%s" % boxartElement.text
 												logging.debug("found cover art: %s" % imgUrl)
 												self.__downloading = name
 												self.__progress = 'Downloading cover art for %s' % name
 												extension = imgUrl[imgUrl.rfind('.'):]
-												thumbPath = c.getImgCacheDir() + os.sep + str(gameId) + extension
+												thumbPath = c.getImgCacheDir() + os.sep + str(gameApiId) + extension
 												request = urllib2.Request(imgUrl, headers=headers)
 												response = urllib2.urlopen(request).read()
 												output = open(thumbPath, 'wb')
@@ -811,7 +815,7 @@ class UpdateDbThread(threading.Thread):
 												if width > 300 or height > 300:
 													# scale image
 													self.__progress = 'Scaling cover art for %s' % name
-													logging.error("scaling image: %s" % thumbPath)
+													logging.debug("scaling image: %s" % thumbPath)
 													ratio = min(float(400.0 / width), float(400.0 / height))
 													newWidth = width * ratio
 													newHeight = height * ratio
@@ -821,17 +825,22 @@ class UpdateDbThread(threading.Thread):
 								else:
 									self.__progress = 'Could not find game data for %s' % name
 									logging.debug("could not find game info for %s " % name)
-									gameId = -1
-								self.__progress = 'Adding %s to database...' % name
-								cur.execute('INSERT INTO `games`(`exists`, `console_id`, `name`, `game_path`, `api_id`, `cover_art`) VALUES (1, %d, "%s", "%s", %d, "%s");' % (consoleId, bestName, f, gameId, thumbPath))
+									gameApiId = -1
+
+								if row == None:
+									self.__progress = 'Adding %s to database...' % name
+									logging.debug('inserting new game record into database...')
+									cur.execute("INSERT INTO `games`(`exists`, `console_id`, `name`, `game_path`, `api_id`, `cover_art`, `overview`) VALUES (1, %d, '%s', '%s', %d, '%s', '%s');" % (consoleId, name.replace("'", "''"), f.replace("'", "''"), gameApiId, thumbPath, overview.replace("'", "''")))
+								elif gameApiId != -1:
+									self.__progress = 'Updating %s...' % name
+									logging.debug('updating game record in database...')
+									cur.execute("UPDATE `games` SET `api_id` = %d, `cover_art` = '%s', `overview` = '%s' WHERE `game_id` = %d;" % (gameApiId, thumbPath, overview.replace("'", "''"), row['game_id']))
+									
 								con.commit()
 							else:
 								self.__progress = 'No need to update %s' % name
-								logging.debug("no need to download for %s" % name)
-								coverArt = None
-								if row['cover_art'] != '0':
-									coverArt = row['cover_art']
-								cur.execute('UPDATE `games` SET `exists` = 1 WHERE `game_id` = %s;' % row["game_id"])
+								logging.debug("no need to update %s" % name)
+								cur.execute('UPDATE `games` SET `exists` = 1 WHERE `game_id` = %d;' % row["game_id"])
 								con.commit()
 
 							if self.__stopCheck(con, cur):
