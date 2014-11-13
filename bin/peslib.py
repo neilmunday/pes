@@ -847,7 +847,7 @@ class UpdateDbThread(threading.Thread):
 								elif gameApiId != -1:
 									self.__progress = 'Updating %s...' % name
 									logging.debug('updating game record in database...')
-									cur.execute("UPDATE `games` SET `api_id` = %d, `cover_art` = '%s', `overview` = '%s' WHERE `game_id` = %d;" % (gameApiId, thumbPath, overview.replace("'", "''"), row['game_id']))
+									cur.execute("UPDATE `games` SET `api_id` = %d, `cover_art` = '%s', `overview` = '%s', `exists` = 1 WHERE `game_id` = %d;" % (gameApiId, thumbPath, overview.replace("'", "''"), row['game_id']))
 									
 								con.commit()
 							else:
