@@ -1673,7 +1673,7 @@ class AboutPanel(Panel):
 		if self.isActive() and self.__redraw:
 			self.fillBackground()
 
-			for l in self.getLabels(['Pi Entertainment System version %s' % VERSION_NUMBER, ' ', 'Author: %s' % VERSION_AUTHOR, ' ', 'Released: %s' % VERSION_DATE, ' ', 'License: Licensed under version 3 of the GNU Public License (GPL)', ' ', 'Art work: Eric Smith', ' ', 'Cover art: theGamesDB.net', ' ', 'Documentataion: http://pes.mundayweb.com', ' ', 'Help: pes@mundayweb.com'], self.__font, self.__colour, self.getBackgroundColour(), self.getWidth() - x, self.getHeight()):
+			for l in self.getLabels(['Pi Entertainment System version %s' % VERSION_NUMBER, ' ', 'Released: %s' % VERSION_DATE, ' ', 'License: Licensed under version 3 of the GNU Public License (GPL)', ' ', 'Author: %s' % VERSION_AUTHOR, ' ', 'Contributors: Eric Smith', ' ', 'Cover art: theGamesDB.net', ' ', 'Documentataion: http://pes.mundayweb.com', ' ', 'Help: pes@mundayweb.com'], self.__font, self.__colour, self.getBackgroundColour(), self.getWidth() - x, self.getHeight()):
 				self.blit(l, (0, currentY))
 				currentY += l.get_rect().height
 
