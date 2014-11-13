@@ -2097,7 +2097,7 @@ class GameInfoPanel(Panel):
 			currentX = (width - imgWidth) / 2
 			currentY = y
 
-			logging.debug('drawing image %s at (%d, %d) using ratio: %f, panel dimensions: (%d, %d), scaled image dimensions: (%d, %d), original image dimensions: (%d, %d)' % (self.__coverArt, currentX, currentY, ratio, width, height, imgWidth, imgHeight, img.size[0], img.size[1]))
+			#logging.debug('drawing image %s at (%d, %d) using ratio: %f, panel dimensions: (%d, %d), scaled image dimensions: (%d, %d), original image dimensions: (%d, %d)' % (self.__coverArt, currentX, currentY, ratio, width, height, imgWidth, imgHeight, img.size[0], img.size[1]))
 
 			# display cover art and description
 			self.blit(scaleImage(pygame.image.load(self.__coverArt).convert_alpha(), (imgWidth, imgHeight)), (currentX, currentY))
@@ -2139,6 +2139,7 @@ class GameInfoPanel(Panel):
 				print "Error: could not find game %d in database!" % self.__gameId
 				sys.exit(1)
 			self.__gameName = row['name']
+			self.setTitle(self.__gameName)
 			self.__coverArt = row['cover_art']
 			self.__overview = row['overview'].replace("\n", "")
 		except sqlite3.Error, e:
