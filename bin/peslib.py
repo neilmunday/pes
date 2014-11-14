@@ -986,7 +986,7 @@ class JoyStick(object):
 		cfg += 'input_left_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_LEFT))
 		cfg += 'input_right_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_RIGHT))
 		cfg += 'input_save_state_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_SAVE_STATE))
-		cfg += 'input_save_state_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_LOAD_STATE))
+		cfg += 'input_load_state_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_LOAD_STATE))
 		cfg += 'input_exit_emulator_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_EXIT))
 		cfg += 'input_pause_toggle = "nul"\n'
 		cfg += 'input_l_x_plus_btn = "nul"\n'
