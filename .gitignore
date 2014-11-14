@@ -6,3 +6,7 @@ bin/commands.sh
 
 # Ignore log dir
 log/
+
+# Ignore emulators dir
+emulators/
+
