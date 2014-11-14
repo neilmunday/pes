@@ -59,7 +59,8 @@ function rmSourceDir {
 	fi
 }
 
-export baseDir=/home/pi/pes
+export userDir=/home/pi
+export baseDir=$userDir/pes
 export buildDir=$baseDir/build
 
 if [ ! -e $buildDir ]; then

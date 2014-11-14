@@ -43,6 +43,8 @@ if [ ! -e ~/.bash_pes ]; then
         echo -e "\t\techo \"Wating for \${i}s\"" >> ~/.bash_pes
 	echo -e "\t\tsleep 1" >> ~/.bash_pes
         echo -e "\tdone" >> ~/.bash_pes
+	echo "Truncating log file..." >> ~/.bash_pes
+	echo "> $baseDir/log/pes.log" >> ~/.bash_pes
         echo "Starting PES..." >> ~/.bash_pes
 	echo -e "\tpython2 ~/pes/bin/pes.sh -v -l $baseDir/log/pes.log" >> ~/.bash_pes
 	echo "fi" >> ~/.bash_pes
