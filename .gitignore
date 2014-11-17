@@ -4,11 +4,10 @@
 # Ignore commands.sh as it dynamically created
 bin/commands.sh
 
-# Ignore log dir
-log/
-
-# Ignore emulators dir
+# Ignore these directories:
+buid/
 emulators/
-
-# Ignore images dir (used to store SD card images)
 images/
+log/
+roms/
+
