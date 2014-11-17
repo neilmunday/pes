@@ -5,7 +5,7 @@
 bin/commands.sh
 
 # Ignore these directories:
-buid/
+build/
 emulators/
 images/
 log/
