@@ -39,8 +39,9 @@ echo ""
 
 read -p "Are you sure you want to update to the latest version? [y/n]" response
 if [ "$response" == "y" ]; then
-	echo "Proceeding with update..."
-	cd ../
+	gitdir="$(git rev-parse --show-toplevel)"
+	echo "Proceeding with update of $gitdir"
+	cd $gitdir
 	git fetch --all
 	git reset --hard origin/master
 	echo "Done!"
