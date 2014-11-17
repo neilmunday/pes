@@ -1,0 +1,42 @@
+=============
+PES Changelog
+=============
+
+-------
+PES 1.1
+-------
+
+Date: 2014-11-14
+
+Changes (and bug fixes):
+
+	- console blanking disabled in Arch Linux
+	- ROM additions now possible via GUI, reboots no longer required
+	- Moved all PES classes into the new peslib.py module
+	- Arch Linux packages updated
+	- Raspberry Pi B+ now supported
+	- Console screen added (graphics from Eric Smith)
+	- Missing cover art graphics revamped (graphics from Eric Smith)
+	- PESPad added thus allowing players to use their tablets and smart phones as control pads
+	- Game info screen added
+	- Game data now sourced from theGamesDB.net rather than GiantBomb.com
+	- ROM scraping code now faster than in previous release
+	- Improved ROM name matching
+	- Automatic resizing of downloaded cover art added to minimise disk space and improve image load times
+	- Joystick configuration bug fixes
+	- RetroArch control pad hot plugging support added
+	- Ability to assign load/save state buttons for RetroArch added
+	- Database reset option added
+	- Python logging support added
+	- Fixed PES screen title changes between screens
+	- Fixed PyGame/SDL issue where multiple control pad models could not be used with the PES GUI (removed evdev kernel module)
+	- Added patches for QtSixAd to rename PS3 control pads without their Bluetooth MACs included therefore allows only one control pad config for all PS3 control pads
+	- Fixed RetroArch sound issue (Eric Smith)
+
+-------
+PES 1.0
+-------
+
+Date: 2014-09-22
+
+Initial release.
