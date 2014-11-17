@@ -10,3 +10,5 @@ log/
 # Ignore emulators dir
 emulators/
 
+# Ignore images dir (used to store SD card images)
+images/
