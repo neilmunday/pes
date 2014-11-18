@@ -15,7 +15,7 @@ Changes (and bug fixes):
 	- Moved all PES classes into the new peslib.py module
 	- Arch Linux packages updated
 	- Raspberry Pi B+ now supported
-	- Console screen added (graphics from Eric Smith)
+	- Console screen added 
 	- Missing cover art graphics revamped (graphics from Eric Smith)
 	- PESPad added thus allowing players to use their tablets and smart phones as control pads
 	- Game info screen added
