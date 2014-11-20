@@ -5,6 +5,8 @@ PES is a graphical front end for a variety of games console emulators that has b
 
 At the heart of PES is the pes.py GUI. This can be used on any OS that supports Python and PyGame.
 
+![PES GUI](http://pes.mundayweb.com/html/_images/pes-main.png)
+
 For use on the Raspberry Pi, PES is distributed via an ArchLinux image (see http://pes.mundayweb.com/html/Installation.html#downloading for the latest image) which contains pre-compiled emulators for the Raspberry Pi. The configuration and compiliation scripts used to create the image are also included in this repository.
 
 The PES Raspberry Pi image has the following features:
@@ -25,6 +27,7 @@ The PES Raspberry Pi image has the following features:
   * Sega Game Gear
   * Sega Master System
   * Sega Mega Drive (aka Genesis)
+  * Sega CD
   * Sony PlayStation
   
 The documentation and Raspberry Pi image for PES can be found at: http://pes.mundayweb.com
