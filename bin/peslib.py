@@ -57,8 +57,8 @@ EVENT_JOYSTICKS_UPDATED = 2
 EVENT_MESSAGE_BOX_OK = 3
 EVENT_LOAD_GAME_INFO = 4
 
-VERSION_NUMBER = '1.1'
-VERSION_DATE = '2014-11-14'
+VERSION_NUMBER = '1.2 (dev)'
+VERSION_DATE = '2014-11-24'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -253,8 +253,10 @@ class PES(object):
 		con = sqlite3.connect(self.__userDb)
 		try:
 			cur = con.cursor()
-			cur.execute('CREATE TABLE IF NOT EXISTS `games`(`game_id` INTEGER PRIMARY KEY, `api_id` INT, `exists` INT, `console_id` INT, `name` TEXT, `cover_art` TEXT, `game_path` TEXT, `overview` TEXT)')
+			cur.execute('CREATE TABLE IF NOT EXISTS `games`(`game_id` INTEGER PRIMARY KEY, `api_id` INT, `exists` INT, `console_id` INT, `name` TEXT, `cover_art` TEXT, `game_path` TEXT, `overview` TEXT, `released` INT, `last_played` INT, `favourite` INT(1), `play_count` INT, `size` INT )')
+			cur.execute('CREATE INDEX IF NOT EXISTS "games_index" on games (game_id ASC)')
 			cur.execute('CREATE TABLE IF NOT EXISTS `consoles`(`console_id` INTEGER PRIMARY KEY, `name` TEXT)')
+			cur.execute('CREATE INDEX IF NOT EXISTS "console_index" on consoles (console_id ASC)')
 		except sqlite3.Error, e:
 			self.__exit("Error: %s" % e.args[0], True)
 		finally:
@@ -278,6 +280,8 @@ class PES(object):
 				self.__checkFile(nocoverart)
 				consoleId = configParser.get(c, 'id')
 				console = Console(c, consoleId, extensions, self.__romsDir + os.sep + c, command, self.__userDb, consoleImg, nocoverart, self.__imgCacheDir)
+				if console.isNew():
+					console.save()
 				console.getGames(True)
 				self.__consoles.append(console)
 			except ConfigParser.NoOptionError, e:
@@ -702,6 +706,7 @@ class UpdateDbThread(threading.Thread):
 			try:
 				# get API name for this console
 				request = urllib2.Request("%sGetPlatform.php" % url, urllib.urlencode({ 'id': consoleId }), headers=headers)
+				logging.debug('Loading URL: %s?%s' % (request.get_full_url(), request.get_data()))
 				response = urllib2.urlopen(request)
 				urlLoaded = True
 				xmlData = ElementTree.parse(response)
@@ -729,6 +734,7 @@ class UpdateDbThread(threading.Thread):
 								return
 
 							name = os.path.split(c.getRomDir() + os.sep + f)[1]
+							fileSize = os.path.getsize(f)
 							for e in c.getExtensions():
 								name = name.replace(e, '')
 
@@ -741,6 +747,7 @@ class UpdateDbThread(threading.Thread):
 								bestName = name
 								thumbPath = 0
 								overview = ''
+								released = -1
 								if consoleApiName != None:
 									self.__progress = 'Downloading data for game: %s' % name
 									logging.debug('downloading game info for %s' % name)
@@ -752,10 +759,11 @@ class UpdateDbThread(threading.Thread):
 
 									try:
 										request = urllib2.Request("%sGetGamesList.php" % url, urllib.urlencode(obj), headers=headers)
+										logging.debug('Loading URL: %s?%s' % (request.get_full_url(), request.get_data()))
 										response = urllib2.urlopen(request)
 										urlLoaded = True
 									except urllib2.URLError, e:
-										logging.error("an error occurred whilst trying to open url: %s" % e.args)
+										logging.error("an error occurred whilst trying to open url: %s" % e.message)
 
 									if urlLoaded:
 										bestResultDistance = -1
@@ -788,22 +796,28 @@ class UpdateDbThread(threading.Thread):
 									urlLoaded = False
 									try:
 										request = urllib2.Request("%sGetGame.php" % url, urllib.urlencode({"id": gameApiId}), headers=headers)
+										logging.debug('Loading URL: %s?%s' % (request.get_full_url(), request.get_data()))
 										response = urllib2.urlopen(request)
 										urlLoaded = True
 									except urllib2.URLError, e:
-										logging.debug("an error occurred whilst trying to open url: %s" % e.args)
+										logging.debug("an error occurred whilst trying to open url: %s" % e.message)
 
 									if urlLoaded:
 										xmlData = ElementTree.parse(response)
 										overviewElement = xmlData.find("Game/Overview")
 										if overviewElement != None:
 											overview = overviewElement.text.encode('ascii', 'ignore')
+										releasedElement = xmlData.find("Game/ReleaseDate")
+										if releasedElement != None:
+											released = releasedElement.text.encode('ascii', 'ignore')
+											# conver to Unix time stamp
+											released = int(time.mktime(datetime.strptime(released, "%m/%d/%Y").timetuple()))
 										boxartElement = xmlData.find("Game/Images/boxart[@side='front']")
 										if boxartElement != None:
 											imageSaved = False
 											try:
 												imgUrl = "http://thegamesdb.net/banners/%s" % boxartElement.text
-												logging.debug("found cover art: %s" % imgUrl)
+												logging.debug("downloading cover art: %s" % imgUrl)
 												self.__downloading = name
 												self.__progress = 'Downloading cover art for %s' % name
 												extension = imgUrl[imgUrl.rfind('.'):]
@@ -839,7 +853,7 @@ class UpdateDbThread(threading.Thread):
 								if row == None:
 									self.__progress = 'Adding %s to database...' % name
 									logging.debug('inserting new game record into database...')
-									cur.execute("INSERT INTO `games`(`exists`, `console_id`, `name`, `game_path`, `api_id`, `cover_art`, `overview`) VALUES (1, %d, '%s', '%s', %d, '%s', '%s');" % (consoleId, name.replace("'", "''"), f.replace("'", "''"), gameApiId, thumbPath, overview.replace("'", "''")))
+									cur.execute("INSERT INTO `games`(`exists`, `console_id`, `name`, `game_path`, `api_id`, `cover_art`, `overview`, `released`, `favourite`, `last_played`, `play_count`, `size`) VALUES (1, %d, '%s', '%s', %d, '%s', '%s', %d, 0, -1, 0, %d);" % (consoleId, name.replace("'", "''"), f.replace("'", "''"), gameApiId, thumbPath, overview.replace("'", "''"), released, fileSize))
 								elif gameApiId != -1:
 									self.__progress = 'Updating %s...' % name
 									logging.debug('updating game record in database...')
@@ -1026,11 +1040,161 @@ class JoyStick(object):
                                 return pygame.event.Event(KEYDOWN, {'key': K_DOWN})
                 return None
 
-class Console(object):
+class Record(object):
+
+	def __init__(self, db, table, fields, keyField, keyValue = None, autoIncrement = True):
+		self.__db = db
+		self.__autoIncrement = autoIncrement
+		self.__table = table
+		self.__fields = fields
+		self.__keyField = keyField
+		self.__keyValue = keyValue
+		self.__properties = {}
+		self.__properties[self.__keyField] = keyValue
+		self.__isDirty = False
+		self.__con = None
+
+		self.refresh()
+
+	def connect(self):
+		if self.__con:
+			return self.__con
+
+		self.__con = sqlite3.connect(self.__db)
+		self.__con.row_factory = sqlite3.Row
+		self.__cur = self.__con.cursor()
+
+	@staticmethod
+	def convertValue(v):
+		isNumeric = False
+		try:
+			float(v)
+			isNumeric = True
+		except ValueError:
+			pass
+
+		if not isNumeric:
+			return '"%s"' % v
+		return str(v)
+
+	def disconnect(self):
+		if self.__con:
+			self.__con.close()
+		self.__con = None
+
+	def doQuery(self, query):
+		logging.debug('Executing query: %s' % query)
+		self.__cur.execute(query)
+
+	def __getFieldsQuery(self):
+		i = 0
+		total = len(self.__fields)
+		query = ''
+		for f in self.__fields:
+			query += '`%s`' % f
+			if i < total - 1:
+				query += ','
+			i += 1
+		return query
+
+	def getDb(self):
+		return self.__db
+
+	def getId(self):
+		return self.__properties[self.__keyField]
+
+	def getProperty(self, field):
+		return self.__properties[field]
+
+	def __getWritableFields(self):
+		l = []
+		for f in self.__fields:
+			if f != self.__keyField:
+				l.append(f)
+
+		return l
+
+	def isDirty(self):
+		return self.__isDirty
+
+	def isNew(self):
+		return self.__isNew
+
+	def refresh(self):
+		self.connect()
+		if not self.__con:
+			raise sqlite3.Error('Database %s not connected' % self.__db)
+
+		if self.__properties[self.__keyField] != None:
+			self.doQuery('SELECT %s FROM `%s` WHERE `%s` = %d;' % (self.__getFieldsQuery(), self.__table, self.__keyField, self.__properties[self.__keyField]))
+			row = self.__cur.fetchone()
+			if row == None:
+				#raise sqlite3.Error('No record found for field "%s" in table "%s"' % (self.__primaryKey, self.__table)
+				self.__isNew = True
+				self.__isDirty = True
+			else:
+				for f in self.__fields:
+					self.__properties[f] = row[f]
+				self.__isNew = False
+				self.__isDirty = False
+		self.disconnect()
+
+	def save(self):
+		self.connect()
+		if not self.__con:
+			raise sqlite3.Error('Database %s not connected' % self.__db)
+
+		query = ''
+		if self.__isNew:
+			i = 0
+			writableFields = None
+			if self.__autoIncrement:
+				writableFields = self.__getWritableFields()
+			else:
+				writableFields = self.__fields
+			total = len(writableFields)
+			query = 'INSERT INTO `%s` (' % self.__table
+			endQuery = ''
+			for f in writableFields:
+				query += '`%s`' % f
+				endQuery += self.convertValue(self.__properties[f])
+				if i < total - 1:
+					query += ','
+					endQuery += ','
+				i += 1
+
+			query += ') VALUES (%s);' % endQuery
+				
+		else:
+			i = 0
+			writableFields = self.__getWritableFields()
+			total = len(writableFields)
+			query = 'UPDATE `%s` SET '
+			for f in writableFields:
+				query += '`%s` = %s' % (f, self.__properties[f])
+				if i < total - 1:
+					query += ','
+				i += 1
+			query += ' WHERE `%s` = %d;' % (self.__keyField, self.__properties[self.__keyField])
+
+		self.doQuery(query)
+		self.__con.commit()
+		self.disconnect()
+
+		if self.__isNew:
+			self.__isNew = False
+			self.__properties[self.__keyField] = self.__cur.lastrowid
+		self.__isDirty = False
+
+	def setProperty(self, field, value):
+		self.__properties[field] = value
+		self.__isDirty = True
+
+class Console(Record):
 
 	def __init__(self, name, consoleId, extensions, romDir, command, db, consoleImg, noCoverArtImg, imgCacheDir):
-		self.__id = int(consoleId)
-		self.__name = name
+		super(Console, self).__init__(db, 'consoles', ['console_id', 'name'], 'console_id', int(consoleId), False)
+		self.setProperty('name', name)
 		self.__extensions = extensions
 		self.__romDir = romDir
 		self.__consoleImg = consoleImg
@@ -1038,27 +1202,8 @@ class Console(object):
 		self.__games = []
 		self.__refresh = True
 		self.__command = command
-		self.__db = db
 		self.__imgCacheDir = imgCacheDir
 		self.__gameTotal = 0
-
-		try:
-			con = sqlite3.connect(self.__db)
-			con.row_factory = sqlite3.Row
-			cur = con.cursor()
-			cur.execute('SELECT `name` FROM `consoles` WHERE `console_id` = %d;' % self.__id)
-			row = cur.fetchone()
-			if row == None:
-				logging.debug('adding console %s to database' % self.__name)
-				cur.execute('INSERT INTO `consoles` VALUES (%d, "%s")' % (self.__id, self.__name))
-				con.commit()
-		except sqlite3.Error, e:
-			print "Error: %s" % e.args[0]
-			sys.exit(1)
-		finally:
-			if con:
-				con.close()
-
 
 	def getCommand(self, game):
 		return self.__command.replace('%%GAME%%', "\"%s\"" % game.getPath())
@@ -1068,11 +1213,12 @@ class Console(object):
 
 	def getGames(self, refresh = False):
 		if self.__refresh or refresh:
+			con = None
 			try:
-				con = sqlite3.connect(self.__db)
+				con = sqlite3.connect(self.getDb())
 				con.row_factory = sqlite3.Row
 				cur = con.cursor()
-				cur.execute('SELECT `game_id`, `name`, `game_path`, `cover_art` FROM `games` WHERE `console_id` = %d ORDER BY `name`;' % self.__id)
+				cur.execute('SELECT `game_id`, `name`, `game_path`, `cover_art` FROM `games` WHERE `console_id` = %d ORDER BY `name`;' % self.getId())
 				self.__games = []
 				while True:
 					row = cur.fetchone()
@@ -1099,9 +1245,6 @@ class Console(object):
 	def getExtensions(self):
 		return self.__extensions
 
-	def getId(self):
-		return self.__id
-
 	def getImgCacheDir(self):
 		return self.__imgCacheDir
 	
@@ -1109,10 +1252,10 @@ class Console(object):
 		return self.__consoleImg
 
 	def getName(self):
-		return self.__name
+		return self.getProperty('name')
 
 	def getRomDir(self):
-		return self.__romDir		
+		return self.__romDir	
 
 class Game(object):
 
@@ -1400,7 +1543,7 @@ class ThumbnailMenu(Panel):
 		if fitToHeight:
 			# we need to fit ALL thumbnails on the first page, therefore need to use
 			# image dimensions to work out scaling
-			self.__thumbsInY = int((self.__menuItemsTotal / thumbsPerRow) + 0.5)
+			self.__thumbsInY = int(round(self.__menuItemsTotal / thumbsPerRow) + 0.5), 0)
 			marginSpace = (self.__fontHeight + self.__thumbMargin) * (self.__thumbsInY + 1)
 			self.__thumbHeight = (height - marginSpace) / self.__thumbsInY
 			imgRatio = float(imgWidth) / float(imgHeight)
@@ -1914,12 +2057,11 @@ class JoyStickConfigurationPanel(Panel):
 
 class Menu(Panel):
 
-	__marginTop = 20
-	__marginBottom = 20
-	__menuItemGap = 10
-
-	def __init__(self, entries, width, height, font, fontSize, colour, bgColour):
+	def __init__(self, entries, width, height, font, fontSize, colour, bgColour, marginTop = 20, marginBottom = 20, menuItemGap = 10):
 		super(Menu, self).__init__(width, height, bgColour)
+		self.__marginTop = marginTop
+		self.__marginBottom = marginBottom
+		self.__menuItemGap = menuItemGap
 		self.__redraw = True
 		self.__entries = entries
 		self.__colour = colour
@@ -1936,6 +2078,8 @@ class Menu(Panel):
 			self.__visibleItems = self.__entriesTotal 
 
 	def draw(self, x, y):
+		# x is where the panel is drawn
+		# all x, y values for drawing labels should be relative to zero!
 		if self.isActive() and self.__redraw:
 			self.fillBackground()
 			nextY = self.__marginTop
@@ -1945,7 +2089,7 @@ class Menu(Panel):
 					label = self.__font.render(self.__entries[i].getText(), 1, self.getBackgroundColour(), self.__colour)
 				else:
 					label = self.__font.render(self.__entries[i].getText(), 1, self.__colour, self.getBackgroundColour())
-				self.blit(label, (x, nextY))
+				self.blit(label, (0, nextY))
 				nextY += self.__fontHeight + self.__menuItemGap
 				i += 1
 			self.update(x, y)
@@ -2005,6 +2149,11 @@ class Menu(Panel):
 			self.__entries[i].setSelected(False)
 			i += 1
 		self.__redraw = True
+
+	def setSelected(self, i):
+		self.__entries[self.__selected].setSelected(False)
+		self.__selected = i
+		self.__entries[self.__selected].setSelected(True)
 
 class MenuItem(object): 
 
@@ -2078,7 +2227,10 @@ class GameInfoPanel(Panel):
 		self.__colour = colour
 		self.__font = pygame.font.Font(font, fontSize)
 		self.__redraw = True
-		
+		self.__menuItems = [MenuItem('Favourite: %s' % self.__favourite), MenuItem('Play')]
+		self.__menu = Menu(self.__menuItems, 200, 80, font, fontSize, colour, bgColour, 0, 0, 0)
+		self.__menu.setSelected(1)
+		self.__menu.setActive(True)
 
 	def draw(self, x, y):
 		currentY = 10
@@ -2102,18 +2254,33 @@ class GameInfoPanel(Panel):
 			# display cover art and description
 			self.blit(scaleImage(pygame.image.load(self.__coverArt).convert_alpha(), (imgWidth, imgHeight)), (currentX, currentY))
 
-			currentY += imgHeight + 20
+			labels = self.getLabels(['Released: %s' % self.__released, 'Last played: %s' % self.__lastPlayed], self.__font, self.__colour, self.getBackgroundColour(), width - (currentX + imgWidth) - 10, imgHeight)
+			labelHeight = labels[0].get_rect().height
+			currentX += imgWidth + 10
+			for l in labels:
+				self.blit(l, (currentX, currentY))
+				currentY += labelHeight
+
+			self.__menuX = currentX + x
+			self.__menuY = currentY + y
+
+			currentY = y + imgHeight + 20
 			currentX = 0
-			self.__labels = self.getLabels([self.__overview], self.__font, self.__colour, self.getBackgroundColour(), width - 100, height / 2)
-			for l in self.__labels:
+			labels = self.getLabels([self.__overview], self.__font, self.__colour, self.getBackgroundColour(), width - 100, height / 2)
+			for l in labels:
 				self.blit(l, (currentX, currentY))
 				currentY += l.get_rect().height
 
 			self.update(x, y)
+			self.__menu.draw(self.__menuX, self.__menuY)
+
 			self.__redraw = False
 
 	def handleEvent(self, event):
 		if self.isActive():
+			self.__menu.handleEvent(event)
+			self.__menu.draw(self.__menuX, self.__menuY)
+			#self.__redraw = True
 			return None
 
 	def setActive(self, active):
@@ -2132,7 +2299,7 @@ class GameInfoPanel(Panel):
 			con = sqlite3.connect(self.__db)
 			con.row_factory = sqlite3.Row
 			cur = con.cursor()
-			cur.execute('SELECT `game_id`, `cover_art`, `overview`, `name` FROM `games` WHERE `game_id` = %d;' % self.__gameId)
+			cur.execute("SELECT `game_id`, `cover_art`, `overview`, `name`, case when `last_played` < 0 then 'N/A' else strftime('%%d/%%m/%%Y', `last_played`, 'unixepoch') end AS `last_played_date`, case when `favourite` = 1 then 'Yes' else 'No' end as `favourite_str`, strftime('%%d/%%m/%%Y', `released`, 'unixepoch') AS `release_date`  FROM `games` WHERE `game_id` = %d;" % self.__gameId)
 			row = cur.fetchone()
 			if row == None:
 				logging.error('could not find game %d in database!' % self.__gameId)
@@ -2142,6 +2309,9 @@ class GameInfoPanel(Panel):
 			self.setTitle(self.__gameName)
 			self.__coverArt = row['cover_art']
 			self.__overview = row['overview'].replace("\n", "")
+			self.__favourite = row['favourite_str']
+			self.__released = row['release_date']
+			self.__lastPlayed = row['last_played_date']
 		except sqlite3.Error, e:
 			print "Error: %s" % e.args[0]
 			sys.exit(1)
