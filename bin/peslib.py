@@ -68,7 +68,17 @@ def get_default_if():
     for i in csv.DictReader(f, delimiter="\t"): 
         if long(i['Destination'], 16) == 0: 
             return i['Iface'] 
-    return None 
+    return None
+
+def getHumanReadableSize(num, suffix='B'):
+	"""
+	By Fred Cirera: http://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
+	"""
+	for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+		if abs(num) < 1024.0:
+			return "%3.1f%s%s" % (num, unit, suffix)
+		num /= 1024.0
+	return "%.1f%s%s" % (num, 'Yi', suffix)
 
 def get_ip_address(ifname): 
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
@@ -459,15 +469,15 @@ class PES(object):
 		self.__menuStack.append(activeMenu)
 		self.__header.setTitle('%s: %s' % (self.__name, activeMenu.getTitle()))
 
-	def __loadGameInfoPanel(self, gameId):
+	def __loadGameInfoPanel(self, console, game):
 		activeMenu = self.__getActiveMenu()
 		activeMenu.setActive(False)
 		if self.__gameInfoPanel == None:
-			self.__gameInfoPanel = GameInfoPanel(self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 18, self.__fontColour, self.__bgColour, gameId, self.__userDb)
+			self.__gameInfoPanel = GameInfoPanel(self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 18, self.__fontColour, self.__bgColour, console, game)
 			activeMenu = self.__gameInfoPanel
 		else:
 			activeMenu = self.__gameInfoPanel
-			self.__gameInfoPanel.setGameId(gameId)
+			self.__gameInfoPanel.setGame(console, game)
 		activeMenu.setActive(True)
 		self.__menuStack.append(activeMenu)
 		self.__header.setTitle('%s: %s' % (self.__name, self.__gameInfoPanel.getTitle()))
@@ -556,8 +566,8 @@ class PES(object):
 			self.__getActiveMenu().removeListener(self)
 			self.__goBack()
 		elif event == EVENT_LOAD_GAME_INFO:
-			logging.debug("trapping PES event: load game info for game: %d" % args[0])
-			self.__loadGameInfoPanel(args[0])
+			logging.debug("trapping PES event: load game info for game: %d" % args[0].getId())
+			self.__loadGameInfoPanel(args[0], args[1])
 
 	def __resetDb(self):
 		con = sqlite3.connect(self.__userDb)
@@ -1053,6 +1063,7 @@ class Record(object):
 		self.__properties[self.__keyField] = keyValue
 		self.__isDirty = False
 		self.__con = None
+		self.__dirtyFields = []
 
 		self.refresh()
 
@@ -1115,7 +1126,7 @@ class Record(object):
 		return l
 
 	def isDirty(self):
-		return self.__isDirty
+		return len(self.__dirtyFields) > 0
 
 	def isNew(self):
 		return self.__isNew
@@ -1131,12 +1142,12 @@ class Record(object):
 			if row == None:
 				#raise sqlite3.Error('No record found for field "%s" in table "%s"' % (self.__primaryKey, self.__table)
 				self.__isNew = True
-				self.__isDirty = True
+				self.__dirtyFields = self.__getWritableFields()
 			else:
 				for f in self.__fields:
 					self.__properties[f] = row[f]
 				self.__isNew = False
-				self.__isDirty = False
+				self._dirtyFields = []
 		self.disconnect()
 
 	def save(self):
@@ -1167,11 +1178,10 @@ class Record(object):
 				
 		else:
 			i = 0
-			writableFields = self.__getWritableFields()
-			total = len(writableFields)
-			query = 'UPDATE `%s` SET '
-			for f in writableFields:
-				query += '`%s` = %s' % (f, self.__properties[f])
+			total = len(self.__dirtyFields)
+			query = 'UPDATE `%s` SET ' % self.__table
+			for f in self.__dirtyFields:
+				query += '`%s` = %s' % (f, self.convertValue(self.__properties[f]))
 				if i < total - 1:
 					query += ','
 				i += 1
@@ -1184,11 +1194,12 @@ class Record(object):
 		if self.__isNew:
 			self.__isNew = False
 			self.__properties[self.__keyField] = self.__cur.lastrowid
-		self.__isDirty = False
+		self.__dirtyFields = []
 
 	def setProperty(self, field, value):
 		self.__properties[field] = value
-		self.__isDirty = True
+		if not field in self.__dirtyFields:
+			self.__dirtyFields.append(field)
 
 class Console(Record):
 
@@ -1224,12 +1235,14 @@ class Console(Record):
 					row = cur.fetchone()
 					if row == None:
 						break
-					coverArt = None
-					if row['cover_art'] != '0':
-						coverArt = row['cover_art']
-					else:
-						coverArt = self.__noCoverArtImg
-					self.__games.append(Game(row['game_id'], row['name'], row['game_path'], self, coverArt))
+					#coverArt = None
+					#if row['cover_art'] != '0':
+					#	coverArt = row['cover_art']
+					#else:
+					#	coverArt = self.__noCoverArtImg
+					#self.__games.append(Game(row['game_id'], row['name'], row['game_path'], self, coverArt))
+					self.__games.append(Game(row['game_id'], self.getDb(), self))
+					
 			except sqlite3.Error, e:
 				print "Error: %s" % e.args[0]
 				sys.exit(1)
@@ -1257,14 +1270,11 @@ class Console(Record):
 	def getRomDir(self):
 		return self.__romDir	
 
-class Game(object):
+class Game(Record):
 
-	def __init__(self, gameId, name, path, console, imagePath = None):
-		self.__gameId = gameId
-		self.__name = name
-		self.__path = path
+	def __init__(self, gameId, db, console=None):
+		super(Game, self).__init__(db, 'games', ['api_id', 'exists', 'console_id', 'name', 'cover_art', 'game_path', 'overview', 'released', 'last_played', 'favourite', 'play_count', 'size'], 'game_id', int(gameId))
 		self.__console = console
-		self.__imagePath = imagePath
 
 	def getCommand(self):
 		return self.__console.getCommand(self)
@@ -1272,17 +1282,89 @@ class Game(object):
 	def getConsole(self):
 		return self.__console
 
-	def getId(self):
-		return self.__gameId
+	def getConsoleId(self):
+		return self.getProperty('console_id')
 
-	def getImagePath(self):
-		return self.__imagePath
+	def getCoverArt(self):
+		coverArt = self.getProperty('cover_art')
+		if coverArt == 0:
+			return None
+		return coverArt
+
+	def getLastPlayed(self, fmt=None):
+		timestamp = int(self.getProperty('last_played'))
+		if timestamp == -1:
+			return None
+		if fmt == None:
+			return timestamp
+		return datetime.fromtimestamp(timestamp).strftime(fmt)
 
 	def getName(self):
-		return self.__name
+		return self.getProperty('name')
+
+	def getOverview(self):
+		return self.getProperty('overview')
 
 	def getPath(self):
-		return self.__path
+		return self.getProperty('game_path')
+
+	def getReleased(self, fmt=None):
+		timestamp = self.getProperty('released')
+		if fmt == None:
+			return timestamp
+		return datetime.fromtimestamp(timestamp).strftime(fmt)
+
+	def getPlayCount(self):
+		return self.getProperty('play_count')
+
+	def getSize(self):
+		return self.getProperty('size')
+
+	def isFavourite(self, yesNoMap=None):
+		fav = self.getProperty('favourite') == 1
+		if yesNoMap == None:
+			return fav
+		if fav:
+			return yesNoMap[0]
+		return yesNoMap[1]
+
+	def setConsoleId(self, consoleId):
+		self.setProperty('console_id', consoleId)
+
+	def setCoverArt(self, path):
+		self.setProperty('game_path', path)
+
+	def setFavourite(self, fav):
+		if fav:
+			self.setProperty('favourite', 1)
+		else:
+			self.setProperty('favourite', 0)
+
+	def setLastPlayed(self, date=None):
+		if date == None:
+			# use current date/time
+			date = time.time()
+		self.setProperty('last_played', date)
+
+	def setName(self, name):
+		self.setProperty('name', name)
+
+	def setOverview(self, overview):
+		self.setProperty('overview', overview)
+
+	def setReleased(self, released):
+		self.setProperty('released', released)
+
+	def setPath(self, path):
+		self.setProperty('game_path', path)
+
+	def setPlayCount(self, x=None):
+		if x == None:
+			x = self.getPlayCount() + 1
+		self.setProperty('play_count')
+
+	def setSize(self, s):
+		self.setProperty('size')
 
 class Panel(object):
 
@@ -1543,7 +1625,7 @@ class ThumbnailMenu(Panel):
 		if fitToHeight:
 			# we need to fit ALL thumbnails on the first page, therefore need to use
 			# image dimensions to work out scaling
-			self.__thumbsInY = int(round(self.__menuItemsTotal / thumbsPerRow) + 0.5), 0)
+			self.__thumbsInY = int(round(self.__menuItemsTotal / thumbsPerRow, 0))
 			marginSpace = (self.__fontHeight + self.__thumbMargin) * (self.__thumbsInY + 1)
 			self.__thumbHeight = (height - marginSpace) / self.__thumbsInY
 			imgRatio = float(imgWidth) / float(imgHeight)
@@ -1673,6 +1755,7 @@ class GamesMenu(Panel):
 
 	def __init__(self, console, width, height, font, fontSize, colour, bgColour, nocoverImage):
 		super(GamesMenu, self).__init__(width, height, bgColour, console.getName())
+		self.__console = console
 		self.__thumbWidth = int(width / 6)
 		self.__thumbHeight = int(self.__thumbWidth * 1.2)
 		self.__thumbMargin = 40
@@ -1725,7 +1808,7 @@ class GamesMenu(Panel):
 						self.blit(l, (nextX, labelY))
 						labelY += l.get_rect().height
 
-				if self.__menuItems[i].getGame().getImagePath() == None:
+				if self.__menuItems[i].getGame().getCoverArt() == None:
 					self.blit(self.__nocoverImage, (nextX, nextY))
 				else:
                                         image = self.__menuItems[i].getThumbnail(self.__thumbWidth, self.__thumbHeight)
@@ -1792,7 +1875,7 @@ class GamesMenu(Panel):
 					self.__menuItems[self.__selected].setSelected(True)
 					self.__redraw = True
 				elif event.key == K_i:
-					self.fireEvent(EVENT_LOAD_GAME_INFO, [self.__menuItems[self.__selected].getGame().getId()])
+					self.fireEvent(EVENT_LOAD_GAME_INFO, [self.__console, self.__menuItems[self.__selected].getGame()])
 				elif event.key == K_RETURN:
 					return self.__menuItems[self.__selected].activate()
 		return None
@@ -2126,7 +2209,10 @@ class Menu(Panel):
 						self.__entries[self.__selected].setSelected(True)
 				elif event.key == K_RETURN:
 					self.__redraw = True
+					logging.debug('MenuItem %d selected' % self.__selected)
 					return self.__entries[self.__selected].activate()
+
+				logging.debug('selected menu item: %d' % self.__selected)
 
 		return None
 
@@ -2154,6 +2240,7 @@ class Menu(Panel):
 		self.__entries[self.__selected].setSelected(False)
 		self.__selected = i
 		self.__entries[self.__selected].setSelected(True)
+		self.__redraw = True
 
 class MenuItem(object): 
 
@@ -2164,11 +2251,12 @@ class MenuItem(object):
 		self.__callbackArgs = callbackArgs
 
 	def activate(self):
+		logging.debug('menu item: "%s" activated!' % self.__text)
 		if self.__callback:
 			if self.__callbackArgs:
-				self.__callback(self.__callbackArgs)
+				return self.__callback(self.__callbackArgs)
 			else:
-				self.__callback()
+				return self.__callback()
 
 		return None
 
@@ -2208,7 +2296,7 @@ class MenuImgItem(MenuItem):
 
 class GameMenuItem(MenuImgItem):
 	def __init__(self, game):
-		super(GameMenuItem, self).__init__(game.getName(), game.getImagePath())
+		super(GameMenuItem, self).__init__(game.getName(), game.getCoverArt())
 		self.__game = game
 
 	def activate(self):
@@ -2219,15 +2307,14 @@ class GameMenuItem(MenuImgItem):
 
 class GameInfoPanel(Panel):
 
-	def __init__(self, width, height, font, fontSize, colour, bgColour, gameId, db):
-		self.__db = db
-		self.__gameId = gameId
-		self.__setProperties()
-		super(GameInfoPanel, self).__init__(width, height, bgColour, self.__gameName)
+	def __init__(self, width, height, font, fontSize, colour, bgColour, console, game):
+		self.__game = game
+		self.__console = console
+		super(GameInfoPanel, self).__init__(width, height, bgColour, self.__game.getName())
 		self.__colour = colour
 		self.__font = pygame.font.Font(font, fontSize)
 		self.__redraw = True
-		self.__menuItems = [MenuItem('Favourite: %s' % self.__favourite), MenuItem('Play')]
+		self.__menuItems = [MenuItem('Favourite: %s' % (self.__game.isFavourite(('Yes', 'No'))), self.favourite), MenuItem('Play', self.play)]
 		self.__menu = Menu(self.__menuItems, 200, 80, font, fontSize, colour, bgColour, 0, 0, 0)
 		self.__menu.setSelected(1)
 		self.__menu.setActive(True)
@@ -2238,10 +2325,12 @@ class GameInfoPanel(Panel):
 		if self.isActive() and self.__redraw:
 			self.fillBackground()
 
+			self.__menuItems[0].setText('Favourite: %s' % (self.__game.isFavourite(('Yes', 'No'))))
+
 			width = self.getWidth()
 			height = self.getHeight()
 
-			img = Image.open(self.__coverArt)
+			img = Image.open(self.__game.getCoverArt())
 			ratio = min(float((width / 2.0) / img.size[0]), float((height / 2.0) / img.size[1]))
 			imgWidth = img.size[0] * ratio
 			imgHeight = img.size[1] * ratio
@@ -2252,9 +2341,19 @@ class GameInfoPanel(Panel):
 			#logging.debug('drawing image %s at (%d, %d) using ratio: %f, panel dimensions: (%d, %d), scaled image dimensions: (%d, %d), original image dimensions: (%d, %d)' % (self.__coverArt, currentX, currentY, ratio, width, height, imgWidth, imgHeight, img.size[0], img.size[1]))
 
 			# display cover art and description
-			self.blit(scaleImage(pygame.image.load(self.__coverArt).convert_alpha(), (imgWidth, imgHeight)), (currentX, currentY))
+			self.blit(scaleImage(pygame.image.load(self.__game.getCoverArt()).convert_alpha(), (imgWidth, imgHeight)), (currentX, currentY))
 
-			labels = self.getLabels(['Released: %s' % self.__released, 'Last played: %s' % self.__lastPlayed], self.__font, self.__colour, self.getBackgroundColour(), width - (currentX + imgWidth) - 10, imgHeight)
+			released = self.__game.getReleased('%d/%m/%Y')
+			if released == None:
+				released = 'Unknown'
+
+			lastPlayed = self.__game.getLastPlayed('%d/%m/%Y')
+			if lastPlayed == None:
+				lastPlayed = 'N/A'
+
+			fileSize = getHumanReadableSize(self.__game.getSize())
+
+			labels = self.getLabels(['Released: %s' % released, 'Last played: %s' % lastPlayed, 'Played: %d times' % self.__game.getPlayCount(), 'Size: %s' % fileSize], self.__font, self.__colour, self.getBackgroundColour(), width - (currentX + imgWidth) - 10, imgHeight)
 			labelHeight = labels[0].get_rect().height
 			currentX += imgWidth + 10
 			for l in labels:
@@ -2266,55 +2365,41 @@ class GameInfoPanel(Panel):
 
 			currentY = y + imgHeight + 20
 			currentX = 0
-			labels = self.getLabels([self.__overview], self.__font, self.__colour, self.getBackgroundColour(), width - 100, height / 2)
+			labels = self.getLabels([self.__game.getOverview().replace("\n", "")], self.__font, self.__colour, self.getBackgroundColour(), width - 100, height / 2)
 			for l in labels:
 				self.blit(l, (currentX, currentY))
 				currentY += l.get_rect().height
 
 			self.update(x, y)
+			self.__menu.setActive(True)
 			self.__menu.draw(self.__menuX, self.__menuY)
 
 			self.__redraw = False
 
+	def favourite(self):
+		logging.debug('process favourite request for %s' % self.__game.getName())
+		self.__game.setFavourite(not self.__game.isFavourite())
+		self.__game.save()
+		self.__redraw = True
+		return None
+
 	def handleEvent(self, event):
 		if self.isActive():
-			self.__menu.handleEvent(event)
 			self.__menu.draw(self.__menuX, self.__menuY)
-			#self.__redraw = True
-			return None
+			rtn = self.__menu.handleEvent(event)
+			self.__redraw = True
+			return rtn
+
+	def play(self):
+		return self.__console.getCommand(self.__game)
 
 	def setActive(self, active):
 		if active:
 			self.__redraw = True
 		super(GameInfoPanel, self).setActive(active)
 
-	def setGameId(self, gameId):
-		self.__gameId = gameId
-		self.__setProperties()
+	def setGame(self, console, game):
+		self.__console = console
+		self.__game = game
 		self.__redraw = True
 
-	def __setProperties(self):
-		# look-up game info from DB
-		try:
-			con = sqlite3.connect(self.__db)
-			con.row_factory = sqlite3.Row
-			cur = con.cursor()
-			cur.execute("SELECT `game_id`, `cover_art`, `overview`, `name`, case when `last_played` < 0 then 'N/A' else strftime('%%d/%%m/%%Y', `last_played`, 'unixepoch') end AS `last_played_date`, case when `favourite` = 1 then 'Yes' else 'No' end as `favourite_str`, strftime('%%d/%%m/%%Y', `released`, 'unixepoch') AS `release_date`  FROM `games` WHERE `game_id` = %d;" % self.__gameId)
-			row = cur.fetchone()
-			if row == None:
-				logging.error('could not find game %d in database!' % self.__gameId)
-				print "Error: could not find game %d in database!" % self.__gameId
-				sys.exit(1)
-			self.__gameName = row['name']
-			self.setTitle(self.__gameName)
-			self.__coverArt = row['cover_art']
-			self.__overview = row['overview'].replace("\n", "")
-			self.__favourite = row['favourite_str']
-			self.__released = row['release_date']
-			self.__lastPlayed = row['last_played_date']
-		except sqlite3.Error, e:
-			print "Error: %s" % e.args[0]
-			sys.exit(1)
-		finally:
-			if con:
-				con.close()
