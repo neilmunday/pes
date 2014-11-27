@@ -224,7 +224,6 @@ class PES(object):
 		try:
 			self.__fontFile = os.path.abspath(self.__baseDir + os.sep + configParser.get('pes', 'fontFile'))
 			self.__romsDir = configParser.get('pes', 'romsDir')
-			self.__nocoverImage = os.path.abspath(self.__baseDir + os.sep + configParser.get('pes', 'nocoverImage'))
 			self.__favImage = os.path.abspath(self.__baseDir + os.sep + configParser.get('pes', 'favImage'))
 			self.__rebootCommand = configParser.get('pes', 'rebootCommand')
 			self.__shutdownCommand = configParser.get('pes', 'shutdownCommand')
@@ -233,7 +232,6 @@ class PES(object):
 			self.__exit('Error parsing config file %s: %s' % (self.__pesConfigFile, e.message), True)
 		
 		self.__checkFile(self.__favImage)
-		self.__checkFile(self.__nocoverImage)
 		self.__checkFile(self.__fontFile)
 		self.__checkDir(self.__romsDir)
 
