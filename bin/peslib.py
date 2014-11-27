@@ -70,15 +70,14 @@ def get_default_if():
             return i['Iface'] 
     return None
 
-def getHumanReadableSize(num, suffix='B'):
-	"""
-	By Fred Cirera: http://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
-	"""
-	for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
-		if abs(num) < 1024.0:
-			return "%3.1f%s%s" % (num, unit, suffix)
-		num /= 1024.0
-	return "%.1f%s%s" % (num, 'Yi', suffix)
+def getHumanReadableSize(x):
+	if x < 1024:
+		return "%diB"
+	if x < 1048576:
+		return "%.1fKiB" % (x / 1024.0)
+	if x < 1073741824:
+		return "%.1fMiB" % (x / 1048576.0)
+	return "%.1fGiB" % (x / 1073741824.0)
 
 def get_ip_address(ifname): 
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
@@ -226,12 +225,15 @@ class PES(object):
 			self.__fontFile = os.path.abspath(self.__baseDir + os.sep + configParser.get('pes', 'fontFile'))
 			self.__romsDir = configParser.get('pes', 'romsDir')
 			self.__nocoverImage = os.path.abspath(self.__baseDir + os.sep + configParser.get('pes', 'nocoverImage'))
+			self.__favImage = os.path.abspath(self.__baseDir + os.sep + configParser.get('pes', 'favImage'))
 			self.__rebootCommand = configParser.get('pes', 'rebootCommand')
 			self.__shutdownCommand = configParser.get('pes', 'shutdownCommand')
 			self.__tempCommand = configParser.get('pes', 'tempCommand')
 		except ConfigParser.NoOptionError, e:
 			self.__exit('Error parsing config file %s: %s' % (self.__pesConfigFile, e.message), True)
 		
+		self.__checkFile(self.__favImage)
+		self.__checkFile(self.__nocoverImage)
 		self.__checkFile(self.__fontFile)
 		self.__checkDir(self.__romsDir)
 
@@ -487,7 +489,7 @@ class PES(object):
 		if console.getGameTotal() > 0:
 			activeMenu = self.__getActiveMenu()
 			activeMenu.setActive(False)
-			activeMenu = GamesMenu(console, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 18, self.__fontColour, self.__bgColour, self.__nocoverImage)
+			activeMenu = GamesMenu(console, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 18, self.__fontColour, self.__bgColour, self.__favImage)
 			activeMenu.addListener(self)
 			activeMenu.setActive(True)
 			self.__menuStack.append(activeMenu)
@@ -629,7 +631,6 @@ class PES(object):
 					else:
                                                 rtn = activeMenu.handleEvent(event)
                                                 if rtn != None:
-							#self.__createRetroArchJoystickCfg()
                                                         ok = False
 				elif activeMenu.handlesJoyStickEvents():
 					activeMenu.handleEvent(event)
@@ -646,7 +647,6 @@ class PES(object):
                                                         event = e
                                                         rtn = activeMenu.handleEvent(event)
                                                         if rtn != None:
-								#self.__createRetroArchJoystickCfg()
                                                                 ok = False
 
                         frame += 1
@@ -1235,12 +1235,6 @@ class Console(Record):
 					row = cur.fetchone()
 					if row == None:
 						break
-					#coverArt = None
-					#if row['cover_art'] != '0':
-					#	coverArt = row['cover_art']
-					#else:
-					#	coverArt = self.__noCoverArtImg
-					#self.__games.append(Game(row['game_id'], row['name'], row['game_path'], self, coverArt))
 					self.__games.append(Game(row['game_id'], self.getDb(), self))
 					
 			except sqlite3.Error, e:
@@ -1267,6 +1261,9 @@ class Console(Record):
 	def getName(self):
 		return self.getProperty('name')
 
+	def getNoCoverArtImg(self):
+		return self.__noCoverArtImg
+
 	def getRomDir(self):
 		return self.__romDir	
 
@@ -1287,7 +1284,7 @@ class Game(Record):
 
 	def getCoverArt(self):
 		coverArt = self.getProperty('cover_art')
-		if coverArt == 0:
+		if coverArt == '0':
 			return None
 		return coverArt
 
@@ -1343,7 +1340,7 @@ class Game(Record):
 	def setLastPlayed(self, date=None):
 		if date == None:
 			# use current date/time
-			date = time.time()
+			date = int(time.time())
 		self.setProperty('last_played', date)
 
 	def setName(self, name):
@@ -1361,7 +1358,7 @@ class Game(Record):
 	def setPlayCount(self, x=None):
 		if x == None:
 			x = self.getPlayCount() + 1
-		self.setProperty('play_count')
+		self.setProperty('play_count', x)
 
 	def setSize(self, s):
 		self.setProperty('size')
@@ -1753,7 +1750,7 @@ class ThumbnailMenu(Panel):
 
 class GamesMenu(Panel):
 
-	def __init__(self, console, width, height, font, fontSize, colour, bgColour, nocoverImage):
+	def __init__(self, console, width, height, font, fontSize, colour, bgColour, favImage):
 		super(GamesMenu, self).__init__(width, height, bgColour, console.getName())
 		self.__console = console
 		self.__thumbWidth = int(width / 6)
@@ -1769,8 +1766,10 @@ class GamesMenu(Panel):
 		self.__menuItems[self.__selected].setSelected(True)
 		self.__font = pygame.font.Font(font, fontSize)
 		self.__fontHeight = self.__font.size('A')[1]
-		self.__nocoverImage = pygame.image.load(nocoverImage).convert()
-		self.__nocoverImage = pygame.transform.scale(self.__nocoverImage, (self.__thumbWidth, self.__thumbHeight))
+		self.__nocoverArtImage = pygame.image.load(console.getNoCoverArtImg()).convert()
+		self.__nocoverArtImage = pygame.transform.scale(self.__nocoverArtImage, (self.__thumbWidth, self.__thumbHeight))
+		self.__favImage = pygame.image.load(favImage).convert_alpha()
+		self.__favImage = pygame.transform.scale(self.__favImage, (int(round(self.__thumbWidth * 0.25, 0)), int(round(self.__thumbHeight * 0.25, 0))))
 
 		self.__thumbsInX = self.getWidth() / (self.__thumbWidth + self.__thumbMargin)
 		self.__thumbsInY = self.getHeight() / (self.__thumbHeight + self.__thumbMargin + (self.__fontHeight * 2))
@@ -1796,6 +1795,8 @@ class GamesMenu(Panel):
 			label = None
 
 			while i < self.__visibleItems + self.__startIndex and i < self.__menuItemsTotal:
+				game = self.__menuItems[i].getGame()
+
 				if self.__menuItems[i].isSelected():
 					pygame.draw.rect(self.getBackground(), self.__colour, (nextX - 2, nextY - 2, self.__thumbWidth + 4, self.__thumbHeight + (self.__fontHeight * 2) + 4), 0)
 					labelY = nextY + self.__thumbHeight
@@ -1808,11 +1809,14 @@ class GamesMenu(Panel):
 						self.blit(l, (nextX, labelY))
 						labelY += l.get_rect().height
 
-				if self.__menuItems[i].getGame().getCoverArt() == None:
-					self.blit(self.__nocoverImage, (nextX, nextY))
+				if game.getCoverArt() == None:
+					self.blit(self.__nocoverArtImage, (nextX, nextY))
 				else:
                                         image = self.__menuItems[i].getThumbnail(self.__thumbWidth, self.__thumbHeight)
 					self.blit(image, (nextX, nextY))
+
+				if game.isFavourite():
+					self.blit(self.__favImage, ((nextX + self.__thumbWidth) - self.__favImage.get_width(), nextY))
 
 				col += 1
 				nextX += self.__thumbWidth + self.__thumbMargin
@@ -2209,10 +2213,10 @@ class Menu(Panel):
 						self.__entries[self.__selected].setSelected(True)
 				elif event.key == K_RETURN:
 					self.__redraw = True
-					logging.debug('MenuItem %d selected' % self.__selected)
+					#logging.debug('MenuItem %d selected' % self.__selected)
 					return self.__entries[self.__selected].activate()
 
-				logging.debug('selected menu item: %d' % self.__selected)
+				#logging.debug('selected menu item: %d' % self.__selected)
 
 		return None
 
@@ -2251,7 +2255,7 @@ class MenuItem(object):
 		self.__callbackArgs = callbackArgs
 
 	def activate(self):
-		logging.debug('menu item: "%s" activated!' % self.__text)
+		#logging.debug('menu item: "%s" activated!' % self.__text)
 		if self.__callback:
 			if self.__callbackArgs:
 				return self.__callback(self.__callbackArgs)
@@ -2300,6 +2304,10 @@ class GameMenuItem(MenuImgItem):
 		self.__game = game
 
 	def activate(self):
+		# user has opted to play the game so update its stats
+		self.__game.setLastPlayed()
+		self.__game.setPlayCount()
+		self.__game.save()
 		return self.__game.getCommand()
 
 	def getGame(self):
@@ -2330,7 +2338,11 @@ class GameInfoPanel(Panel):
 			width = self.getWidth()
 			height = self.getHeight()
 
-			img = Image.open(self.__game.getCoverArt())
+			coverArt = self.__game.getCoverArt()
+			if coverArt == None:
+				coverArt = self.__console.getNoCoverArtImg()
+
+			img = Image.open(coverArt)
 			ratio = min(float((width / 2.0) / img.size[0]), float((height / 2.0) / img.size[1]))
 			imgWidth = img.size[0] * ratio
 			imgHeight = img.size[1] * ratio
@@ -2341,7 +2353,7 @@ class GameInfoPanel(Panel):
 			#logging.debug('drawing image %s at (%d, %d) using ratio: %f, panel dimensions: (%d, %d), scaled image dimensions: (%d, %d), original image dimensions: (%d, %d)' % (self.__coverArt, currentX, currentY, ratio, width, height, imgWidth, imgHeight, img.size[0], img.size[1]))
 
 			# display cover art and description
-			self.blit(scaleImage(pygame.image.load(self.__game.getCoverArt()).convert_alpha(), (imgWidth, imgHeight)), (currentX, currentY))
+			self.blit(scaleImage(pygame.image.load(coverArt).convert_alpha(), (imgWidth, imgHeight)), (currentX, currentY))
 
 			released = self.__game.getReleased('%d/%m/%Y')
 			if released == None:
