@@ -292,7 +292,7 @@ class PES(object):
 				console = Console(c, consoleId, extensions, self.__romsDir + os.sep + c, command, self.__userDb, consoleImg, nocoverart, self.__imgCacheDir)
 				if console.isNew():
 					console.save()
-				console.getGames(True)
+				console.getGames()
 				self.__consoles.append(console)
 			except ConfigParser.NoOptionError, e:
 				self.__exit('Error parsing config file %s: %s' % (self.__pesConfigFile, e.message), True)
@@ -554,7 +554,7 @@ class PES(object):
 			logging.debug("trapping PES event: database update")
 			i = 0
 			for c in self.__consoles:
-				c.getGames(True)
+				c.getGames()
 				self.__consolesMenu.setLabelText(i, "%s (%d)" % (c.getName(), c.getGameTotal()))
 				i += 1
 			
@@ -818,8 +818,13 @@ class UpdateDbThread(threading.Thread):
 										releasedElement = xmlData.find("Game/ReleaseDate")
 										if releasedElement != None:
 											released = releasedElement.text.encode('ascii', 'ignore')
-											# conver to Unix time stamp
-											released = int(time.mktime(datetime.strptime(released, "%m/%d/%Y").timetuple()))
+											# convert to Unix time stamp
+											try:
+												released = int(time.mktime(datetime.strptime(released, "%m/%d/%Y").timetuple()))
+											except ValueError, e:
+												# thrown if date is not valid
+												logging.warning("release date: %s is not in m/d/Y format!" % released)
+												released = -1
 										boxartElement = xmlData.find("Game/Images/boxart[@side='front']")
 										if boxartElement != None:
 											imageSaved = False
@@ -1036,6 +1041,8 @@ class JoyStick(object):
                                 return pygame.event.Event(KEYDOWN, {'key': K_BACKSPACE})
 			if self.__eventMap[event] == JoyStick.BTN_X:
                                 return pygame.event.Event(KEYDOWN, {'key': K_i})
+			if self.__eventMap[event] == JoyStick.BTN_Y:
+                                return pygame.event.Event(KEYDOWN, {'key': K_f})
                         if self.__eventMap[event] == JoyStick.BTN_EXIT:
                                 return pygame.event.Event(KEYDOWN, {'key': K_ESCAPE})
                         if self.__eventMap[event] == JoyStick.BTN_LEFT:
@@ -1209,7 +1216,6 @@ class Console(Record):
 		self.__consoleImg = consoleImg
 		self.__noCoverArtImg = noCoverArtImg
 		self.__games = []
-		self.__refresh = True
 		self.__command = command
 		self.__imgCacheDir = imgCacheDir
 		self.__gameTotal = 0
@@ -1220,28 +1226,30 @@ class Console(Record):
 	def getDir(self):
 		return self.__dir
 
-	def getGames(self, refresh = False):
-		if self.__refresh or refresh:
-			con = None
-			try:
-				con = sqlite3.connect(self.getDb())
-				con.row_factory = sqlite3.Row
-				cur = con.cursor()
-				cur.execute('SELECT `game_id`, `name`, `game_path`, `cover_art` FROM `games` WHERE `console_id` = %d ORDER BY `name`;' % self.getId())
-				self.__games = []
-				while True:
-					row = cur.fetchone()
-					if row == None:
-						break
-					self.__games.append(Game(row['game_id'], self.getDb(), self))
-					
-			except sqlite3.Error, e:
-				print "Error: %s" % e.args[0]
-				sys.exit(1)
-			finally:
-				if con:
-					con.close()
-
+	def getGames(self, favouritesOnly=False):
+		con = None
+		try:
+			con = sqlite3.connect(self.getDb())
+			con.row_factory = sqlite3.Row
+			cur = con.cursor()
+			query = 'SELECT `game_id`  FROM `games` WHERE `console_id` = %d ' % self.getId()
+			if favouritesOnly:
+				query += ' AND favourite = 1 '
+			query += 'ORDER BY `name`;'
+			cur.execute(query)
+			self.__games = []
+			while True:
+				row = cur.fetchone()
+				if row == None:
+					break
+				self.__games.append(Game(row['game_id'], self.getDb(), self))
+				
+		except sqlite3.Error, e:
+			print "Error: %s" % e.args[0]
+			sys.exit(1)
+		finally:
+			if con:
+				con.close()
 		return self.__games
 
 	def getGameTotal(self):
@@ -1754,14 +1762,10 @@ class GamesMenu(Panel):
 		self.__thumbWidth = int(width / 6)
 		self.__thumbHeight = int(self.__thumbWidth * 1.2)
 		self.__thumbMargin = 40
-		self.__menuItems = []
-		for g in console.getGames():
-			self.__menuItems.append(GameMenuItem(g))
-		self.__menuItemsTotal = len(self.__menuItems)
+
+		self.__setMenuItems(self.__console.getGames())
+
 		self.__colour = colour
-		self.__selected = 0
-		self.__startIndex = 0
-		self.__menuItems[self.__selected].setSelected(True)
 		self.__font = pygame.font.Font(font, fontSize)
 		self.__fontHeight = self.__font.size('A')[1]
 		self.__nocoverArtImage = pygame.image.load(console.getNoCoverArtImg()).convert()
@@ -1773,11 +1777,20 @@ class GamesMenu(Panel):
 		self.__thumbsInY = self.getHeight() / (self.__thumbHeight + self.__thumbMargin + (self.__fontHeight * 2))
 		self.__visibleItems = self.__thumbsInX * self.__thumbsInY
 		self.__pageTotal = int(self.__menuItemsTotal / self.__visibleItems)
-
-		self.__redraw = True
+		self.__showFavourites = False
 
 	def __getStartIndex(self, index):
 		return (index / self.__visibleItems) * self.__visibleItems
+
+	def __setMenuItems(self, games):
+		self.__menuItems = []
+		for g in games:
+			self.__menuItems.append(GameMenuItem(g))
+		self.__menuItemsTotal = len(self.__menuItems)
+		self.__selected = 0
+		self.__startIndex = 0
+		self.__menuItems[self.__selected].setSelected(True)
+		self.__redraw = True
 
 	def draw(self, x, y):
 		x = 0 # ignore screen margin
@@ -1878,6 +1891,9 @@ class GamesMenu(Panel):
 					self.__redraw = True
 				elif event.key == K_i:
 					self.fireEvent(EVENT_LOAD_GAME_INFO, [self.__console, self.__menuItems[self.__selected].getGame()])
+				elif event.key == K_f:
+					self.__showFavourites = not self.__showFavourites
+					self.__setMenuItems(self.__console.getGames(self.__showFavourites))
 				elif event.key == K_RETURN:
 					return self.__menuItems[self.__selected].activate()
 		return None
