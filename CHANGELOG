@@ -2,6 +2,20 @@
 PES Changelog
 =============
 
+----------------------------
+PES 1.2 (under development!)
+----------------------------
+
+Date: 2014-12-16
+
+Changes (and bug fixes):
+
+	- Added support for favourite games
+	- Added support for additional game info including last played, played count and year published
+	- Added separate BIOS directory for RetroArch
+	- Added *partial* support for control pads with analog (axis) inputs, e.g Microsoft Xbox 36 control pads - STILL UNDER DEVELOPMENT!
+	- Updated jstest.py utility
+
 -------
 PES 1.1
 -------

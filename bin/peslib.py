@@ -56,9 +56,16 @@ EVENT_DATABASE_UPDATED = 1
 EVENT_JOYSTICKS_UPDATED = 2
 EVENT_MESSAGE_BOX_OK = 3
 EVENT_LOAD_GAME_INFO = 4
+EVENT_WARNING = 5
+
+AXIS_PRESSED = 1
+AXIS_RELEASED = 2
+AXIS_INITIALISED = 3
+AXIS_POSITIVE = 1
+AXIS_NEGATIVE = 2
 
 VERSION_NUMBER = '1.2 (dev)'
-VERSION_DATE = '2014-11-24'
+VERSION_DATE = '2014-12-16'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -568,6 +575,9 @@ class PES(object):
 		elif event == EVENT_LOAD_GAME_INFO:
 			logging.debug("trapping PES event: load game info for game: %d" % args[0].getId())
 			self.__loadGameInfoPanel(args[0], args[1])
+		elif event == EVENT_WARNING:
+			logging.debug("trapping PES event: warning with message \"%s\"" % args[0])
+			self.__showMessageBox(args[0])
 
 	def __resetDb(self):
 		con = sqlite3.connect(self.__userDb)
@@ -616,7 +626,7 @@ class PES(object):
 
 			# handle pygame events
 			for event in pygame.event.get():
-				if event.type != pygame.KEYDOWN and event.type != pygame.JOYBUTTONDOWN:
+				if event.type != pygame.KEYDOWN and event.type != pygame.JOYBUTTONDOWN and event.type != pygame.JOYAXISMOTION:
 					pass
 				elif event.type == pygame.QUIT:
 					ok = False
@@ -632,7 +642,8 @@ class PES(object):
                                                         ok = False
 				elif activeMenu.handlesJoyStickEvents():
 					activeMenu.handleEvent(event)
-				elif self.__joystick and self.__js.get_id() == event.joy and event.type == pygame.JOYBUTTONDOWN:
+				elif self.__joystick and self.__js.get_id() == event.joy and (event.type == pygame.JOYBUTTONDOWN:
+					# need to handle joystick axis events here!
                                         if self.__joystick.getButton(event.button) == JoyStick.BTN_EXIT:
                                                 #ok = False
 						pass
@@ -985,13 +996,14 @@ class JoyStick(object):
                 return self.__name
 
 	def getRetroArchButtonValue(self, btn):
-		if not btn in self.__btnMap:
+		if not btn in self.__btnMap or self.__btnMap[btn] == None:
 			return 'nul'
-		try:
-			b = int(self.__btnMap[btn])
-			return b
-		except ValueError, e:
-			return 'nul'
+		#try:
+		#	b = int(self.__btnMap[btn])
+		#	return b
+		#except ValueError, e:
+		#	return 'nul'
+		return self.__btnMap[btn]
 
 	def getRetroArchConfig(self):
 		cfg = 'input_device = "%s"\n' % (self.__name)
@@ -1000,18 +1012,18 @@ class JoyStick(object):
 		cfg += 'input_a_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_A))
 		cfg += 'input_y_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_Y))
 		cfg += 'input_x_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_X))
-		cfg += 'input_l_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_LEFT))
-		cfg += 'input_r_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_RIGHT))
-		cfg += 'input_l2_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_LEFT2))
-		cfg += 'input_r2_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_RIGHT2))
-		cfg += 'input_l3_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_LEFT3))
-		cfg += 'input_r3_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_RIGHT3))
+		cfg += 'input_l_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_SHOULDER_LEFT), self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_LEFT))
+		cfg += 'input_r_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_SHOULDER_RIGHT), self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_RIGHT))
+		cfg += 'input_l2_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_SHOULDER_LEFT2), self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_LEFT2))
+		cfg += 'input_r2_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_SHOULDER_RIGHT2), self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_RIGHT2))
+		cfg += 'input_l3_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_SHOULDER_LEFT3), self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_LEFT3))
+		cfg += 'input_r3_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_SHOULDER_RIGHT3), self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_RIGHT3))
 		cfg += 'input_start_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_START))
 		cfg += 'input_select_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_SELECT))
-		cfg += 'input_up_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_UP))
-		cfg += 'input_down_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_DOWN))
-		cfg += 'input_left_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_LEFT))
-		cfg += 'input_right_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_RIGHT))
+		cfg += 'input_up_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_UP), self.getRetroArchButtonValue(JoyStick.BTN_UP))
+		cfg += 'input_down_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_DOWN), self.getRetroArchButtonValue(JoyStick.BTN_DOWN))
+		cfg += 'input_left_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_LEFT), self.getRetroArchButtonValue(JoyStick.BTN_LEFT))
+		cfg += 'input_right_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_RIGHT), self.getRetroArchButtonValue(JoyStick.BTN_RIGHT))
 		cfg += 'input_save_state_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_SAVE_STATE))
 		cfg += 'input_load_state_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_LOAD_STATE))
 		cfg += 'input_exit_emulator_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_EXIT))
@@ -1025,6 +1037,14 @@ class JoyStick(object):
 		cfg += 'input_r_y_plus_btn = "nul"\n'
 		cfg += 'input_r_y_minus_btn = "nul"\n'
 		return cfg
+
+	def getAxisOrBtn(self, btn):
+		if not btn in self.__btnMap or self.__btnMap[btn] == None:
+			return 'btn'
+		value = self.__btnMap[btn]
+		if value[0:1] == '-' or value[0:1] == '+':
+			return 'axis'
+		return 'btn'
 
 	def isMatch(self, js):
 		#for i in self.__matches:
@@ -1892,8 +1912,16 @@ class GamesMenu(Panel):
 				elif event.key == K_i:
 					self.fireEvent(EVENT_LOAD_GAME_INFO, [self.__console, self.__menuItems[self.__selected].getGame()])
 				elif event.key == K_f:
-					self.__showFavourites = not self.__showFavourites
-					self.__setMenuItems(self.__console.getGames(self.__showFavourites))
+					games = self.__console.getGames(not self.__showFavourites)
+					if len(games) == 0:
+						if self.__showFavourites:
+							# should never get run, but just in case!
+							self.fireEvent(EVENT_WARNING, ['No games found!'])
+						else:
+							self.fireEvent(EVENT_WARNING, ['No games have been added to your favourites!'])
+					else:
+						self.__showFavourites = not self.__showFavourites
+						self.__setMenuItems(games)
 				elif event.key == K_RETURN:
 					return self.__menuItems[self.__selected].activate()
 		return None
@@ -2028,6 +2056,7 @@ class JoyStickConfigurationPanel(Panel):
 		self.__configComplete = False
 		self.__error = False
 		self.__errorMsg = ''
+		self.__axisHistory = {}
 
 	def draw(self, x, y):
 		if self.isActive() and self.__redraw:
@@ -2042,6 +2071,7 @@ class JoyStickConfigurationPanel(Panel):
 				self.__lastBtn = None
 				self.__lastTime = time.time()
 				self.__currentTime = self.__lastTime
+				self.__axisHistory = {}
 
 			if self.__configComplete:
 				jsName = self.__js.get_name()
@@ -2122,34 +2152,80 @@ class JoyStickConfigurationPanel(Panel):
 			#self.__redraw = False
 
 	def handleEvent(self, event):
+
 		if self.isActive():
-			if not self.__configComplete and event.type == pygame.JOYBUTTONDOWN:
+			if not self.__configComplete and (event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYAXISMOTION):
+				value = None
+
+				if event.type == pygame.JOYAXISMOTION:
+					if event.value == -1.0 or event.value == 1.0:
+						# axis pressed
+						if not self.__axisHistory.has_key(event.joy):
+							self.__axisHistory[event.joy] = {}
+
+						if not self.__axisHistory[event.joy].has_key(event.axis):
+							self.__axisHistory[event.joy][event.axis] = (AXIS_PRESSED, event.value)
+							#print "AXIS %d PRESSED!" % event.axis
+					
+						if self.__axisHistory[event.joy][event.axis][0] != AXIS_PRESSED:
+							self.__axisHistory[event.joy][event.axis] = (AXIS_PRESSED, event.value)
+							#print "AXIS %d PRESSED!" % event.axis
+					elif event.value < 0.5 and event.value > -0.5:
+						# axis released
+						if not self.__axisHistory.has_key(event.joy):
+							self.__axisHistory[event.joy] = {}
+
+						if not self.__axisHistory[event.joy].has_key(event.axis):
+							self.__axisHistory[event.joy][event.axis] = (AXIS_INITIALISED, 0.0)
+							#print "AXIS %d INITIALISED, value: %f!" % (event.axis, event.value)
+
+						if self.__axisHistory[event.joy][event.axis][0] == AXIS_PRESSED:
+							self.__axisHistory[event.joy][event.axis] = (AXIS_RELEASED, self.__axisHistory[event.joy][event.axis][1])
+							#print "AXIS %d RELEASED!" % event.axis
+						
 				self.__redraw = True
 				if self.__jsDetect:
-					self.__jsIdx = event.joy
-					self.__js = pygame.joystick.Joystick(event.joy)
-					self.__jsDetect = False
+					if event.type == pygame.JOYBUTTONDOWN or (event.type == pygame.JOYAXISMOTION and self.__axisHistory[event.joy][event.axis] == AXIS_RELEASED):
+						self.__jsIdx = event.joy
+						self.__js = pygame.joystick.Joystick(event.joy)
+						self.__jsDetect = False
 				else:
-					if self.__promptIdx > 0:
-						if event.button == self.__answers[0]:
-							self.__answers[self.__promptIdx] = None
+					if event.type == pygame.JOYBUTTONDOWN:
+						value = str(event.button)
+					elif event.type == pygame.JOYAXISMOTION and self.__axisHistory[event.joy].has_key(event.axis):
+						(action, axisValue) = self.__axisHistory[event.joy][event.axis]
+						if action == AXIS_RELEASED:
+							if axisValue > 0:
+								value = "+%d" % event.axis
+							else:
+								if self.__prompts[self.__promptIdx].find('Shoulder') == -1:
+									value = "-%d" % event.axis
+								else:
+									value = None
+							#print "STORED: %f, EVENT %f, VALUE: %s" % (axisValue, event.value, value)
+							del self.__axisHistory[event.joy][event.axis] # remove from event history dictionary
+
+					if value:
+						if self.__promptIdx == 0:
+							# first answer
+							self.__answers[self.__promptIdx] = value
 						else:
-							# look for clashes
-							if event.button in self.__answers:
+							logging.debug("looking for %s in joystick answers array" % value)
+
+							if value in self.__answers:
 								self.__error = True
 								self.__errorMsg = 'This button has already been assigned. Please try again'
-								logging.debug('button %d has already been assigned for joystick %d' % (event.button, self.__jsIdx))
+								logging.debug('button %s has already been assigned for joystick %d' % (value, self.__jsIdx))
 							else:
-								self.__answers[self.__promptIdx] = event.button
+								self.__answers[self.__promptIdx] = value
+								logging.debug("setting %s button to %s in answers array" % (self.__prompts[self.__promptIdx], value))
 								self.__error = False
-					else:
-						self.__answers[self.__promptIdx] = event.button
 
 					if not self.__error:
-						self.__promptIdx += 1
-
-						if self.__promptIdx == len(self.__prompts):
-							self.__configComplete = True
+						if value:
+							self.__promptIdx += 1
+							if self.__promptIdx == len(self.__prompts):
+								self.__configComplete = True
 
 	def setActive(self, active):
 		super(JoyStickConfigurationPanel, self).setActive(active)
@@ -2417,6 +2493,9 @@ class GameInfoPanel(Panel):
 			return rtn
 
 	def play(self):
+		self.__game.setLastPlayed()
+		self.__game.setPlayCount()
+		self.__game.save()
 		return self.__console.getCommand(self.__game)
 
 	def setActive(self, active):
@@ -2427,5 +2506,6 @@ class GameInfoPanel(Panel):
 	def setGame(self, console, game):
 		self.__console = console
 		self.__game = game
+		self.__menu.setSelected(1)
 		self.__redraw = True
 
