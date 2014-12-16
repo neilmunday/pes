@@ -47,13 +47,26 @@ if __name__ == "__main__":
 	pygame.init()
 	pygame.joystick.init()
 	joystickTotal = pygame.joystick.get_count()
+	
+	if joystickTotal == 0:
+		print "No joysticks found, exiting."
+		sys.exit(0)
+
 	print "Found %d joysticks" % joystickTotal
+
 	for i in range(0, joystickTotal):
 		js = pygame.joystick.Joystick(i)
 		js.init()
 		print "Joystick %d: %s" % (i, js.get_name())
+		print "No. of buttons: %d" % js.get_numbuttons()
+		axis = js.get_numaxes()
+		print "No. of axes: %d" % axis
+		
+		if axis > 0:
+			for a in range(0, axis):
+				print "Axis %d initial value: %f" % (a, js.get_axis(a))
 	
-	print "Listening for joystick events..."
+	print "\nListening for joystick events, press Ctrl + C to exit"
 
 	stop = False
 
