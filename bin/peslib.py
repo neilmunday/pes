@@ -656,8 +656,6 @@ class PES(object):
 								self.__goBack()
         	                                else:
         	                                        keyEvent = self.__joystick.buttonToKeyEvent(event.button)
-							print keyEvent
-
 
 					if keyEvent:
 						rtn = activeMenu.handleEvent(keyEvent)
