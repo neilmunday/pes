@@ -62,7 +62,16 @@ function rmSourceDir {
 export userDir=/home/pi
 export baseDir=$userDir/pes
 export buildDir=$baseDir/build
+export emulatorInstallDir="$baseDir/emulators"
+export retroArchInstallDir="$emulatorInstallDir/RetroArch"
+export retroArchConfigDir="$emulatorInstallDir/etc"
+export retroArchCoresDir="$emulatorInstallDir/lib"
 
 if [ ! -e $buildDir ]; then
 	run mkdir $buildDir
 fi
+
+if [ ! -e $emulatorInstallDir ]; then
+	run mkdir $emulatorInstallDir
+fi
+

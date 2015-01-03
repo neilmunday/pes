@@ -24,39 +24,17 @@
 
 source /home/pi/pes/setup/arch/functions.sh
 
-setupDir="$baseDir/setup/arch"
+cd $buildDir
 
-header "Updating OS..."
-run sudo pacman -Syu
+rmSourceDir "gpsp"
+header "Downloading GameBoy Advance emulator - gpsp"
 
-header "Installing additional packages..."
-run $setupDir/install-packages.sh
-
-header "Customising OS..."
-run $setupDir/customise-os.sh
-
-header "Setting up auto login..."
-run $setupDir/auto-login.sh
-
-header "Setting up PS3 Bluetooth control pad support.."
-run $setupDir/install-qtsixad.sh
-
-header "Setting up RetroArch..."
-run $setupDir/install-retroarch.sh
-
-header "Installing emulator cores..."
-run $setupDir/install-fceu-next.sh
-run $setupDir/install-gambatte.sh
-run $setupDir/install-Genesis-Plus-GX.sh
-run $setupDir/install-picodrive.sh
-run $setupDir/install-pocketsnes.sh
-run $setupDir/install-psx_rearmed.sh
-
-header "Setting up Samba..."
-run $setupDir/install-samba.sh
-
-header "Setting up PESPad..."
-run $setupDir/install-pespad.sh
-
-header "Done!"
-exit 0
+run git clone https://github.com/notaz/gpsp
+checkDir gpsp
+cd gpsp
+checkDir raspberrypi
+cd raspberrypi
+run make
+checkFile gpsp
+run mkdir -p $emulatorInstallDir/gpsp/bin
+run cp gpsp $emulatorInstallDir/gpsp/bin

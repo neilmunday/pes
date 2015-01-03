@@ -24,39 +24,15 @@
 
 source /home/pi/pes/setup/arch/functions.sh
 
-setupDir="$baseDir/setup/arch"
+cd $buildDir
 
-header "Updating OS..."
-run sudo pacman -Syu
+rmSourceDir "Genesis-Plus-GX"
 
-header "Installing additional packages..."
-run $setupDir/install-packages.sh
+header "Downloading MegaDrive/Master System/Game Gear emulator - Genesis-Plus-GX"
 
-header "Customising OS..."
-run $setupDir/customise-os.sh
-
-header "Setting up auto login..."
-run $setupDir/auto-login.sh
-
-header "Setting up PS3 Bluetooth control pad support.."
-run $setupDir/install-qtsixad.sh
-
-header "Setting up RetroArch..."
-run $setupDir/install-retroarch.sh
-
-header "Installing emulator cores..."
-run $setupDir/install-fceu-next.sh
-run $setupDir/install-gambatte.sh
-run $setupDir/install-Genesis-Plus-GX.sh
-run $setupDir/install-picodrive.sh
-run $setupDir/install-pocketsnes.sh
-run $setupDir/install-psx_rearmed.sh
-
-header "Setting up Samba..."
-run $setupDir/install-samba.sh
-
-header "Setting up PESPad..."
-run $setupDir/install-pespad.sh
-
-header "Done!"
-exit 0
+run git clone https://github.com/ekeeke/Genesis-Plus-GX.git
+checkDir "Genesis-Plus-GX"
+cd "Genesis-Plus-GX"
+run make -f Makefile.libretro
+checkFile genesis_plus_gx_libretro.so
+run cp genesis_plus_gx_libretro.so $retroArchCoresDir

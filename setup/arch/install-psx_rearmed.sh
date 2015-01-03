@@ -24,39 +24,16 @@
 
 source /home/pi/pes/setup/arch/functions.sh
 
-setupDir="$baseDir/setup/arch"
+cd $buildDir
 
-header "Updating OS..."
-run sudo pacman -Syu
+rmSourceDir "pcsx_rearmed"
+header "Downloading PSX emulator - pcsx_rearmed"
+run git clone https://github.com/notaz/pcsx_rearmed
+checkDir "pcsx_rearmed"
+cd pcsx_rearmed
+run git submodule
+run git submodule update
+run ./configure --platform=libretro
+run make
+run cp libretro.so $retroArchCoresDir/pcsx_libretro.so
 
-header "Installing additional packages..."
-run $setupDir/install-packages.sh
-
-header "Customising OS..."
-run $setupDir/customise-os.sh
-
-header "Setting up auto login..."
-run $setupDir/auto-login.sh
-
-header "Setting up PS3 Bluetooth control pad support.."
-run $setupDir/install-qtsixad.sh
-
-header "Setting up RetroArch..."
-run $setupDir/install-retroarch.sh
-
-header "Installing emulator cores..."
-run $setupDir/install-fceu-next.sh
-run $setupDir/install-gambatte.sh
-run $setupDir/install-Genesis-Plus-GX.sh
-run $setupDir/install-picodrive.sh
-run $setupDir/install-pocketsnes.sh
-run $setupDir/install-psx_rearmed.sh
-
-header "Setting up Samba..."
-run $setupDir/install-samba.sh
-
-header "Setting up PESPad..."
-run $setupDir/install-pespad.sh
-
-header "Done!"
-exit 0

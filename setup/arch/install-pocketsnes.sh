@@ -24,39 +24,16 @@
 
 source /home/pi/pes/setup/arch/functions.sh
 
-setupDir="$baseDir/setup/arch"
+cd $buildDir
 
-header "Updating OS..."
-run sudo pacman -Syu
+rmSourceDir "pocketsnes-libretro"
 
-header "Installing additional packages..."
-run $setupDir/install-packages.sh
+header "Downloading SNES emulator - pocketsnes"
 
-header "Customising OS..."
-run $setupDir/customise-os.sh
+run git clone https://github.com/libretro/pocketsnes-libretro
+checkDir pocketsnes-libretro
+cd "pocketsnes-libretro"
+run make
+checkFile libretro.so
+run cp libretro.so $retroArchCoresDir/pocketsnes_libretro.so
 
-header "Setting up auto login..."
-run $setupDir/auto-login.sh
-
-header "Setting up PS3 Bluetooth control pad support.."
-run $setupDir/install-qtsixad.sh
-
-header "Setting up RetroArch..."
-run $setupDir/install-retroarch.sh
-
-header "Installing emulator cores..."
-run $setupDir/install-fceu-next.sh
-run $setupDir/install-gambatte.sh
-run $setupDir/install-Genesis-Plus-GX.sh
-run $setupDir/install-picodrive.sh
-run $setupDir/install-pocketsnes.sh
-run $setupDir/install-psx_rearmed.sh
-
-header "Setting up Samba..."
-run $setupDir/install-samba.sh
-
-header "Setting up PESPad..."
-run $setupDir/install-pespad.sh
-
-header "Done!"
-exit 0
