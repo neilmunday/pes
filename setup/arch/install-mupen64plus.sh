@@ -23,7 +23,7 @@
 #
 
 #
-#    THIS IS A WORK IN PROGRESS!
+#    NOTE: THIS IS A WORK IN PROGRESS!
 #
 
 source /home/pi/pes/setup/arch/functions.sh
@@ -42,24 +42,18 @@ cd $buildDir
 
 component=mupen64plus-core
 
-#rmSourceDir $component
+rmSourceDir $component
 
-if [ ! -e $component ]; then
-	header "Downloading $component"
-	run git clone https://github.com/ricrpi/$component
-	checkDir $component
-	cd $component
-	run git remote add upstream https://github.com/mupen64plus/$component
-	run git checkout ric_dev
-else
-	header "Updating $component"
-	cd $component
-	run git pull origin ric_dev
-fi
+header "Downloading $component"
+run git clone https://github.com/ricrpi/$component
+checkDir $component
+cd $component
+run git remote add upstream https://github.com/mupen64plus/$component
+run git checkout ric_dev
 
 set APIDIR=`pwd`/src/api
-set SDL_CFLAGS=`sdl-config --cflags`
-set SDL_LDFLAGS=`sdl-config --libs`
+SDL_CFLAGS=`sdl2-config --cflags`
+SDL_LIBS=`sdl2-config --libs`
 
 checkDir projects/unix
 cd projects/unix
@@ -67,7 +61,7 @@ echo "Fixing Makefile..."
 run sed -r -i "s/else if/else ifeq/" Makefile
 
 #run make USE_GLES=1 VFP=1 clean
-run make PREFIX=$PREFIX USE_GLES=1 VFP=1 RPIFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -L/opt/vc/lib -D__ARM_PCS_VFP -fgcse-after-reload -finline-functions -fipa-cp-clone -funswitch-loops -fpredictive-commoning -ftree-loop-distribute-patterns -ftree-vectorize -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s" install
+run make PREFIX=$PREFIX USE_GLES=1 VFP=1 RPIFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -L/opt/vc/lib -fgcse-after-reload -finline-functions -fipa-cp-clone -funswitch-loops -fpredictive-commoning -ftree-loop-distribute-patterns -ftree-vectorize -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s -D__ARM_PCS_VFP" SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 install
 
 unset APIDIR
 
@@ -92,8 +86,8 @@ fi
 
 checkDir projects/unix
 cd projects/unix
-#run make clean
-run make PREFIX=$PREFIX install
+run make clean
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 install
 
 #
 # audio-omx
@@ -116,8 +110,8 @@ fi
 
 checkDir projects/unix
 cd projects/unix
-#run make clean
-run make PREFIX=$PREFIX install
+run make clean
+run make PREFIX=$PREFIX V=1 install
 
 #
 # input-sdl
@@ -140,8 +134,8 @@ fi
 
 checkDir projects/unix
 cd projects/unix
-#run make clean
-run make PREFIX=$PREFIX install
+run make clean
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 install
 
 #
 # rsp-hle
@@ -166,8 +160,8 @@ fi
 
 checkDir projects/unix
 cd projects/unix
-#run make clean
-run make PREFIX=$PREFIX install
+run make clean
+run make PREFIX=$PREFIX V=1 install
 
 #
 # video-gles2rice
@@ -188,18 +182,10 @@ else
 	run git pull origin master
 fi
 
-#echo "Fixing CNvTNTCombiner.cpp"
-#run sed -r -i "s/#include <GL\/gl.h>/#include <GLES\/gl.h>/" src/CNvTNTCombiner.cpp
-#run sed -r -i "s/#include <GL\/glext.h>/#include <GLES\/glext.h>/" src/CNvTNTCombiner.cpp
-#run sed -r -i "s/GL_SUBTRACT_ARB/GL_SUBTRACT/" src/CNvTNTCombiner.cpp
-#echo "Fixing OGLExtensions.h"
-#run sed -r -i "s/#include <GL\/gl.h>/#include <GLES\/gl.h>/" src/OGLExtensions.h
-#run sed -r -i "s/#include <GL\/glext.h>/#include <GLES\/glext.h>/" src/OGLExtensions.h
-
 checkDir projects/unix
 cd projects/unix
-#run make GL_CLFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host/linux" GL_LDLIBS="-L/opt/vc/lib -lGLESv2 -lEGL -lbcm_host" clean
-run make PREFIX=$PREFIX GL_CLFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host/linux" GL_LDLIBS="-L/opt/vc/lib -lGLESv2 -lEGL -lbcm_host" install
+run make clean
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 install
 
 #
 # video-gles2n64
@@ -223,29 +209,5 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX install
-
-#
-# rom
-#
-
-#cd $buildDir
-
-#component=mupen64plus-rom
-
-#if [ ! -e $component ]; then
-#	header "Downloading $component"
-#	run git clone https://github.com/mupen64plus/$component
-#	checkDir $component
-#	cd $component
-#else
-#	header "Updating $component"
-#	cd $component
-#	run git pull origin master
-#fi
-
-#checkDir projects/unix
-#cd projects/unix
-#run make clean
-#run make PREFIX=$PREFIX install
+run make SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" PREFIX=$PREFIX V=1 install
 
