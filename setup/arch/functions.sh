@@ -64,8 +64,8 @@ export baseDir=$userDir/pes
 export buildDir=$baseDir/build
 export emulatorInstallDir="$baseDir/emulators"
 export retroArchInstallDir="$emulatorInstallDir/RetroArch"
-export retroArchConfigDir="$emulatorInstallDir/etc"
-export retroArchCoresDir="$emulatorInstallDir/lib"
+export retroArchConfigDir="$retroArchInstallDir/etc"
+export retroArchCoresDir="$retroArchInstallDir/lib"
 
 if [ ! -e $buildDir ]; then
 	run mkdir $buildDir

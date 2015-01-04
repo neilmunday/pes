@@ -22,7 +22,13 @@
 #    along with PES.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+#
+#    THIS IS A WORK IN PROGRESS!
+#
+
 source /home/pi/pes/setup/arch/functions.sh
+
+header "THIS IS A WORK IN PROGRESS!"
 
 PREFIX=$emulatorInstallDir/mupen64plus
 
@@ -61,7 +67,7 @@ echo "Fixing Makefile..."
 run sed -r -i "s/else if/else ifeq/" Makefile
 
 #run make USE_GLES=1 VFP=1 clean
-run make PREFIX=$PREFIX USE_GLES=1 VFP=1 NEON=1 RPIFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -L/opt/vc/lib -D__ARM_PCS_VFP -fgcse-after-reload -finline-functions -fipa-cp-clone -funswitch-loops -fpredictive-commoning -ftree-loop-distribute-patterns -ftree-vectorize" install
+run make PREFIX=$PREFIX USE_GLES=1 VFP=1 RPIFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -L/opt/vc/lib -D__ARM_PCS_VFP -fgcse-after-reload -finline-functions -fipa-cp-clone -funswitch-loops -fpredictive-commoning -ftree-loop-distribute-patterns -ftree-vectorize -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s" install
 
 unset APIDIR
 
@@ -223,37 +229,23 @@ run make PREFIX=$PREFIX install
 # rom
 #
 
-cd $buildDir
+#cd $buildDir
 
-component=mupen64plus-rom
+#component=mupen64plus-rom
 
-if [ ! -e $component ]; then
-	header "Downloading $component"
-	run git clone https://github.com/mupen64plus/$component
-	checkDir $component
-	cd $component
-else
-	header "Updating $component"
-	cd $component
-	run git pull origin master
-fi
+#if [ ! -e $component ]; then
+#	header "Downloading $component"
+#	run git clone https://github.com/mupen64plus/$component
+#	checkDir $component
+#	cd $component
+#else
+#	header "Updating $component"
+#	cd $component
+#	run git pull origin master
+#fi
 
-checkDir projects/unix
-cd projects/unix
-run make clean
-run make PREFIX=$PREFIX install
+#checkDir projects/unix
+#cd projects/unix
+#run make clean
+#run make PREFIX=$PREFIX install
 
-#rmSourceDir "mupen64plus-libretro"
-#run git clone https://github.com/libretro/mupen64plus-libretro
-#checkDir mupen64plus-libretro
-#cd mupen64plus-libretro
-#make WITH_DYNAREC=arm platform=rpi
-#checkFile mupen64plus_libretro.so
-#run cp -v mupen64plus_libretro.so $retroArchCoresDir
-
-
-#run git clone http://github.com/ricrpi/mupen64plus
-#cd mupen64plus
-#run ./build.sh
-
-#make NEW_DYNAREC=1 NO_ASM=1 USE_GLES=1 CFLAGS=-D__ARM_PCS_VFP -I../../src -I/usr/include/SDL -D_GNU_SOURCE=1 -D_REENTRANT -DM64P_PARALLEL all
