@@ -39,20 +39,20 @@ Acknowledgements
 
 I would like to thank the following people/groups as without them PES would not be possible:
 
-* Frank Raiser for his `image scaling code <http://www.pygame.org/pcr/transform_scale>`_ that I have modified for use by PES to scale thumbnail images
-* The maintainers of `RetroArch <http://www.libretro.com>`_ and all of the emulators that PES uses:
+* Frank Raiser for his [image scaling code](http://www.pygame.org/pcr/transform_scale>) that I have modified for use by PES to scale thumbnail images
+* The maintainers of [RetroArch](http://www.libretro.com>) and all of the emulators that PES uses:
 
-  * `fceu-next <https://github.com/libretro/fceu-next>`_
-  * `gambatte-libretro <https:///github.com/libretro/gambatte-libretro>`_
-  * `Genesis-Plus-GX <https://github.com/ekeeke/Genesis-Plus-GX.git>`_
-  * `pcsx_rearmed <https://github.com/notaz/pcsx_rearmed>`_
-  * `PicoDrive <https://github.com/libretro/picodrive.git>`_
-  * `Pocket SNES <https://github.com/libretro/pocketsnes-libretro>`_
+  * fceu-next https://github.com/libretro/fceu-next
+  * gambatte-libretro https://github.com/libretro/gambatte-libretro
+  * Genesis-Plus-GX https://github.com/ekeeke/Genesis-Plus-GX.git
+  * pcsx_rearmed https://github.com/notaz/pcsx_rearmed
+  * PicoDrive https://github.com/libretro/picodrive.git
+  * Pocket SNES https://github.com/libretro/pocketsnes-libretro
 
-* falkTX for creating the `QtSixA <http://qtsixa.sourceforge.net/>`_ daemon and utilities which is used by PES for using Sony PlayStation 3 control pads via Bluetooth.
-* All the maintainers of `Arch Linux <http://archlinuxarm.org/platforms/armv6/raspberry-pi>`_
-* `theGamesDB.net <http://thegamesdb.net/>`_ for their comprehensive game meta data API
-* All the maintainers of the `Python <https://www.python.org>`_ programming language in which PES is written
-* The `Raspberry Pi Foundation <http://www.raspberrypi.org>`_
+* falkTX for creating the [QtSixA](http://qtsixa.sourceforge.net) daemon and utilities which is used by PES for using Sony PlayStation 3 control pads via Bluetooth.
+* All the maintainers of [Arch Linux](http://archlinuxarm.org/platforms/armv6/raspberry-pi>)
+* [theGamesDB.net](http://thegamesdb.net) for their comprehensive game meta data API
+* All the maintainers of the [Python](https://www.python.org>) programming language in which PES is written
+* The [Raspberry Pi Foundation](http://www.raspberrypi.org)
 * Eric Smith for his many hours of testing, finding bugs, suggesting new features and for supplying graphics for PES
 
