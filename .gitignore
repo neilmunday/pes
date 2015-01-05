@@ -4,9 +4,11 @@
 # Ignore commands.sh as it dynamically created
 bin/commands.sh
 
-# Ignore these directories:
+# Ignore these files and directories:
 build/
-emulators/
+emulators/RetroArch/
+emulators/gpsp/
+emulators/mupen64plus/
 images/
 log/
 roms/
