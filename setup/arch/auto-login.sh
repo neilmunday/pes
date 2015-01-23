@@ -46,7 +46,8 @@ if [ ! -e ~/.bash_pes ]; then
 	echo "Truncating log file..." >> ~/.bash_pes
 	echo "> $baseDir/log/pes.log" >> ~/.bash_pes
         echo "Starting PES..." >> ~/.bash_pes
-	echo -e "\tpython2 ~/pes/bin/pes.sh -v -l $baseDir/log/pes.log" >> ~/.bash_pes
+	#echo -e "\tpython2 ~/pes/bin/pes.sh -v -l $baseDir/log/pes.log" >> ~/.bash_pes
+	echo -e "\tpython2 ~/pes/bin/pes.sh -l $baseDir/log/pes.log" >> ~/.bash_pes
 	echo "fi" >> ~/.bash_pes
 fi
 
