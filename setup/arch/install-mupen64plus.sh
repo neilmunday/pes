@@ -22,17 +22,14 @@
 #    along with PES.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-#
-#    NOTE: THIS IS A WORK IN PROGRESS!
-#
-
 source /home/pi/pes/setup/arch/functions.sh
 
-header "THIS IS A WORK IN PROGRESS!"
-
 PREFIX=$emulatorInstallDir/mupen64plus
+SDL2_CONFIG=/opt/sdl2/default/bin/sdl2-config
 
 header "Building N64 emulator - mupenplus64"
+
+checkFile $SDL2_CONFIG
 
 #
 # core
@@ -52,8 +49,8 @@ run git remote add upstream https://github.com/mupen64plus/$component
 run git checkout ric_dev
 
 set APIDIR=`pwd`/src/api
-SDL_CFLAGS=`sdl2-config --cflags`
-SDL_LIBS=`sdl2-config --libs`
+SDL_CFLAGS=`$SDL2_CONFIG --cflags`
+SDL_LDLIBS=`$SDL2_CONFIG --libs`
 
 checkDir projects/unix
 cd projects/unix
@@ -210,4 +207,3 @@ checkDir projects/unix
 cd projects/unix
 run make clean
 run make SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" PREFIX=$PREFIX V=1 install
-

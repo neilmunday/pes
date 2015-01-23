@@ -31,7 +31,9 @@ run sudo pacman -S bluez bluez-libs bluez-utils \
 	libusb-compat linuxconsole \
 	python2 python2-pygame python2-levenshtein python2-pip python2-imaging \
 	samba \
-	sdl sdl_mixer sdl_ttf sdl_image 
+	sdl sdl_mixer sdl_ttf sdl_image \
+	sdl2 sdl2_mixer sdl2_ttf sdl_gfx \
+	mesa mesa-libgl
 
 run sudo pip2 install python-uinput
 

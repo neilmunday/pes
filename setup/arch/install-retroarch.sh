@@ -26,22 +26,26 @@ source /home/pi/pes/setup/arch/functions.sh
 
 cd $buildDir
 
-header "Downloading RetroArch"
+retroarchDir=RetroArch
 
-rmSourceDir "RetroArch"
+rmSourceDir $retroarchDir
 
 run git clone  git://github.com/libretro/RetroArch.git
-
-checkDir "RetroArch"
+checkDir $retroarchDir
 
 header "Building RetroArch"
 
-cd RetroArch
+cd $retroarchDir
+# now check out last working commit - after this joystick input breaks!
+#git checkout 569de131a05eb443178132d927aca1058d14ce6b
 
 run mkdir -p $retroArchCoresDir
 run mkdir -p $retroArchConfigDir
 
-run ./configure --prefix="$retroArchInstallDir" --disable-udev --disable-ffmpeg --disable-netplay --disable-pulse
-run make GLOBAL_CONFIG_DIR="$retroArchConfigDir"
-run make GLOBAL_CONFIG_DIR="$retroArchConfigDir" install
+export CFLAGS="-O3 -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
+export CXXFLAGS=$CFLAGS
+export PKG_CONFIG_PATH=/opt/sdl2/default/lib/pkgconfig
 
+run ./configure --prefix="$retroArchInstallDir" --disable-udev --disable-ffmpeg --disable-netplay --disable-pulse --disable-x11 --enable-sdl2
+run make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1
+run make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1 install

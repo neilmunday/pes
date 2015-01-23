@@ -29,12 +29,19 @@ cd $buildDir
 rmSourceDir "gpsp"
 header "Downloading GameBoy Advance emulator - gpsp"
 
-run git clone https://github.com/notaz/gpsp
+#run git clone https://github.com/notaz/gpsp
+#checkDir gpsp
+#cd gpsp
+#checkDir raspberrypi
+#cd raspberrypi
+#run make
+#checkFile gpsp
+#run mkdir -p $emulatorInstallDir/gpsp/bin
+#run cp gpsp $emulatorInstallDir/gpsp/bin
+
+run git clone https://github.com/libretro/gpsp
 checkDir gpsp
 cd gpsp
-checkDir raspberrypi
-cd raspberrypi
 run make
-checkFile gpsp
-run mkdir -p $emulatorInstallDir/gpsp/bin
-run cp gpsp $emulatorInstallDir/gpsp/bin
+checkFile gpsp_libretro.so
+run cp -v gpsp_libretro.so $retroArchCoresDir
