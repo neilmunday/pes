@@ -65,7 +65,7 @@ AXIS_POSITIVE = 1
 AXIS_NEGATIVE = 2
 
 VERSION_NUMBER = '1.2 (dev)'
-VERSION_DATE = '2014-12-20'
+VERSION_DATE = '2015-01-24'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -190,15 +190,17 @@ class StringMatcher:
 
 class PES(object):
 
-	__fontColour = (255, 255, 0)
-	__bgColour = (0, 0, 0)
-	__screenMargin = 30
-	__headerHeight = 30
-	__footerHeight = 30
-	__headerMaginBottom = 30
-	__name = 'Pi Entertainment System'
-
 	def __init__(self, window, commandFile):
+		self.__fontColour = (255, 255, 0)
+		self.__bgColour = (0, 0, 0)
+		self.__screenMarginLeft = 30
+		self.__screenMarginRight = 30
+		self.__screenMarginTop = 20
+		self.__screenMarginBottom = 20
+		self.__headerHeight = 30
+		self.__footerHeight = 30
+		self.__headerMaginBottom = 30
+		self.__name = 'Pi Entertainment System'
 		self.__temp = 0
 
                 # work out IP
@@ -299,7 +301,7 @@ class PES(object):
 				console = Console(c, consoleId, extensions, self.__romsDir + os.sep + c, command, self.__userDb, consoleImg, nocoverart, self.__imgCacheDir)
 				if console.isNew():
 					console.save()
-				console.getGames()
+				#console.getGames()
 				self.__consoles.append(console)
 			except ConfigParser.NoOptionError, e:
 				self.__exit('Error parsing config file %s: %s' % (self.__pesConfigFile, e.message), True)
@@ -343,7 +345,7 @@ class PES(object):
 
 		# create settings menu
 		menuItems = [MenuItem("Configure Joystick", self.__loadJoyStickConfiguration), MenuItem("Reset Database", self.__resetDb)]
-                self.__settingsMenu = Menu(menuItems, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 20, self.__fontColour, self.__bgColour)
+                self.__settingsMenu = Menu(menuItems, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 20, self.__fontColour, self.__bgColour, [self.__screenMarginLeft, self.__screenMarginRight, self.__screenMarginTop, self.__screenMarginBottom])
 
 		# create about menu
 		self.__aboutMenu = None
@@ -369,7 +371,7 @@ class PES(object):
 		menuItems.append(MenuItem("About", self.__loadAboutMenu))
 		menuItems.append(MenuItem("Exit to command line", self.__exit))
 
-		self.__mainMenu = Menu(menuItems, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 20, self.__fontColour, self.__bgColour)
+		self.__mainMenu = Menu(menuItems, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 20, self.__fontColour, self.__bgColour, [self.__screenMarginLeft, self.__screenMarginRight, self.__screenMarginTop, self.__screenMarginBottom])
 		self.__menuStack = [self.__mainMenu]
 		self.__mainMenu.setActive(True)
 
@@ -435,7 +437,7 @@ class PES(object):
 
 	def __exit(self, msg = None, error = False):
 		if msg:
-			logging.debug(msg)
+			logging.error(msg)
 		if error:
 			logging.error('error exit!')
 			sys.exit(1)
@@ -460,7 +462,7 @@ class PES(object):
 
 	def __loadAboutMenu(self):
 		if self.__aboutMenu == None:
-			self.__aboutMenu = AboutPanel(self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 18, self.__fontColour, self.__bgColour)
+			self.__aboutMenu = AboutPanel(self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 18, self.__fontColour, self.__bgColour, [self.__screenMarginLeft, self.__screenMarginRight, self.__screenMarginTop, self.__screenMarginBottom])
 		activeMenu = self.__getActiveMenu()
 		activeMenu.setActive(False)
 		activeMenu = self.__aboutMenu
@@ -480,7 +482,7 @@ class PES(object):
 		activeMenu = self.__getActiveMenu()
 		activeMenu.setActive(False)
 		if self.__gameInfoPanel == None:
-			self.__gameInfoPanel = GameInfoPanel(self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 18, self.__fontColour, self.__bgColour, console, game)
+			self.__gameInfoPanel = GameInfoPanel(self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 18, self.__fontColour, self.__bgColour, console, game, [self.__screenMarginLeft, self.__screenMarginRight, self.__screenMarginTop, self.__screenMarginBottom])
 			activeMenu = self.__gameInfoPanel
 		else:
 			activeMenu = self.__gameInfoPanel
@@ -491,6 +493,7 @@ class PES(object):
 
 	def __loadGamesMenu(self, args):
 		console = args[0]
+		console.refresh()
 		if console.getGameTotal() > 0:
 			activeMenu = self.__getActiveMenu()
 			activeMenu.setActive(False)
@@ -551,7 +554,8 @@ class PES(object):
 			elif btn == CEC_ENTER:
 				pygame.event.post(pygame.event.Event(KEYDOWN, {'key': K_RETURN}))
 			elif btn == CEC_EXIT:
-				pygame.event.post(pygame.event.Event(KEYDOWN, {'key': K_ESCAPE}))
+				#pygame.event.post(pygame.event.Event(KEYDOWN, {'key': K_ESCAPE}))
+				pygame.event.post(pygame.event.Event(KEYDOWN, {'key': K_BACKSPACE}))
 		elif dur == 500:
 			if btn == CEC_RETURN:
 				pygame.event.post(pygame.event.Event(KEYDOWN, {'key': K_BACKSPACE}))
@@ -561,7 +565,7 @@ class PES(object):
 			logging.debug("trapping PES event: database update")
 			i = 0
 			for c in self.__consoles:
-				c.getGames()
+				#c.getGames()
 				self.__consolesMenu.setLabelText(i, "%s (%d)" % (c.getName(), c.getGameTotal()))
 				i += 1
 			
@@ -620,7 +624,7 @@ class PES(object):
 			self.__header.draw(5, 0)
 
 			activeMenu = self.__getActiveMenu()
-			activeMenu.draw(self.__screenMargin, self.__header.getHeight())
+			activeMenu.draw(0, self.__header.getHeight())
 
 			self.__footer.draw(5, self.__screenHeight - self.__footerHeight)
 
@@ -681,7 +685,7 @@ class PES(object):
 	def __updateDb(self):
 		activeMenu = self.__getActiveMenu()
 		activeMenu.setActive(False)
-		activeMenu = UpdateDbPanel(self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 18, self.__fontColour, self.__bgColour, self.__userDb, self.__consoles)
+		activeMenu = UpdateDbPanel(self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 18, self.__fontColour, self.__bgColour, self.__userDb, self.__consoles, [self.__screenMarginLeft, self.__screenMarginRight, self.__screenMarginTop, self.__screenMarginBottom])
 		activeMenu.addListener(self)
 		activeMenu.setActive(True)
 		self.__menuStack.append(activeMenu)
@@ -716,6 +720,7 @@ class UpdateDbThread(threading.Thread):
 		except sqlite3.Error, e:
 			if con:
 				con.rollback()
+			logging.error("Error: %s" % e.args[0])
 			print "Error: %s" % e.args[0]
 			sys.exit(1)
 
@@ -942,7 +947,7 @@ class UpdateDbThread(threading.Thread):
 					con.commit()
 					con.close()
 				except sqlite3.Error, e:
-					print "Error: %s" % e.args[0]
+					logging.error("Error: %s" % e.args[0])
 				
 			self.__progress = 'Update interrupted!'
 			self.__finished = True
@@ -986,8 +991,6 @@ class JoyStick(object):
 				if key[0:4] == 'btn_':
 					self.__eventMap[value] = key
 					self.__btnMap[key] = value
-
-		print self.__btnMap
 
 	def axisToKeyEvent(self, event):
 		if event.value == -1.0 or event.value == 1.0:
@@ -1186,6 +1189,7 @@ class Record(object):
 	def doQuery(self, query):
 		logging.debug('Executing query: %s' % query)
 		self.__cur.execute(query)
+		return self.__cur
 
 	def __getFieldsQuery(self):
 		i = 0
@@ -1317,7 +1321,7 @@ class Console(Record):
 			con = sqlite3.connect(self.getDb())
 			con.row_factory = sqlite3.Row
 			cur = con.cursor()
-			query = 'SELECT `game_id`  FROM `games` WHERE `console_id` = %d ' % self.getId()
+			query = 'SELECT `game_id` FROM `games` WHERE `console_id` = %d ' % self.getId()
 			if favouritesOnly:
 				query += ' AND favourite = 1 '
 			query += 'ORDER BY `name`;'
@@ -1338,7 +1342,12 @@ class Console(Record):
 		return self.__games
 
 	def getGameTotal(self):
-		return len(self.__games)
+		self.connect()
+		cur = self.doQuery('SELECT COUNT(`game_id`) AS `total` FROM `games` WHERE `console_id` = %d ' % self.getId())
+		row = cur.fetchone()
+		self.disconnect()
+		return row['total']	
+		#return len(self.__games)
 
 	def getExtensions(self):
 		return self.__extensions
@@ -1456,7 +1465,7 @@ class Game(Record):
 
 class Panel(object):
 
-	def __init__(self, width, height, bgColour, title=''):
+	def __init__(self, width, height, bgColour, title='', margins=[0, 0, 0, 0]):
 		self.__active = False
 		self.__width = width
 		self.__height = height
@@ -1466,12 +1475,14 @@ class Panel(object):
 		self.__locked = False
 		self.__listeners = []
 		self.__title = title
+		self.__margins = margins # left, right, top, bottom
 
 	def addListener(self, l):
 		self.__listeners.append(l)
 
 	def blit(self, obj, coords, area=None):
-		self.__background.blit(obj, coords, area)
+		newCoords = (coords[0] + self.__margins[0], coords[1] + self.__margins[1])
+		self.__background.blit(obj, newCoords, area)
 
 	def fireEvent(self, event, args=None):
 		if self.__active:
@@ -1514,6 +1525,9 @@ class Panel(object):
 
 	def getHeight(self):
 		return self.__height
+
+	def getMargins(self):
+		return self.__margins
 
 	def getTitle(self):
 		return self.__title
@@ -1695,7 +1709,7 @@ class Header(Panel):
 
 class ThumbnailMenu(Panel):
 
-	def __init__(self, menuItems, width, height, font, fontSize, colour, bgColour, thumbsPerRow=3, fitToHeight=True):
+	def __init__(self, menuItems, width, height, font, fontSize, colour, bgColour, thumbsPerRow=4, fitToHeight=True):
 		super(ThumbnailMenu, self).__init__(width, height, bgColour)
 
 		self.__thumbMargin = 30
@@ -1713,12 +1727,17 @@ class ThumbnailMenu(Panel):
 		if fitToHeight:
 			# we need to fit ALL thumbnails on the first page, therefore need to use
 			# image dimensions to work out scaling
-			self.__thumbsInY = int(round(self.__menuItemsTotal / thumbsPerRow, 0))
+			self.__thumbsInY = int(round(float(self.__menuItemsTotal) / float(thumbsPerRow), 0))
 			marginSpace = (self.__fontHeight + self.__thumbMargin) * (self.__thumbsInY + 1)
 			self.__thumbHeight = (height - marginSpace) / self.__thumbsInY
 			imgRatio = float(imgWidth) / float(imgHeight)
-			self.__thumbWidth = int(self.__thumbHeight * imgRatio)
+			self.__thumbWidth = int(self.__thumbHeight * imgRatio)	
 			self.__thumbsInX = thumbsPerRow
+			if (self.__thumbWidth + self.__thumbMargin) * thumbsPerRow > width:
+				# doesn't fit width wise
+				self.__thumbWidth = (width - ((thumbsPerRow) * self.__thumbMargin)) / thumbsPerRow
+				imgRatio = float(imgHeight) / float(imgWidth)
+				self.__thumbHeight = int(self.__thumbWidth * imgRatio)
 		else:
 			imgRatio = float(imgHeight) / float(imgWidth)
 			self.__thumbWidth = int((width - marginSpace) / thumbsPerRow)
@@ -1844,9 +1863,14 @@ class GamesMenu(Panel):
 	def __init__(self, console, width, height, font, fontSize, colour, bgColour, favImage):
 		super(GamesMenu, self).__init__(width, height, bgColour, console.getName())
 		self.__console = console
-		self.__thumbWidth = int(width / 6)
-		self.__thumbHeight = int(self.__thumbWidth * 1.2)
 		self.__thumbMargin = 40
+		self.__thumbsInX = 5
+		self.__thumbWidth = int(round(float((width - (self.__thumbsInX * self.__thumbMargin)) / float(self.__thumbsInX)), 0))
+
+		#ratio = float(self.__thumbWidth) / float(width)
+
+		self.__thumbHeight = int(self.__thumbWidth * 1.2)
+		#self.__thumbHeight = int(height * ratio)
 
 		self.__setMenuItems(self.__console.getGames())
 
@@ -1858,7 +1882,7 @@ class GamesMenu(Panel):
 		self.__favImage = pygame.image.load(favImage).convert_alpha()
 		self.__favImage = pygame.transform.scale(self.__favImage, (int(round(self.__thumbWidth * 0.25, 0)), int(round(self.__thumbHeight * 0.25, 0))))
 
-		self.__thumbsInX = self.getWidth() / (self.__thumbWidth + self.__thumbMargin)
+		#self.__thumbsInX = self.getWidth() / (self.__thumbWidth + self.__thumbMargin)
 		self.__thumbsInY = self.getHeight() / (self.__thumbHeight + self.__thumbMargin + (self.__fontHeight * 2))
 		self.__visibleItems = self.__thumbsInX * self.__thumbsInY
 		self.__pageTotal = int(self.__menuItemsTotal / self.__visibleItems)
@@ -1998,8 +2022,9 @@ class GamesMenu(Panel):
 
 class AboutPanel(Panel):
 
-	def __init__(self, width, height, font, fontSize, colour, bgColour):
-		super(AboutPanel, self).__init__(width, height, bgColour, 'About')
+	def __init__(self, width, height, font, fontSize, colour, bgColour, margins):
+		super(AboutPanel, self).__init__(width, height, bgColour, 'About', margins)
+		self.__margins = margins
 		self.__colour = colour
 		self.__font = pygame.font.Font(font, fontSize)
 		self.__redraw = True
@@ -2010,7 +2035,7 @@ class AboutPanel(Panel):
 		if self.isActive() and self.__redraw:
 			self.fillBackground()
 
-			for l in self.getLabels(['Pi Entertainment System version %s' % VERSION_NUMBER, ' ', 'Released: %s' % VERSION_DATE, ' ', 'License: Licensed under version 3 of the GNU Public License (GPL)', ' ', 'Author: %s' % VERSION_AUTHOR, ' ', 'Contributors: Eric Smith', ' ', 'Cover art: theGamesDB.net', ' ', 'Documentataion: http://pes.mundayweb.com', ' ', 'Help: pes@mundayweb.com'], self.__font, self.__colour, self.getBackgroundColour(), self.getWidth() - x, self.getHeight()):
+			for l in self.getLabels(['Pi Entertainment System version %s' % VERSION_NUMBER, ' ', 'Released: %s' % VERSION_DATE, ' ', 'License: Licensed under version 3 of the GNU Public License (GPL)', ' ', 'Author: %s' % VERSION_AUTHOR, ' ', 'Contributors: Eric Smith', ' ', 'Cover art: theGamesDB.net', ' ', 'Documentataion: http://pes.mundayweb.com', ' ', 'Help: pes@mundayweb.com'], self.__font, self.__colour, self.getBackgroundColour(), self.getWidth() - self.__margins[0], self.getHeight()):
 				self.blit(l, (0, currentY))
 				currentY += l.get_rect().height
 
@@ -2028,8 +2053,9 @@ class AboutPanel(Panel):
 
 class UpdateDbPanel(Panel):
 
-	def __init__(self, width, height, font, fontSize, colour, bgColour, db, consoles):
-		super(UpdateDbPanel, self).__init__(width, height, bgColour, 'Update Database')
+	def __init__(self, width, height, font, fontSize, colour, bgColour, db, consoles, margins=[0,0,0,0]):
+		super(UpdateDbPanel, self).__init__(width, height, bgColour, 'Update Database', margins)
+		self.__margins = margins
 		self.__font = pygame.font.Font(font, fontSize)
 		self.__fontSize = fontSize
 		self.__colour = colour
@@ -2050,7 +2076,7 @@ class UpdateDbPanel(Panel):
 
 			currentY = 10
 
-			for l in self.getLabels(['PES will now scan your ROMs directory for any changes and will update your database accordingly. Depending on the number of changes this may take several minutes. You will not be able to exit this screen until the scan has completed or you decide to abort. The progress of the scan will be displayed below:'], self.__font, self.__colour, self.getBackgroundColour(), self.getWidth() - x, self.getHeight()):
+			for l in self.getLabels(['PES will now scan your ROMs directory for any changes and will update your database accordingly. Depending on the number of changes this may take several minutes. You will not be able to exit this screen until the scan has completed or you decide to abort. The progress of the scan will be displayed below:'], self.__font, self.__colour, self.getBackgroundColour(), self.getWidth() - (self.__margins[0] + self.__margins[1]), self.getHeight()):
 				self.blit(l, (0, currentY))
 				currentY += l.get_rect().height
 
@@ -2299,10 +2325,10 @@ class JoyStickConfigurationPanel(Panel):
 
 class Menu(Panel):
 
-	def __init__(self, entries, width, height, font, fontSize, colour, bgColour, marginTop = 20, marginBottom = 20, menuItemGap = 10):
-		super(Menu, self).__init__(width, height, bgColour)
-		self.__marginTop = marginTop
-		self.__marginBottom = marginBottom
+	def __init__(self, entries, width, height, font, fontSize, colour, bgColour, margins=[0,0,0,0], menuItemGap = 10):
+		super(Menu, self).__init__(width, height, bgColour, '', margins)
+		self.__marginTop = margins[2]
+		self.__marginBottom = margins[3]
 		self.__menuItemGap = menuItemGap
 		self.__redraw = True
 		self.__entries = entries
@@ -2470,7 +2496,8 @@ class GameMenuItem(MenuImgItem):
 
 class GameInfoPanel(Panel):
 
-	def __init__(self, width, height, font, fontSize, colour, bgColour, console, game):
+	def __init__(self, width, height, font, fontSize, colour, bgColour, console, game, margins=[0,0,0,0]):
+		self.__margins = margins
 		self.__game = game
 		self.__console = console
 		super(GameInfoPanel, self).__init__(width, height, bgColour, self.__game.getName())
@@ -2478,7 +2505,7 @@ class GameInfoPanel(Panel):
 		self.__font = pygame.font.Font(font, fontSize)
 		self.__redraw = True
 		self.__menuItems = [MenuItem('Favourite: %s' % (self.__game.isFavourite(('Yes', 'No'))), self.favourite), MenuItem('Play', self.play)]
-		self.__menu = Menu(self.__menuItems, 200, 80, font, fontSize, colour, bgColour, 0, 0, 0)
+		self.__menu = Menu(self.__menuItems, 200, 80, font, fontSize, colour, bgColour, [0,0,0,0], 0)
 		self.__menu.setSelected(1)
 		self.__menu.setActive(True)
 
@@ -2531,7 +2558,7 @@ class GameInfoPanel(Panel):
 			self.__menuY = currentY + y
 
 			currentY = y + imgHeight + 20
-			currentX = 0
+			currentX = self.__margins[0]
 			labels = self.getLabels([self.__game.getOverview().replace("\n", "")], self.__font, self.__colour, self.getBackgroundColour(), width - 100, height / 2)
 			for l in labels:
 				self.blit(l, (currentX, currentY))

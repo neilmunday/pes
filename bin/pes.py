@@ -25,6 +25,7 @@
 import os
 import sys
 import argparse
+import ConfigParser
 import logging
 import pygame
 from pygame.locals import *
@@ -57,15 +58,35 @@ if __name__ == "__main__":
 		logging.basicConfig(format='%(asctime)s:%(levelname)s: %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logLevel, filename=args.logfile)
 	else:
 		logging.basicConfig(format='%(asctime)s:%(levelname)s: %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logLevel)
+
+	# and so begins some rubbish code to handle CEC events
+	# it would seem that trying to add the CEC event handler to a method of a Python object is a no go :-(	
+	baseDir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + os.sep + '../')
+	confFile= baseDir + os.sep + 'conf.d' + os.sep + 'pes.ini'
+	if not os.path.exists(confFile) or not os.path.isfile(confFile):
+		msg = "%s does not exist or is not a file!" % confFile
+		logging.error(msg)
+		print msg
+		sys.exit(1)
 	
 	cecEnabled = False
-	
+	configParser = ConfigParser.ConfigParser()
+	configParser.read(confFile)
 	try:
-		import cec
-		logging.info("CEC module enabled")
-		cecEnabled = True
-	except ImportError, e:
-		logging.info("CEC module not found, disabling CEC functions")
+		cecEnabled = configParser.getboolean('pes', 'hdmi-cec')
+	except ConfigParser.NoOptionError, e:
+		logging.error("could not find hdmi-cec option in %s" % confFile)
+	
+	if cecEnabled:
+		cecEnabled = False
+		try:
+			import cec
+			logging.info("CEC module enabled")
+			cecEnabled = True
+		except ImportError, e:
+			logging.info("CEC module not found, disabling CEC functions")
+	else:
+		logging.debug("CEC disabled in pes.ini")
 
 	pygame.init()
 
