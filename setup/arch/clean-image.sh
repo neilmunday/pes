@@ -33,7 +33,7 @@ echo ""
 
 echo "WARNING: Answering yes to the following question will perform the following operations:"
 echo -e "\t-Delete all ROMs from $romDir including any game saves"
-echo -e "\t-Delete any BIOSes installed in $baseDir/emulators/RetroArch/lib"
+echo -e "\t-Delete any BIOSes installed in $baseDir/emulators/BIOS"
 echo -e "\t-Delete PES user preferences and cover art cache from $userDir/.pes"
 echo -e "\t-Delete PES and PESPad logs"
 echo -e "\t-Delete pi user RetroArch config"
@@ -57,7 +57,7 @@ if [ "$response" == "y" ]; then
 	run rm -rfv $baseDir/roms/GameBoy/* $baseDir/roms/GameBoy\ Color/* $baseDir/roms/GameGear/* $baseDir/roms/MasterSystem/* $baseDir/roms/Mega\ Drive/* $baseDir/roms/NES/* $baseDir/roms/PSX/* $baseDir/roms/SNES/*
 	echo ""
 	echo "Deleting BIOSes..."
-	run rm -fv $baseDir/emulators/RetroArch/lib/*.bin
+	run rm -fv $baseDir/emulators/BIOS/*.bin
 	echo ""
 	echo "Deleting PES build dir contents..."
 	run rm -rfv $baseDir/build/*
