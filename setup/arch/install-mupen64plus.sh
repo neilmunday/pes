@@ -207,3 +207,13 @@ checkDir projects/unix
 cd projects/unix
 run make clean
 run make SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" PREFIX=$PREFIX V=1 install
+
+#
+# launcher script
+#
+
+launchScript="$PREFIX/bin/mupen64plus-launcher.sh"
+
+run echo "#!/bin/bash" > $launchScript
+run echo "$PREFIX/bin/mupen64plus --corelib $PREFIX/lib/libmupen64plus.so.2 --datadir $PREFIX/share/mupen64plus --plugindir $PREFIX/lib/mupen64plus --configdir $baseDir/conf.d/mupen64plus \"\\$1\"" >> $launchScript
+
