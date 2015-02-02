@@ -218,7 +218,7 @@ class PES(object):
 		self.__baseDir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + os.sep + '../')
 		self.__confDir = self.__baseDir + os.sep + 'conf.d' + os.sep + 'pes'
 		self.__checkDir(self.__confDir)
-		self.__retroarchJoysticksDir = self.__confDir + os.sep + 'retroarch.joysticks.d'
+		self.__retroarchJoysticksDir = self.__confDir + os.sep + 'retroarch' + os.sep + 'joysticks'
 		self.__pesConfigFile = self.__confDir + os.sep + 'pes.ini'
 		self.__checkFile(self.__pesConfigFile)
 		self.__consolesConfigFile = self.__confDir + os.sep + 'consoles.ini'
