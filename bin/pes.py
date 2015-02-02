@@ -62,7 +62,7 @@ if __name__ == "__main__":
 	# and so begins some rubbish code to handle CEC events
 	# it would seem that trying to add the CEC event handler to a method of a Python object is a no go :-(	
 	baseDir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + os.sep + '../')
-	confFile= baseDir + os.sep + 'conf.d' + os.sep + 'pes.ini'
+	confFile= baseDir + os.sep + 'conf.d' + os.sep + 'pes' + os.sep + 'pes.ini'
 	if not os.path.exists(confFile) or not os.path.isfile(confFile):
 		msg = "%s does not exist or is not a file!" % confFile
 		logging.error(msg)

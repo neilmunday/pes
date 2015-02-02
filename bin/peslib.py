@@ -65,7 +65,7 @@ AXIS_POSITIVE = 1
 AXIS_NEGATIVE = 2
 
 VERSION_NUMBER = '1.2 (dev)'
-VERSION_DATE = '2015-01-24'
+VERSION_DATE = '2015-02-02'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -216,7 +216,7 @@ class PES(object):
 		self.__userDb = self.__userDir + os.sep + 'pes.db'
 		self.__imgCacheDir = self.__userDir + os.sep + 'cache'
 		self.__baseDir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + os.sep + '../')
-		self.__confDir = self.__baseDir + os.sep + 'conf.d'
+		self.__confDir = self.__baseDir + os.sep + 'conf.d' + os.sep + 'pes'
 		self.__checkDir(self.__confDir)
 		self.__retroarchJoysticksDir = self.__confDir + os.sep + 'retroarch.joysticks.d'
 		self.__pesConfigFile = self.__confDir + os.sep + 'pes.ini'
