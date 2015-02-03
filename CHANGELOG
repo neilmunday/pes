@@ -6,20 +6,20 @@ PES Changelog
 PES 1.2 (under development!)
 ----------------------------
 
-Date: 2015-01-24
+Date: 2015-02-02
 
 Changes (and bug fixes):
 
 	- Added support for favourite games
 	- Added support for additional game info including last played, played count and year published
 	- Added separate BIOS directory for RetroArch
-	- Added support for control pads with analog (axis) inputs, e.g Microsoft Xbox 36 control pads
 	- Added support for GameBoy Advance thanks to gpsp
 	- Added support for Nintendo64 thanks to mupen64plus (ric_rpi's branch)
 	- Added SDL2 (used by RetroArch and mupen64plus)
 	- Added HDMI-CEC config option
-	- Updated jstest.py utility
 	- Added Record object for handling SQLite calls
+	- Updated jstest.py utility
+	- Restructured conf.d directory
 	- Corrected bug in image auto resizing code for the console menu
 
 -------
