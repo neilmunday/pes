@@ -43,7 +43,13 @@ script="$DIR/commands.sh"
 # prevent console from power saving
 setterm -blank 0
 
+# remove the evdev kernel module due to SDL 1.2/pygame joystick detection issues
+evdev=`lsmod | grep evdev | wc -l`
+if [ "$evdev" -gt 0 ]; then
+	sudo rmmod evdev
+fi
 $DIR/pes.py $@
+sudo modprobe evdev
 
 if [ $? -eq 0 ]; then
 	if [ -e $script ]; then
