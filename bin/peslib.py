@@ -218,7 +218,7 @@ class PES(object):
 		self.__baseDir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + os.sep + '../')
 		self.__confDir = self.__baseDir + os.sep + 'conf.d' + os.sep + 'pes'
 		self.__checkDir(self.__confDir)
-		self.__retroarchJoysticksDir = self.__confDir + os.sep + 'retroarch' + os.sep + 'joysticks'
+		self.__retroarchJoysticksDir = self.__baseDir + os.sep + 'conf.d' + os.sep + 'retroarch' + os.sep + 'joysticks'
 		self.__pesConfigFile = self.__confDir + os.sep + 'pes.ini'
 		self.__checkFile(self.__pesConfigFile)
 		self.__consolesConfigFile = self.__confDir + os.sep + 'consoles.ini'
@@ -646,7 +646,8 @@ class PES(object):
                                                         ok = False
 				elif activeMenu.handlesJoyStickEvents():
 					activeMenu.handleEvent(event)
-				elif self.__joystick and self.__js.get_id() == event.joy and (event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYAXISMOTION):
+				#elif self.__joystick and self.__js.get_id() == event.joy and (event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYAXISMOTION):
+				elif self.__joystick and self.__js.get_id() == event.joy and event.type == pygame.JOYBUTTONDOWN:
 					keyEvent = None
 					# need to handle joystick axis events here!
 					if event.type == pygame.JOYAXISMOTION:
@@ -2248,53 +2249,55 @@ class JoyStickConfigurationPanel(Panel):
 			if not self.__configComplete and (event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYAXISMOTION):
 				value = None
 
-				if event.type == pygame.JOYAXISMOTION:
-					if event.value == -1.0 or event.value == 1.0:
-						# axis pressed
-						if not self.__axisHistory.has_key(event.joy):
-							self.__axisHistory[event.joy] = {}
-
-						if not self.__axisHistory[event.joy].has_key(event.axis):
-							self.__axisHistory[event.joy][event.axis] = (AXIS_PRESSED, event.value)
-							#print "AXIS %d PRESSED!" % event.axis
-					
-						if self.__axisHistory[event.joy][event.axis][0] != AXIS_PRESSED:
-							self.__axisHistory[event.joy][event.axis] = (AXIS_PRESSED, event.value)
-							#print "AXIS %d PRESSED!" % event.axis
-					elif event.value < 0.5 and event.value > -0.5:
-						# axis released
-						if not self.__axisHistory.has_key(event.joy):
-							self.__axisHistory[event.joy] = {}
-
-						if not self.__axisHistory[event.joy].has_key(event.axis):
-							self.__axisHistory[event.joy][event.axis] = (AXIS_INITIALISED, 0.0)
-							#print "AXIS %d INITIALISED, value: %f!" % (event.axis, event.value)
-
-						if self.__axisHistory[event.joy][event.axis][0] == AXIS_PRESSED:
-							self.__axisHistory[event.joy][event.axis] = (AXIS_RELEASED, self.__axisHistory[event.joy][event.axis][1])
-							#print "AXIS %d RELEASED!" % event.axis
+				# BUGGY CODE - NOT FIT FOR RELEASE!
+				#if event.type == pygame.JOYAXISMOTION:
+				#	if event.value == -1.0 or event.value == 1.0:
+				#		# axis pressed
+				#		if not self.__axisHistory.has_key(event.joy):
+				#			self.__axisHistory[event.joy] = {}
+				#
+				#		if not self.__axisHistory[event.joy].has_key(event.axis):
+				#			self.__axisHistory[event.joy][event.axis] = (AXIS_PRESSED, event.value)
+				#			#print "AXIS %d PRESSED!" % event.axis
+				#	
+				#		if self.__axisHistory[event.joy][event.axis][0] != AXIS_PRESSED:
+				#			self.__axisHistory[event.joy][event.axis] = (AXIS_PRESSED, event.value)
+				#			#print "AXIS %d PRESSED!" % event.axis
+				#	elif event.value < 0.5 and event.value > -0.5:
+				#		# axis released
+				#		if not self.__axisHistory.has_key(event.joy):
+				#			self.__axisHistory[event.joy] = {}
+				#
+				#		if not self.__axisHistory[event.joy].has_key(event.axis):
+				#			self.__axisHistory[event.joy][event.axis] = (AXIS_INITIALISED, 0.0)
+				#			#print "AXIS %d INITIALISED, value: %f!" % (event.axis, event.value)
+				#
+				#		if self.__axisHistory[event.joy][event.axis][0] == AXIS_PRESSED:
+				#			self.__axisHistory[event.joy][event.axis] = (AXIS_RELEASED, self.__axisHistory[event.joy][event.axis][1])
+				#			#print "AXIS %d RELEASED!" % event.axis
 						
 				self.__redraw = True
 				if self.__jsDetect:
-					if event.type == pygame.JOYBUTTONDOWN or (event.type == pygame.JOYAXISMOTION and self.__axisHistory[event.joy][event.axis] == AXIS_RELEASED):
+					#if event.type == pygame.JOYBUTTONDOWN or (event.type == pygame.JOYAXISMOTION and self.__axisHistory[event.joy][event.axis] == AXIS_RELEASED):
+					if event.type == pygame.JOYBUTTONDOWN:
 						self.__jsIdx = event.joy
 						self.__js = pygame.joystick.Joystick(event.joy)
 						self.__jsDetect = False
 				else:
 					if event.type == pygame.JOYBUTTONDOWN:
 						value = str(event.button)
-					elif event.type == pygame.JOYAXISMOTION and self.__axisHistory[event.joy].has_key(event.axis):
-						(action, axisValue) = self.__axisHistory[event.joy][event.axis]
-						if action == AXIS_RELEASED:
-							if axisValue > 0:
-								value = "+%d" % event.axis
-							else:
-								if self.__prompts[self.__promptIdx].find('Shoulder') == -1:
-									value = "-%d" % event.axis
-								else:
-									value = None
-							#print "STORED: %f, EVENT %f, VALUE: %s" % (axisValue, event.value, value)
-							del self.__axisHistory[event.joy][event.axis] # remove from event history dictionary
+					#elif event.type == pygame.JOYAXISMOTION and self.__axisHistory[event.joy].has_key(event.axis):
+					#	(action, axisValue) = self.__axisHistory[event.joy][event.axis]
+					#	if action == AXIS_RELEASED:
+					#		if axisValue > 0:
+					#			value = "+%d" % event.axis
+					#		else:
+					#			if self.__prompts[self.__promptIdx].find('Shoulder') == -1:
+					#				value = "-%d" % event.axis
+					#			else:
+					#				value = None
+					#		#print "STORED: %f, EVENT %f, VALUE: %s" % (axisValue, event.value, value)
+					#		del self.__axisHistory[event.joy][event.axis] # remove from event history dictionary
 
 					if value:
 						if self.__promptIdx == 0:
