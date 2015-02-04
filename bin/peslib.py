@@ -65,7 +65,7 @@ AXIS_POSITIVE = 1
 AXIS_NEGATIVE = 2
 
 VERSION_NUMBER = '1.2 (dev)'
-VERSION_DATE = '2015-02-02'
+VERSION_DATE = '2015-02-03'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -311,7 +311,7 @@ class PES(object):
 		if window == False:
                         self.__screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
                 else:
-                        self.__screen = pygame.display.set_mode((1024, 768))
+                        self.__screen = pygame.display.set_mode((800, 600))
                         pygame.display.set_caption("PES")
 		self.__screenWidth = self.__screen.get_rect().width
 		self.__screenHeight = self.__screen.get_rect().height
@@ -735,7 +735,7 @@ class UpdateDbThread(threading.Thread):
 			try:
 				# get API name for this console
 				request = urllib2.Request("%sGetPlatform.php" % url, urllib.urlencode({ 'id': consoleId }), headers=headers)
-				logging.debug('Loading URL: %s?%s' % (request.get_full_url(), request.get_data()))
+				logging.debug('loading URL: %s?%s' % (request.get_full_url(), request.get_data()))
 				response = urllib2.urlopen(request)
 				urlLoaded = True
 				xmlData = ElementTree.parse(response)
@@ -1070,6 +1070,10 @@ class JoyStick(object):
                                 return pygame.event.Event(KEYDOWN, {'key': K_UP})
                         if self.__eventMap[event] == JoyStick.BTN_DOWN:
                                 return pygame.event.Event(KEYDOWN, {'key': K_DOWN})
+			if self.__eventMap[event] == JoyStick.BTN_SHOULDER_LEFT:
+				return pygame.event.Event(KEYDOWN, {'key': K_PAGEUP})
+			if self.__eventMap[event] == JoyStick.BTN_SHOULDER_RIGHT:
+				return pygame.event.Event(KEYDOWN, {'key': K_PAGEDOWN})
                 return None
 
         def getButton(self, event):
@@ -1752,7 +1756,6 @@ class ThumbnailMenu(Panel):
 		self.__menuItems[self.__selected].setSelected(True)
 		
 		self.__visibleItems = self.__thumbsInX * self.__thumbsInY
-		self.__pageTotal = int(self.__menuItemsTotal / self.__visibleItems)
 		self.__redraw = True
 
 	def __getStartIndex(self, index):
@@ -1863,30 +1866,50 @@ class GamesMenu(Panel):
 
 	def __init__(self, console, width, height, font, fontSize, colour, bgColour, favImage):
 		super(GamesMenu, self).__init__(width, height, bgColour, console.getName())
-		self.__console = console
-		self.__thumbMargin = 40
-		self.__thumbsInX = 5
-		self.__thumbWidth = int(round(float((width - (self.__thumbsInX * self.__thumbMargin)) / float(self.__thumbsInX)), 0))
-
-		#ratio = float(self.__thumbWidth) / float(width)
-
-		self.__thumbHeight = int(self.__thumbWidth * 1.2)
-		#self.__thumbHeight = int(height * ratio)
-
-		self.__setMenuItems(self.__console.getGames())
-
 		self.__colour = colour
 		self.__font = pygame.font.Font(font, fontSize)
 		self.__fontHeight = self.__font.size('A')[1]
+		self.__smallFont = pygame.font.Font(font, fontSize - 4)
+		self.__smallFontHeight = self.__smallFont.size('A')[1]
+		self.__console = console
+		self.__thumbMargin = 40
+		self.__thumbsInX = 5
+		self.__thumbsInY = 2
+
 		self.__nocoverArtImage = pygame.image.load(console.getNoCoverArtImg()).convert()
-		self.__nocoverArtImage = pygame.transform.scale(self.__nocoverArtImage, (self.__thumbWidth, self.__thumbHeight))
+		imgWidth = self.__nocoverArtImage.get_width()
+		imgHeight = self.__nocoverArtImage.get_height()
+
+		#ratio = float(imgHeight) / float(imgWidth)
+		#self.__thumbWidth = int(round(float((width - (self.__thumbsInX * self.__thumbMargin)) / float(self.__thumbsInX)), 0))
+		#self.__thumbHeight = int(self.__thumbWidth * ratio)
+
+		imgRatio = float(imgWidth) / float(imgHeight)
+		self.__thumbWidth = (width - (self.__thumbsInX * self.__thumbMargin)) / self.__thumbsInX
+		imgRatio = float(imgHeight) / float(imgWidth)
+		self.__thumbHeight = int(self.__thumbWidth * imgRatio)
+		self.__thumbsInY = height / (self.__thumbHeight + (self.__fontHeight * 2) + self.__thumbMargin)
+
+		#print "WIDTH: %d" % imgWidth
+		#print "HEIGHT: %d" % imgHeight
+		#print "RATIO: %f" % ratio
+		#print "IMG WIDTH: %d" % imgWidth
+		#print "IMG HEIGHT: %d" % imgHeight
+		#print "THUMB WIDTH: %d" % self.__thumbWidth
+		#print "THUMB HEIGHT: %d" % self.__thumbHeight
+		#print "PANEL WIDTH: %d" % self.getHeight()
+		#print "PANEL HEIGHT: %d" % self.getHeight()
+		#print "THUMB MAX HEIGHT: %d" % (self.getHeight() - self.__smallFontHeight)
+		#print "THUMB HEIGHT WITH LABEL: %d" % (self.__thumbHeight + self.__thumbMargin + (self.__fontHeight * 2))
+
+		self.__nocoverArtImage = scaleImage(self.__nocoverArtImage, (self.__thumbWidth, self.__thumbHeight))
 		self.__favImage = pygame.image.load(favImage).convert_alpha()
 		self.__favImage = pygame.transform.scale(self.__favImage, (int(round(self.__thumbWidth * 0.25, 0)), int(round(self.__thumbHeight * 0.25, 0))))
-
-		#self.__thumbsInX = self.getWidth() / (self.__thumbWidth + self.__thumbMargin)
-		self.__thumbsInY = self.getHeight() / (self.__thumbHeight + self.__thumbMargin + (self.__fontHeight * 2))
+		#self.__thumbsInY = int(round(float(self.getHeight() - self.__smallFontHeight) / float((self.__thumbHeight + self.__thumbMargin + (self.__fontHeight * 2))), 0))
+		#self.__thumbsInY = int(float(self.getHeight() - self.__smallFontHeight) / float((self.__thumbHeight + self.__thumbMargin + (self.__fontHeight * 2))))
+		#print "Thumbs in Y: %s" % self.__thumbsInY
 		self.__visibleItems = self.__thumbsInX * self.__thumbsInY
-		self.__pageTotal = int(self.__menuItemsTotal / self.__visibleItems)
+		self.__setMenuItems(self.__console.getGames())
 		self.__showFavourites = False
 
 	def __getStartIndex(self, index):
@@ -1897,6 +1920,11 @@ class GamesMenu(Panel):
 		for g in games:
 			self.__menuItems.append(GameMenuItem(g))
 		self.__menuItemsTotal = len(self.__menuItems)
+		if self.__menuItemsTotal <= self.__visibleItems:
+			self.__pageTotal = 1
+		else:
+			self.__pageTotal = round(float(self.__menuItemsTotal) / float(self.__visibleItems), 0)
+		self.__page = 1
 		self.__selected = 0
 		self.__startIndex = 0
 		self.__menuItems[self.__selected].setSelected(True)
@@ -1946,6 +1974,13 @@ class GamesMenu(Panel):
 					nextX = startX
 					col = 0
 				i += 1
+
+			# draw page number in the bottom right hand corner
+			self.__page = (self.__selected / self.__visibleItems) + 1
+			pageLabel = self.__smallFont.render('Page %d of %d' % (self.__page, self.__pageTotal), 1, self.__colour, self.getBackgroundColour())
+			pageLabelWidth = pageLabel.get_rect().width
+			pageLabelHeight = pageLabel.get_rect().height
+			self.blit(pageLabel, (self.getWidth() - (pageLabelWidth + 5), self.getHeight() - (pageLabelHeight + 5)))
 
 			self.update(x, y)
 			self.__redraw = False
@@ -2012,6 +2047,29 @@ class GamesMenu(Panel):
 					else:
 						self.__showFavourites = not self.__showFavourites
 						self.__setMenuItems(games)
+				elif event.key == K_PAGEUP:
+					self.__menuItems[self.__selected].setSelected(False)
+					if self.__selected - self.__visibleItems < 0:
+						self.__selected = self.__menuItemsTotal - 1
+						self.__startIndex = self.__getStartIndex(self.__selected)
+					elif self.__selected == self.__menuItemsTotal - 1:
+						self.__selected = self.__getStartIndex(self.__menuItemsTotal) - 1
+						self.__startIndex = self.__getStartIndex(self.__selected)
+					else:
+						self.__selected -= self.__visibleItems
+						self.__startIndex = self.__getStartIndex(self.__selected)
+					self.__menuItems[self.__selected].setSelected(True)
+					self.__redraw = True
+				elif event.key == K_PAGEDOWN:
+					self.__menuItems[self.__selected].setSelected(False)
+					if self.__selected + self.__visibleItems > self.__menuItemsTotal - 1:
+						self.__selected = 0
+						self.__startIndex = 0
+					else:
+						self.__selected += self.__visibleItems
+						self.__startIndex = self.__getStartIndex(self.__selected)
+					self.__menuItems[self.__selected].setSelected(True)
+					self.__redraw = True
 				elif event.key == K_RETURN:
 					return self.__menuItems[self.__selected].activate()
 		return None
