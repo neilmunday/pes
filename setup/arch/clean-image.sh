@@ -43,7 +43,7 @@ echo -e "\t-Delete SSH known_hosts files for root and pi users"
 echo -e "\t-Delete $baseDir/build contents"
 echo ""
 
-read -p "Are you sure you want to automically resize your root partition? [y/n]" response
+read -p "Are you sure you want to proceed? [y/n]" response
 if [ "$response" == "y" ]; then
 	echo "Beginning purge..."
 	echo ""
@@ -54,7 +54,7 @@ if [ "$response" == "y" ]; then
 	run sudo pacman -Scc
 	echo ""
 	echo "Deleting ROMs..."
-	run rm -rfv $baseDir/roms/GameBoy/* $baseDir/roms/GameBoy\ Color/* $baseDir/roms/GameGear/* $baseDir/roms/MasterSystem/* $baseDir/roms/Mega\ Drive/* $baseDir/roms/NES/* $baseDir/roms/PSX/* $baseDir/roms/SNES/*
+	run rm -rfv $baseDir/roms/GameBoy/* $baseDir/roms/GameBoy\ Color/* $baseDir/roms/GameGear/* $baseDir/roms/MasterSystem/* $baseDir/roms/Mega\ CD $baseDir/roms/MegaDrive/* $baseDir/roms/N64/* $baseDir/roms/NES/* $baseDir/roms/PSX/* $baseDir/roms/SNES/*
 	echo ""
 	echo "Deleting BIOSes..."
 	run rm -fv $baseDir/emulators/BIOS/*.bin
