@@ -311,7 +311,7 @@ class PES(object):
 		if window == False:
                         self.__screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
                 else:
-                        self.__screen = pygame.display.set_mode((800, 600))
+                        self.__screen = pygame.display.set_mode((1024, 768))
                         pygame.display.set_caption("PES")
 		self.__screenWidth = self.__screen.get_rect().width
 		self.__screenHeight = self.__screen.get_rect().height
@@ -1874,20 +1874,26 @@ class GamesMenu(Panel):
 		self.__console = console
 		self.__thumbMargin = 40
 		self.__thumbsInX = 5
+		self.__thumbsInY = 2 # desired number of rows
 
 		self.__nocoverArtImage = pygame.image.load(console.getNoCoverArtImg()).convert()
 		imgWidth = self.__nocoverArtImage.get_width()
 		imgHeight = self.__nocoverArtImage.get_height()
 
-		imgRatio = float(imgWidth) / float(imgHeight)
 		self.__thumbWidth = (width - (self.__thumbsInX * self.__thumbMargin)) / self.__thumbsInX
 		imgRatio = float(imgHeight) / float(imgWidth)
 		self.__thumbHeight = int(self.__thumbWidth * imgRatio)
-		self.__thumbsInY = height / (self.__thumbHeight + (self.__fontHeight * 2) + self.__thumbMargin)
+		
+		thumbsInY = (height - self.__smallFontHeight) / (self.__thumbHeight + (self.__fontHeight * 2) + self.__thumbMargin)
+		if thumbsInY < self.__thumbsInY:
+			# what width is required to fix a minimum of two rows?
+			imgRatio = float(imgWidth) / float(imgHeight)
+			self.__thumbHeight = int((height - self.__smallFontHeight - (((self.__fontHeight * 2) + self.__thumbMargin) * self.__thumbsInY)) / self.__thumbsInY)
+			self.__thumbWidth = int(self.__thumbHeight * imgRatio)
+		else:
+			self.__thumbsInY = thumbsInY
 
-		#print "WIDTH: %d" % imgWidth
-		#print "HEIGHT: %d" % imgHeight
-		#print "RATIO: %f" % ratio
+		#print "RATIO: %f" % imgRatio
 		#print "IMG WIDTH: %d" % imgWidth
 		#print "IMG HEIGHT: %d" % imgHeight
 		#print "THUMB WIDTH: %d" % self.__thumbWidth
@@ -1900,9 +1906,6 @@ class GamesMenu(Panel):
 		self.__nocoverArtImage = scaleImage(self.__nocoverArtImage, (self.__thumbWidth, self.__thumbHeight))
 		self.__favImage = pygame.image.load(favImage).convert_alpha()
 		self.__favImage = pygame.transform.scale(self.__favImage, (int(round(self.__thumbWidth * 0.25, 0)), int(round(self.__thumbHeight * 0.25, 0))))
-		#self.__thumbsInY = int(round(float(self.getHeight() - self.__smallFontHeight) / float((self.__thumbHeight + self.__thumbMargin + (self.__fontHeight * 2))), 0))
-		#self.__thumbsInY = int(float(self.getHeight() - self.__smallFontHeight) / float((self.__thumbHeight + self.__thumbMargin + (self.__fontHeight * 2))))
-		#print "Thumbs in Y: %s" % self.__thumbsInY
 		self.__visibleItems = self.__thumbsInX * self.__thumbsInY
 		self.__setMenuItems(self.__console.getGames())
 		self.__showFavourites = False
