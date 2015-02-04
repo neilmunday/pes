@@ -6,8 +6,8 @@ bin/commands.sh
 
 # Ignore these files and directories:
 build/
+emulators/BIOS/*.bin
 emulators/RetroArch/
-emulators/gpsp/
 emulators/mupen64plus/
 images/
 log/
