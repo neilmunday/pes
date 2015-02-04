@@ -6,7 +6,7 @@ PES Changelog
 PES 1.2 (under development!)
 ----------------------------
 
-Date: 2015-02-02
+Date: 2015-02-04
 
 Changes (and bug fixes):
 
@@ -14,10 +14,12 @@ Changes (and bug fixes):
 	- Added support for additional game info including last played, played count and year published
 	- Added separate BIOS directory for RetroArch
 	- Added support for GameBoy Advance thanks to gpsp
-	- Added support for Nintendo64 thanks to mupen64plus (ric_rpi's branch)
+	- Added support for Nintendo64 thanks to mupen64plus (ric_rpi's branch) though it is a work in progress
 	- Added SDL2 (used by RetroArch and mupen64plus)
 	- Added HDMI-CEC config option
 	- Added Record object for handling SQLite calls
+	- Added the ability to browse by "page" for games
+	- Improved logging for unhandled exceptions
 	- Updated jstest.py utility
 	- Restructured conf.d directory
 	- Corrected bug in image auto resizing code for the console menu

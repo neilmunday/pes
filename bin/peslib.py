@@ -64,8 +64,8 @@ AXIS_INITIALISED = 3
 AXIS_POSITIVE = 1
 AXIS_NEGATIVE = 2
 
-VERSION_NUMBER = '1.2 (dev)'
-VERSION_DATE = '2015-02-03'
+VERSION_NUMBER = '1.2 (BETA)'
+VERSION_DATE = '2015-02-04'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -1874,15 +1874,10 @@ class GamesMenu(Panel):
 		self.__console = console
 		self.__thumbMargin = 40
 		self.__thumbsInX = 5
-		self.__thumbsInY = 2
 
 		self.__nocoverArtImage = pygame.image.load(console.getNoCoverArtImg()).convert()
 		imgWidth = self.__nocoverArtImage.get_width()
 		imgHeight = self.__nocoverArtImage.get_height()
-
-		#ratio = float(imgHeight) / float(imgWidth)
-		#self.__thumbWidth = int(round(float((width - (self.__thumbsInX * self.__thumbMargin)) / float(self.__thumbsInX)), 0))
-		#self.__thumbHeight = int(self.__thumbWidth * ratio)
 
 		imgRatio = float(imgWidth) / float(imgHeight)
 		self.__thumbWidth = (width - (self.__thumbsInX * self.__thumbMargin)) / self.__thumbsInX
