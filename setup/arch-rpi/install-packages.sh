@@ -30,15 +30,18 @@ run sudo pacman -S bluez bluez-libs bluez-utils \
 	gcc git make patch pkg-config scons \
 	libusb-compat linuxconsole \
 	python2 python2-pygame python2-levenshtein python2-pip python2-imaging \
+	ntp \
+	rsync \
 	samba \
 	sdl sdl_mixer sdl_ttf sdl_image \
-	sdl2 sdl2_mixer sdl2_ttf sdl_gfx \
 	mesa mesa-libgl
 
+run sudo pip2 install --upgrade pip
 run sudo pip2 install python-uinput
 
 #run sudo pacman -R mesa mesa-libgl
 
 # enable services
-#run sudo systemctl enable ntpd.service
+run sudo systemctl enable ntpd.service
+run sudo systemctl start ntpd.service
 
