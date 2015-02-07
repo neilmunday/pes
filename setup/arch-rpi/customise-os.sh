@@ -26,7 +26,7 @@
 # This script customises the OS to PES' needs.
 #
 
-source /home/pi/pes/setup/arch/functions.sh
+source /home/pi/pes/setup/arch-rpi/functions.sh
 
 header "Setting timezone to London, UK"
 

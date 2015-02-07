@@ -22,7 +22,7 @@
 #    along with PES.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-source /home/pi/pes/setup/arch/functions.sh
+source /home/pi/pes/setup/arch-rpi/functions.sh
 
 setupDir="$baseDir/setup/arch"
 
@@ -41,7 +41,10 @@ run $setupDir/auto-login.sh
 header "Setting up PS3 Bluetooth control pad support.."
 run $setupDir/install-qtsixad.sh
 
-header "Setting up RetroArch..."
+header "Installing SDL2..."
+run $setupDir/install-sdl2.sh
+
+header "Installing up RetroArch..."
 run $setupDir/install-retroarch.sh
 
 header "Installing emulator cores..."

@@ -22,7 +22,7 @@
 #    along with PES.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-source /home/pi/pes/setup/arch/functions.sh
+source /home/pi/pes/setup/arch-rpi/functions.sh
 
 qtsixaTar=$baseDir/src/QtSixA-1.5.1-src.tar.gz
 qtsixaDir=$buildDir/QtSixA-1.5.1
