@@ -22,7 +22,7 @@
 #    along with PES.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-source /home/pi/pes/setup/arch/functions.sh
+source /home/pi/pes/setup/arch-rpi2/functions.sh
 
 run sudo rm -vf /etc/samba/smb.conf.default
 run sudo cp -v /home/pi/pes/setup/arch/smb.conf /etc/samba/smb.conf

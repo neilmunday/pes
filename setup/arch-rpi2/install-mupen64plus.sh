@@ -22,7 +22,7 @@
 #    along with PES.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-source /home/pi/pes/setup/arch/functions.sh
+source /home/pi/pes/setup/arch-rpi2/functions.sh
 
 PREFIX=$emulatorInstallDir/mupen64plus
 SDL2_CONFIG=/opt/sdl2/default/bin/sdl2-config

@@ -26,7 +26,7 @@
 # This script customises the OS to PES' needs.
 #
 
-source /home/pi/pes/setup/arch/functions.sh
+source /home/pi/pes/setup/arch-rpi2/functions.sh
 
 header "Setting timezone to London, UK"
 run sudo timedatectl set-timezone Europe/London
@@ -84,7 +84,7 @@ else
 		echo "Warning! $swapfile already exists - skipping swap file creation!"
 	else
 		echo "Creating swap file..."
-		run sudo fallocate -l 256M $swapfile
+		run sudo fallocate -l 512M $swapfile
 		run sudo chmod 600 $swapfile
 		run sudo mkswap $swapfile
 		run sudo swapon $swapfile
