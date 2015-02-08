@@ -25,7 +25,7 @@
 source /home/pi/pes/setup/arch-rpi/functions.sh
 
 run sudo rm -vf /etc/samba/smb.conf.default
-run sudo cp -v /home/pi/pes/setup/arch/smb.conf /etc/samba/smb.conf
+run sudo cp -v /home/pi/pes/setup/arch-rpi/smb.conf /etc/samba/smb.conf
 run sudo systemctl start smbd.service
 run sudo systemctl start nmbd.service
 run sudo systemctl enable smbd.service
