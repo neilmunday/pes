@@ -45,5 +45,5 @@ export CXXFLAGS=$CFLAGS
 export PKG_CONFIG_PATH=/opt/sdl2/default/lib/pkgconfig
 
 run ./configure --prefix="$retroArchInstallDir" --disable-udev --disable-ffmpeg --disable-netplay --disable-pulse --disable-x11 --enable-sdl2 --enable-neon --enable-floathard
-run make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1 -j
-run make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1 -j install
+run make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1 
+run make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1 install

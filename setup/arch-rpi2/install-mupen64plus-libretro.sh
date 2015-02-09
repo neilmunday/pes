@@ -32,8 +32,6 @@ run git clone https://github.com/libretro/mupen64plus-libretro
 checkDir mupen64plus-libretro
 cd mupen64plus-libretro
 
-RPI_FLAGS="-fgcse-after-reload -finline-functions -fipa-cp-clone -funswitch-loops -fpredictive-commoning -ftree-loop-distribute-patterns -ftree-vectorize -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -D__ARM_PCS_VFP"
-
-CFLAGS="$RPI_FLAGS" CXXFLAGS="$RPI_FLAGS" LDFLAGS="$RPI_FLAGS" make WITH_DYNAREC=arm platform=rpi V=1
+run make WITH_DYNAREC=arm platform=rpi V=1
 checkFile mupen64plus_libretro.so
 run cp -v mupen64plus_libretro.so $retroArchCoresDir

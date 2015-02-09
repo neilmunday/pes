@@ -1,5 +1,5 @@
 #!/bin/bash
-
+0
 #
 #    This file is part of the Pi Entertainment System (PES).
 #
@@ -55,8 +55,8 @@ run cd $sdl2Dir
 
 ./configure --prefix=$prefix --disable-video-opengl --disable-video-x11 --disable-pulseaudio --disable-esd --enable-video-opengles --enable-libudev
 
-run make -j
-run sudo make -j install
+run make 
+run sudo make  install
 
 run sudo rm -f /opt/sdl2/default
 run sudo ln -s $prefix /opt/sdl2/default
