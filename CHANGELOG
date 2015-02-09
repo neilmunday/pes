@@ -3,10 +3,10 @@ PES Changelog
 =============
 
 ----------------------------
-PES 1.2 (under development!)
+PES 1.2 (BETA)
 ----------------------------
 
-Date: 2015-02-04
+Date: 2015-02-09
 
 Changes (and bug fixes):
 
@@ -14,11 +14,13 @@ Changes (and bug fixes):
 	- Added support for additional game info including last played, played count and year published
 	- Added separate BIOS directory for RetroArch
 	- Added support for GameBoy Advance thanks to gpsp
-	- Added support for Nintendo64 thanks to mupen64plus (ric_rpi's branch) though it is a work in progress
-	- Added SDL2 (used by RetroArch and mupen64plus)
+	- Added SDL2 (used by RetroArch)
 	- Added HDMI-CEC config option
 	- Added Record object for handling SQLite calls
 	- Added the ability to browse by "page" for games
+	- Added joystick axis support at last!
+	- Added custom build of pygame to remove debug statements in joystick.c
+	- Added Raspberry Pi 2 support!
 	- Improved logging for unhandled exceptions
 	- Updated jstest.py utility
 	- Restructured conf.d directory
