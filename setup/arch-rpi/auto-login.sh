@@ -38,16 +38,16 @@ EOF
 if [ ! -e ~/.bash_pes ]; then
 	echo "Creating ~/.bash_pes ..."
 	echo "if [ ! -n \"\$SSH_CONNECTION\" ] && [ ! -n \"\$DESKTOP_SESSION\" ]; then" > ~/.bash_pes
-	echo -e "\tGiving time for network interface to start..." >> ~/.bash_pes
-        echo -e "for i in `seq 1 10`; do" >> ~/.bash_pes
+	echo -e "\techo \"Giving time for network interface to start...\"" >> ~/.bash_pes
+        echo -e "\tfor i in \`seq 1 10\`; do" >> ~/.bash_pes
         echo -e "\t\techo \"Wating for \${i}s\"" >> ~/.bash_pes
 	echo -e "\t\tsleep 1" >> ~/.bash_pes
         echo -e "\tdone" >> ~/.bash_pes
-	echo "Truncating log file..." >> ~/.bash_pes
-	echo "> $baseDir/log/pes.log" >> ~/.bash_pes
-        echo "Starting PES..." >> ~/.bash_pes
+	echo -e "\techo \"Truncating log file...\"" >> ~/.bash_pes
+	echo -e "\t> $baseDir/log/pes.log" >> ~/.bash_pes
+        echo -e "\techo \"Starting PES...\"" >> ~/.bash_pes
 	#echo -e "\tpython2 ~/pes/bin/pes.sh -v -l $baseDir/log/pes.log" >> ~/.bash_pes
-	echo -e "\tpython2 ~/pes/bin/pes.sh -l $baseDir/log/pes.log" >> ~/.bash_pes
+	echo -e "\t~/pes/bin/pes.sh -l $baseDir/log/pes.log" >> ~/.bash_pes
 	echo "fi" >> ~/.bash_pes
 fi
 

@@ -29,7 +29,7 @@ source /home/pi/pes/setup/arch-rpi2/functions.sh
 run sudo pacman -S bluez bluez-libs bluez-utils \
 	gcc git make patch pkg-config scons wget \
 	libusb-compat linuxconsole \
-	python2 python2-pygame python2-levenshtein python2-pip python2-imaging \
+	python2 python2-levenshtein python2-pip python2-imaging \
 	ntp \
 	rsync \
 	samba \

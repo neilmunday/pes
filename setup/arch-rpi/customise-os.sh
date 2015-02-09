@@ -29,12 +29,16 @@
 source /home/pi/pes/setup/arch-rpi/functions.sh
 
 header "Setting timezone to London, UK"
-
 run sudo timedatectl set-timezone Europe/London
 
 header "Setting keyboard layout to UK"
-
 run sudo localectl set-keymap --no-convert uk
+
+header "Setting hostname"
+run sudo hostnamectl set-hostname pes
+
+header "Setting up groups for pi user"
+run sudo usermod -a -G audio,input,video,users pi
 
 header "Adding udev rules for USB control pads"
 
@@ -52,7 +56,7 @@ header "Disabling core files in /etc/systemd/system.conf"
 if egrep -q "^DumpCore=no" /etc/systemd/system.conf; then
 	echo "No need to disable - already done!"
 else
-	run sudo echo "DumpCore=no" >> /etc/systemd/system.conf
+	run sudo bash -c "echo \"DumpCore=no\" >> /etc/systemd/system.conf"
 fi
 
 header "Limiting journal file size to 50MB"
@@ -60,12 +64,12 @@ header "Limiting journal file size to 50MB"
 if egrep -q "^SystemMaxUse=50M" /etc/systemd/journald.conf ; then
 	echo "No need to limit, already set!"
 else
-	if egrep -q "^SystemMaxUse=[0-9]+M"; then
+	if egrep -q "^SystemMaxUse=[0-9]+M" /etc/systemd/journald.conf ; then
 		echo "Existing limit found, changing /etc/systemd/journald.conf"
 		run sudo sed -r -i "s/^SystemMaxUse=[0-9]+M/SystemMaxUse=50M/" /etc/systemd/journald.conf
 	else
 		echo "Updating /etc/systemd/journald.conf"
-		run sudo echo "SystemMaxUse=50M" >> /etc/systemd/journald.conf
+		run sudo bash -c "echo \"SystemMaxUse=50M\" >> /etc/systemd/journald.conf"
 	fi	
 fi
 
@@ -86,6 +90,6 @@ else
 		run sudo swapon $swapfile
 
 		echo "Adding to /etc/fstab"
-		run echo "/swapfile              none          swap      defaults                        0      0" >> /etc/fstab
+		run sudo bash -c "echo \"/swapfile              none          swap      defaults                        0      0\" >> /etc/fstab"
 	fi
 fi

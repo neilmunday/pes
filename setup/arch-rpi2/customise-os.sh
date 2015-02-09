@@ -38,7 +38,7 @@ header "Setting hostname"
 run sudo hostnamectl set-hostname pes
 
 header "Setting up groups for pi user"
-run sudo usermod -a -G audio,input,video pi
+run sudo usermod -a -G audio,input,video,users pi
 
 header "Adding udev rules for USB control pads"
 
