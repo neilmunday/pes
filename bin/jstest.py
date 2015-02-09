@@ -27,6 +27,8 @@
 #
 
 import sys
+import os
+import argparse
 import signal
 from signal import SIGTERM
 import pygame
@@ -38,70 +40,71 @@ def stopTest(sig, dummy):
 
 if __name__ == "__main__":
 
-	AXIS_PRESSED = 1
-	AXIS_RELEASED = 2
-
 	signal.signal(signal.SIGTERM, stopTest)
 	signal.signal(signal.SIGINT, stopTest)
 
+	parser = argparse.ArgumentParser(description='PES joystick detection test code', add_help=True)
+	parser.add_argument('-j', '--joystick', help='Joystick number to test', dest='jsNumber', type=int, required=True)
+	args = parser.parse_args()
+
+	os.environ["SDL_VIDEODRIVER"] = "dummy"
+
 	pygame.init()
 	pygame.joystick.init()
-	joystickTotal = pygame.joystick.get_count()
-	
-	if joystickTotal == 0:
-		print "No joysticks found, exiting."
-		sys.exit(0)
 
-	print "Found %d joysticks" % joystickTotal
-
-	for i in range(0, joystickTotal):
-		js = pygame.joystick.Joystick(i)
-		js.init()
-		print "Joystick %d: %s" % (i, js.get_name())
-		print "No. of buttons: %d" % js.get_numbuttons()
-		axis = js.get_numaxes()
-		print "No. of axes: %d" % axis
-		
-		if axis > 0:
-			for a in range(0, axis):
-				print "Axis %d initial value: %f" % (a, js.get_axis(a))
+	js = pygame.joystick.Joystick(args.jsNumber)
+	if js == None:
+		print "Error initialising joystick"
+		sys.exit(1)
+	js.init()
+	initialAxis = []
+	for i in range(0, js.get_numaxes()):
+		initialAxis.append(0)
 	
-	print "\nListening for joystick events, press Ctrl + C to exit"
+	print "\nListening for joystick events for joystick %d (%s), press Ctrl + C to exit" % (args.jsNumber, js.get_name())
 
 	stop = False
+	initialised = False
+	lastAxis = -1
+	lastAxisValue = 0
+	lastButton = -1
 
-	axisHistory = {}
+	print "Please press a button once your control pad's axes are in their rest positions"
 
 	while stop == False:
 
 		for event in pygame.event.get():
-			if event.type == pygame.JOYBUTTONDOWN:
-				print "joystick %d, button pressed: %d" % (event.joy, event.button)
-			elif event.type == pygame.JOYBUTTONUP:
-				print "joystick %d, button released: %d" % (event.joy, event.button)
-			elif event.type == pygame.JOYAXISMOTION:
-				if event.value >= 0.5 or event.value <= -0.5:
-					print "joystick %d, axis: %d, value: %f" % (event.joy, event.axis, event.value)
-					if not axisHistory.has_key(event.joy):
-						axisHistory[event.joy] = {}
+			if not initialised:
+				if event.type == pygame.JOYBUTTONDOWN:
+					print "Beginning detection"
+					print "Initial values..."
+					for i in range(0, js.get_numaxes()):
+						value =  js.get_axis(i)
+						print "axis %d, value %f" % (i, value)
+						if abs(value) > 0.5:
+							initialAxis[i] = value
+						print initialAxis
+					initialised = True
+					print "\nListening for button presses...\n"
 
-					if not axisHistory[event.joy].has_key(event.axis):
-						axisHistory[event.joy][event.axis] = AXIS_PRESSED
-					
-					if axisHistory[event.joy][event.axis] == AXIS_RELEASED:
-						axisHistory[event.joy][event.axis] = AXIS_PRESSED
-						print "joystick %d, axis: %d ACTIVATED" % (event.joy, event.axis)
-				else:
-					if not axisHistory.has_key(event.joy):
-						axisHistory[event.joy] = {}
+		if initialised:
+			# loop through buttons
+			for i in range(0, js.get_numbuttons()):
+				if js.get_button(i) and lastButton != i:
+					print "joystick %d, button %d pressed" % (args.jsNumber, i)
+					lastButton = i
 
-					if not axisHistory[event.joy].has_key(event.axis):
-						axisHistory[event.joy][event.axis] = AXIS_RELEASED
+			# loop through axes
+			for i in range(0, js.get_numaxes()):
+				value = js.get_axis(i)
+				if lastAxis != i or (lastAxis == i and ((value < 0 and lastAxisValue > 0) or (value > 0 and lastAxisValue < 0))):
+					if abs(value) > 0.9 and abs(value - initialAxis[i]) > 0.5:
+						print "joystick %d, axis %d, value: %f" % (args.jsNumber, i, value)
+						lastAxis = i
+						lastAxisValue = value
 
-					if axisHistory[event.joy][event.axis] == AXIS_PRESSED:
-						axisHistory[event.joy][event.axis] = AXIS_RELEASED
-						print "joystick %d, axis: %d DEACTIVATED" % (event.joy, event.axis)
-
+			#print "Sleeping..."
+			pygame.time.wait(10)
 		
 	print "Exiting..."
 	sys.exit(0)
