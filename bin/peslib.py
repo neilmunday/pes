@@ -2319,7 +2319,15 @@ class JoyStickConfigurationPanel(Panel):
 				if configValue:
 					logging.debug("joystick config: %s" % configValue)
 					logging.debug("joystick config: looking for %s in joystick answers array" % configValue)
-					if configValue in self.__answers:
+					if self.__promptIdx > 0 and self.__answers[0] == configValue:
+						logging.debug("joystick config: skipping button assignment")
+						self.__error = False
+						self.__promptIdx += 1
+						self.__lastButton = -1
+						if self.__promptIdx == len(self.__prompts):
+							logging.debug("joystick config: config complete!")
+							self.__configComplete = True
+					elif configValue in self.__answers:
 						logging.debug("joystick config: button already assigned!")
 						self.__errorMsg = 'This button has already been assigned. Please try again'
 						self.__error = True
