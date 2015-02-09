@@ -61,11 +61,9 @@ EVENT_WARNING = 5
 AXIS_PRESSED = 1
 AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
-AXIS_POSITIVE = 1
-AXIS_NEGATIVE = 2
 
 VERSION_NUMBER = '1.2 (BETA)'
-VERSION_DATE = '2015-02-04'
+VERSION_DATE = '2015-02-09'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -601,7 +599,7 @@ class PES(object):
 			
 	def run(self):
                 pygame.mouse.set_visible(False)
-                fps = 20
+                fps = 60
 		ok = True
 		rtn = None
 		self.__screen.fill(self.__bgColour)
@@ -646,8 +644,8 @@ class PES(object):
                                                         ok = False
 				elif activeMenu.handlesJoyStickEvents():
 					activeMenu.handleEvent(event)
-				#elif self.__joystick and self.__js.get_id() == event.joy and (event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYAXISMOTION):
-				elif self.__joystick and self.__js.get_id() == event.joy and event.type == pygame.JOYBUTTONDOWN:
+				elif self.__joystick and self.__js.get_id() == event.joy and (event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYAXISMOTION):
+				#elif self.__joystick and self.__js.get_id() == event.joy and event.type == pygame.JOYBUTTONDOWN:
 					keyEvent = None
 					# need to handle joystick axis events here!
 					if event.type == pygame.JOYAXISMOTION:
@@ -2289,12 +2287,58 @@ class JoyStickConfigurationPanel(Panel):
 				label = self.__font.render('Press: %s' % self.__prompts[self.__promptIdx], 1, self.__colour, self.getBackgroundColour())
 				self.blit(label, (0, currentY))
 
+				configValue = None
+
+				if self.__promptIdx == 0 and self.__firstPass:
+					logging.debug("joystick config: ignoring first button sweep")
+					self.__firstPass = False
+					self.__lastButton = -1
+				else:
+					# loop through buttons
+					for i in range(0, self.__js.get_numbuttons()):
+						if self.__js.get_button(i) and self.__lastButton != i:
+							logging.debug("joystick config: joystick %d, button %d pressed" % (self.__js.get_id(), i))
+							self.__lastButton = i
+							configValue = str(i)
+
+					if configValue == None:
+						# loop through axes
+						for i in range(0, self.__js.get_numaxes()):
+							value = self.__js.get_axis(i)
+
+							if self.__lastAxis != i or (self.__lastAxis == i and ((value < 0 and self.__lastAxisValue > 0) or (value > 0 and self.__lastAxisValue < 0))):
+								if abs(value) > 0.9 and abs(value - self.__initialAxis[i]) > 0.5:
+									logging.debug("joystick config: joystick %d, axis %d, value: %f" % (self.__js.get_id(), i, value))
+									self.__lastAxis = i
+									self.__lastAxisValue = value
+									if value > 0:
+										configValue = "+%d" % i
+									else:
+										configValue = "-%d" % i
+
+				if configValue:
+					logging.debug("joystick config: %s" % configValue)
+					logging.debug("joystick config: looking for %s in joystick answers array" % configValue)
+					if configValue in self.__answers:
+						logging.debug("joystick config: button already assigned!")
+						self.__errorMsg = 'This button has already been assigned. Please try again'
+						self.__error = True
+					else:
+						self.__answers[self.__promptIdx] = configValue
+						logging.debug("joystick config: setting %s button to %s in answers array" % (self.__prompts[self.__promptIdx], configValue))
+						self.__promptIdx += 1
+						self.__error = False
+						if self.__promptIdx == len(self.__prompts):
+							logging.debug("joystick config: config complete!")
+							self.__configComplete = True
+
 				if self.__error:
 					currentY += label.get_rect().height * 2
 					label = self.__font.render(self.__errorMsg, 1, self.__colour, self.getBackgroundColour())
 					self.blit(label, (0, currentY))
 
-				self.__redraw = False
+				if not self.__configComplete:
+					self.__redraw = False
 
 			self.update(x, y)
 			#self.__redraw = False
@@ -2304,78 +2348,26 @@ class JoyStickConfigurationPanel(Panel):
 		if self.isActive():
 			if not self.__configComplete and (event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYAXISMOTION):
 				value = None
-
-				# BUGGY CODE - NOT FIT FOR RELEASE!
-				#if event.type == pygame.JOYAXISMOTION:
-				#	if event.value == -1.0 or event.value == 1.0:
-				#		# axis pressed
-				#		if not self.__axisHistory.has_key(event.joy):
-				#			self.__axisHistory[event.joy] = {}
-				#
-				#		if not self.__axisHistory[event.joy].has_key(event.axis):
-				#			self.__axisHistory[event.joy][event.axis] = (AXIS_PRESSED, event.value)
-				#			#print "AXIS %d PRESSED!" % event.axis
-				#	
-				#		if self.__axisHistory[event.joy][event.axis][0] != AXIS_PRESSED:
-				#			self.__axisHistory[event.joy][event.axis] = (AXIS_PRESSED, event.value)
-				#			#print "AXIS %d PRESSED!" % event.axis
-				#	elif event.value < 0.5 and event.value > -0.5:
-				#		# axis released
-				#		if not self.__axisHistory.has_key(event.joy):
-				#			self.__axisHistory[event.joy] = {}
-				#
-				#		if not self.__axisHistory[event.joy].has_key(event.axis):
-				#			self.__axisHistory[event.joy][event.axis] = (AXIS_INITIALISED, 0.0)
-				#			#print "AXIS %d INITIALISED, value: %f!" % (event.axis, event.value)
-				#
-				#		if self.__axisHistory[event.joy][event.axis][0] == AXIS_PRESSED:
-				#			self.__axisHistory[event.joy][event.axis] = (AXIS_RELEASED, self.__axisHistory[event.joy][event.axis][1])
-				#			#print "AXIS %d RELEASED!" % event.axis
 						
 				self.__redraw = True
 				if self.__jsDetect:
-					#if event.type == pygame.JOYBUTTONDOWN or (event.type == pygame.JOYAXISMOTION and self.__axisHistory[event.joy][event.axis] == AXIS_RELEASED):
 					if event.type == pygame.JOYBUTTONDOWN:
 						self.__jsIdx = event.joy
 						self.__js = pygame.joystick.Joystick(event.joy)
-						self.__jsDetect = False
-				else:
-					if event.type == pygame.JOYBUTTONDOWN:
-						value = str(event.button)
-					#elif event.type == pygame.JOYAXISMOTION and self.__axisHistory[event.joy].has_key(event.axis):
-					#	(action, axisValue) = self.__axisHistory[event.joy][event.axis]
-					#	if action == AXIS_RELEASED:
-					#		if axisValue > 0:
-					#			value = "+%d" % event.axis
-					#		else:
-					#			if self.__prompts[self.__promptIdx].find('Shoulder') == -1:
-					#				value = "-%d" % event.axis
-					#			else:
-					#				value = None
-					#		#print "STORED: %f, EVENT %f, VALUE: %s" % (axisValue, event.value, value)
-					#		del self.__axisHistory[event.joy][event.axis] # remove from event history dictionary
-
-					if value:
-						if self.__promptIdx == 0:
-							# first answer
-							self.__answers[self.__promptIdx] = value
-						else:
-							logging.debug("looking for %s in joystick answers array" % value)
-
-							if value in self.__answers:
-								self.__error = True
-								self.__errorMsg = 'This button has already been assigned. Please try again'
-								logging.debug('button %s has already been assigned for joystick %d' % (value, self.__jsIdx))
+						self.__initialAxis = []
+						for i in range(0, self.__js.get_numaxes()):
+							value =  self.__js.get_axis(i)
+							logging.debug("joystick config: initial value for axis %d, value %f" % (i, value))
+							if abs(value) > 0.5:
+								self.__initialAxis.append(value)
 							else:
-								self.__answers[self.__promptIdx] = value
-								logging.debug("setting %s button to %s in answers array" % (self.__prompts[self.__promptIdx], value))
-								self.__error = False
+								self.__initialAxis.append(0)
 
-					if not self.__error:
-						if value:
-							self.__promptIdx += 1
-							if self.__promptIdx == len(self.__prompts):
-								self.__configComplete = True
+						self.__lastAxis = -1
+						self.__lastAxisValue = 0
+						self.__lastButton = event.button
+						self.__firstPass = True
+						self.__jsDetect = False
 
 	def setActive(self, active):
 		super(JoyStickConfigurationPanel, self).setActive(active)
