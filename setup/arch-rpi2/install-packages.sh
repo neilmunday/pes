@@ -28,7 +28,7 @@ source /home/pi/pes/setup/arch-rpi2/functions.sh
 
 run sudo pacman -S bluez bluez-libs bluez-utils \
 	gcc git make patch pkg-config scons wget \
-	libusb-compat linuxconsole \
+	libusb-compat linuxconsole libcec-rpi \
 	python2 python2-levenshtein python2-pip python2-imaging \
 	ntp \
 	rsync \
@@ -38,6 +38,7 @@ run sudo pacman -S bluez bluez-libs bluez-utils \
 
 run sudo pip2 install --upgrade pip
 run sudo pip2 install python-uinput
+run sudo pip2 install cec
 
 #run sudo pacman -R mesa mesa-libgl
 
