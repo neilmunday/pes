@@ -60,7 +60,7 @@ if [ "$response" == "y" ]; then
 	run rm -fv $baseDir/emulators/BIOS/*.bin
 	echo ""
 	echo "Deleting PES build dir contents..."
-	run rm -rfv $baseDir/build/*
+	run sudo rm -rfv $baseDir/build/*
 	echo ""
 	echo "Deleting PES user configs and image cache for pi user..."
 	run rm -rfv $userDir/.pes

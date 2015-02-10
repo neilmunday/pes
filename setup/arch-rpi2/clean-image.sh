@@ -54,13 +54,13 @@ if [ "$response" == "y" ]; then
 	run sudo pacman -Scc
 	echo ""
 	echo "Deleting ROMs..."
-	run rm -rfv $baseDir/roms/GameBoy/* $baseDir/roms/GameBoy\ Color/* $baseDir/roms/GameGear/* $baseDir/roms/MasterSystem/* $baseDir/roms/Mega\ CD $baseDir/roms/MegaDrive/* $baseDir/roms/N64/* $baseDir/roms/NES/* $baseDir/roms/PSX/* $baseDir/roms/SNES/*
+	run rm -rfv $baseDir/roms/GameBoy/* $baseDir/roms/GameBoy\ Advance/* $baseDir/roms/GameBoy\ Color/* $baseDir/roms/GameGear/* $baseDir/roms/MasterSystem/* $baseDir/roms/Mega\ CD $baseDir/roms/MegaDrive/* $baseDir/roms/N64/* $baseDir/roms/NES/* $baseDir/roms/PSX/* $baseDir/roms/SNES/*
 	echo ""
 	echo "Deleting BIOSes..."
 	run rm -fv $baseDir/emulators/BIOS/*.bin
 	echo ""
 	echo "Deleting PES build dir contents..."
-	run rm -rfv $baseDir/build/*
+	run sudo rm -rfv $baseDir/build/*
 	echo ""
 	echo "Deleting PES user configs and image cache for pi user..."
 	run rm -rfv $userDir/.pes
