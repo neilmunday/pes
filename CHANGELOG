@@ -6,7 +6,7 @@ PES Changelog
 PES 1.2 (BETA)
 ----------------------------
 
-Date: 2015-02-09
+Date: 2015-02-10
 
 Changes (and bug fixes):
 
@@ -21,6 +21,7 @@ Changes (and bug fixes):
 	- Added joystick axis support at last!
 	- Added custom build of pygame to remove debug statements in joystick.c
 	- Added Raspberry Pi 2 support!
+	- Added paging support for game thumbnail menus
 	- Improved logging for unhandled exceptions
 	- Updated jstest.py utility
 	- Restructured conf.d directory
