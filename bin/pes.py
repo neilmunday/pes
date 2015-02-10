@@ -95,9 +95,13 @@ if __name__ == "__main__":
 		logging.info("loading GUI...")
 		pes = peslib.PES(args.window, commandFile)
 		if cecEnabled:
-			cec.init()
-			logging.debug("adding CEC callback...")
-			cec.add_callback(handleCecEvent, cec.EVENT_KEYPRESS)
+			try:
+				cec.init()
+				logging.debug("adding CEC callback...")
+				cec.add_callback(handleCecEvent, cec.EVENT_KEYPRESS)
+			except Exception, e:
+				cecEnabled = False
+				logging.error("CEC module initilisation failed, disabling CEC functions")
 		command = pes.run()
 
 		launchArgs = ''
