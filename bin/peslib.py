@@ -63,7 +63,7 @@ AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
 VERSION_NUMBER = '1.2 (BETA)'
-VERSION_DATE = '2015-02-09'
+VERSION_DATE = '2015-02-10'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -1043,6 +1043,10 @@ class JoyStick(object):
 							return pygame.event.Event(KEYDOWN, {'key': K_UP})
 						if self.__eventMap[value] == JoyStick.BTN_DOWN:
 							return pygame.event.Event(KEYDOWN, {'key': K_DOWN})
+						if self.__eventMap[event] == JoyStick.BTN_SHOULDER_LEFT:
+							return pygame.event.Event(KEYDOWN, {'key': K_PAGEUP})
+						if self.__eventMap[event] == JoyStick.BTN_SHOULDER_RIGHT:
+							return pygame.event.Event(KEYDOWN, {'key': K_PAGEDOWN})
 						
 		return None
 		
