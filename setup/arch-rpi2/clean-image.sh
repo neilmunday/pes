@@ -67,6 +67,7 @@ if [ "$response" == "y" ]; then
 	echo ""
 	echo "Deleting RetroArch config for pi user..."
 	run rm -rfv $userDir/.config/retroarch
+	echo ""
 	echo "Deleting PES and PESPad logs..."
 	run sudo rm -fv /var/log/pespad.log $baseDir/log/*
 	echo ""
