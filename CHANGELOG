@@ -3,10 +3,10 @@ PES Changelog
 =============
 
 ----------------------------
-PES 1.2 (BETA)
+PES 1.2
 ----------------------------
 
-Date: 2015-02-10
+Date: 2015-02-11
 
 Changes (and bug fixes):
 
@@ -25,6 +25,7 @@ Changes (and bug fixes):
 	- Improved logging for unhandled exceptions
 	- Updated jstest.py utility
 	- Restructured conf.d directory
+	- Various fixes for the setup scripts
 	- Corrected bug in image auto resizing code for the console menu
 
 -------
