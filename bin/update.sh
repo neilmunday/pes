@@ -22,6 +22,8 @@
 #    along with PES.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 echo ""
 echo "Before proceeding please be aware that updating PES here will"
 echo "will *ONLY* update the PES GUI and its supporting files."
@@ -39,6 +41,7 @@ echo ""
 
 read -p "Are you sure you want to update to the latest version? [y/n]" response
 if [ "$response" == "y" ]; then
+	cd "$DIR/.."
 	gitdir="$(git rev-parse --show-toplevel)"
 	echo "Proceeding with update of $gitdir"
 	cd $gitdir
