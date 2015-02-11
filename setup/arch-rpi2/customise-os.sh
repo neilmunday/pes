@@ -84,7 +84,7 @@ else
 		echo "Warning! $swapfile already exists - skipping swap file creation!"
 	else
 		echo "Creating swap file..."
-		run sudo fallocate -l 512M $swapfile
+		run sudo fallocate -l 128M $swapfile
 		run sudo chmod 600 $swapfile
 		run sudo mkswap $swapfile
 		run sudo swapon $swapfile
