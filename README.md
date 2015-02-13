@@ -24,6 +24,7 @@ The PES Raspberry Pi image has the following features:
 
   * Nintendo Entertainment System (NES)
   * Nintendo Game Boy
+  * Nintendo Game Boy Advance
   * Nintendo Game Boy Color
   * Nintendo Super Entertainment System (SNES)
   * Sega Game Gear
