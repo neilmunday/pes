@@ -62,8 +62,8 @@ AXIS_PRESSED = 1
 AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
-VERSION_NUMBER = '1.2'
-VERSION_DATE = '2015-02-11'
+VERSION_NUMBER = '1.3 (development version)'
+VERSION_DATE = '2015-02-18'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -890,6 +890,10 @@ class UpdateDbThread(threading.Thread):
 									self.__progress = 'Updating %s...' % name
 									logging.debug('updating game record in database...')
 									cur.execute("UPDATE `games` SET `api_id` = %d, `cover_art` = '%s', `overview` = '%s', `exists` = 1 WHERE `game_id` = %d;" % (gameApiId, thumbPath, overview.replace("'", "''"), row['game_id']))
+								else:
+									self.__progress = 'No need to update %s' % name
+									logging.debug("no need to update - could not find %s in online database" % name)
+									cur.execute('UPDATE `games` SET `exists` = 1 WHERE `game_id` = %d;' % row["game_id"])
 									
 								con.commit()
 							else:
