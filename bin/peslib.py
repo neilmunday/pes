@@ -63,7 +63,7 @@ AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
 VERSION_NUMBER = '1.3 (development version)'
-VERSION_DATE = '2015-02-18'
+VERSION_DATE = '2015-03-24'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
