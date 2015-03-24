@@ -217,6 +217,7 @@ class PES(object):
 		self.__confDir = self.__baseDir + os.sep + 'conf.d' + os.sep + 'pes'
 		self.__checkDir(self.__confDir)
 		self.__retroarchJoysticksDir = self.__baseDir + os.sep + 'conf.d' + os.sep + 'retroarch' + os.sep + 'joysticks'
+		self.__mupen64plusConfigFile = self.__baseDir + os.sep + 'conf.d' + os.sep + 'mupen64plus' + os.sep + 'mupen64plus.cfg'
 		self.__pesConfigFile = self.__confDir + os.sep + 'pes.ini'
 		self.__checkFile(self.__pesConfigFile)
 		self.__consolesConfigFile = self.__confDir + os.sep + 'consoles.ini'
@@ -372,6 +373,8 @@ class PES(object):
 		self.__mainMenu = Menu(menuItems, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 20, self.__fontColour, self.__bgColour, [self.__screenMarginLeft, self.__screenMarginRight, self.__screenMarginTop, self.__screenMarginBottom])
 		self.__menuStack = [self.__mainMenu]
 		self.__mainMenu.setActive(True)
+		
+		#self.__updateMupen64plusConfig()
 
 	def __checkDir(self, dir):
 		if not os.path.exists(dir):
@@ -598,8 +601,8 @@ class PES(object):
 		self.processEvent(EVENT_DATABASE_UPDATED)
 			
 	def run(self):
-                pygame.mouse.set_visible(False)
-                fps = 60
+		pygame.mouse.set_visible(False)
+		fps = 60
 		ok = True
 		rtn = None
 		self.__screen.fill(self.__bgColour)
@@ -689,6 +692,13 @@ class PES(object):
 		activeMenu.setActive(True)
 		self.__menuStack.append(activeMenu)
 		self.__header.setTitle('%s: %s' % (self.__name, 'Update Database'))
+		
+	def __updateMupen64plusConfig(self):
+		if os.path.exists(self.__mupen64plusConfigFile) and os.path.isfile(self.__mupen64plusConfigFile):
+			configParser = ConfigParser.ConfigParser()
+			configParser.read(self.__mupen64plusConfigFile)
+			if configParser.has_section('CoreEvents'):
+				print "Found CoreEvents"
 
 class UpdateDbThread(threading.Thread):
 	def __init__(self, db, consoles):
@@ -962,25 +972,33 @@ class JoyStick(object):
 
 	BTN_START = 'btn_start'
 	BTN_SELECT = 'btn_select'
-        BTN_A = 'btn_a'
-        BTN_B = 'btn_b'
+	BTN_A = 'btn_a'
+	BTN_B = 'btn_b'
 	BTN_X = 'btn_x'
 	BTN_Y = 'btn_y'
-        BTN_LEFT = 'btn_left'
-        BTN_RIGHT = 'btn_right'
-        BTN_UP = 'btn_up'
-        BTN_DOWN = 'btn_down'
+	BTN_LEFT = 'btn_left'
+	BTN_RIGHT = 'btn_right'
+	BTN_UP = 'btn_up'
+	BTN_DOWN = 'btn_down'
+	BTN_LEFT_AXIS_UP = 'btn_left_axis_up'
+	BTN_LEFT_AXIS_DOWN = 'btn_left_axis_down'
+	BTN_LEFT_AXIS_RIGHT = 'btn_left_axis_right'
+	BTN_LEFT_AXIS_LEFT = 'btn_left_axis_left'
+	BTN_RIGHT_AXIS_UP = 'btn_right_axis_up'
+	BTN_RIGHT_AXIS_DOWN = 'btn_right_axis_down'
+	BTN_RIGHT_AXIS_RIGHT = 'btn_right_axis_right'
+	BTN_RIGHT_AXIS_LEFT = 'btn_right_axis_left'
 	BTN_SHOULDER_LEFT = 'btn_shoulder_left'
 	BTN_SHOULDER_RIGHT = 'btn_shoulder_right'
 	BTN_SHOULDER_LEFT2 = 'btn_shoulder_left2'
 	BTN_SHOULDER_RIGHT2 = 'btn_shoulder_right2'
-	BTN_SHOULDER_LEFT3 = 'btn_shoulder_left3'
-	BTN_SHOULDER_RIGHT3 = 'btn_shoulder_right3'
-        BTN_SAVE_STATE = 'btn_save_state'
+	BTN_LEFT3 = 'btn_left3'
+	BTN_RIGHT3 = 'btn_right3'
+	BTN_SAVE_STATE = 'btn_save_state'
 	BTN_LOAD_STATE = 'btn_load_state'
 	BTN_EXIT = 'btn_exit'
 
-        def __init__(self, name, buttons):
+	def __init__(self, name, buttons):
 		#logging.debug("creating JoyStick object \"%s\" with buttons: %s" % (name, buttons))
 		self.__name = name
 		self.__matches = []
@@ -1057,44 +1075,44 @@ class JoyStick(object):
 
 	def buttonToKeyEvent(self, event):
 		event = str(event)
-                if event in self.__eventMap:
-                        if self.__eventMap[event] == JoyStick.BTN_A:
-                                return pygame.event.Event(KEYDOWN, {'key': K_RETURN})
-                        if self.__eventMap[event] == JoyStick.BTN_B:
-                                return pygame.event.Event(KEYDOWN, {'key': K_BACKSPACE})
+		if event in self.__eventMap:
+			if self.__eventMap[event] == JoyStick.BTN_A:
+				return pygame.event.Event(KEYDOWN, {'key': K_RETURN})
+			if self.__eventMap[event] == JoyStick.BTN_B:
+				return pygame.event.Event(KEYDOWN, {'key': K_BACKSPACE})
 			if self.__eventMap[event] == JoyStick.BTN_X:
-                                return pygame.event.Event(KEYDOWN, {'key': K_i})
+				return pygame.event.Event(KEYDOWN, {'key': K_i})
 			if self.__eventMap[event] == JoyStick.BTN_Y:
-                                return pygame.event.Event(KEYDOWN, {'key': K_f})
-                        if self.__eventMap[event] == JoyStick.BTN_EXIT:
-                                return pygame.event.Event(KEYDOWN, {'key': K_ESCAPE})
-                        if self.__eventMap[event] == JoyStick.BTN_LEFT:
-                                return pygame.event.Event(KEYDOWN, {'key': K_LEFT})
-                        if self.__eventMap[event] == JoyStick.BTN_RIGHT:
-                                return pygame.event.Event(KEYDOWN, {'key': K_RIGHT})
-                        if self.__eventMap[event] == JoyStick.BTN_UP:
-                                return pygame.event.Event(KEYDOWN, {'key': K_UP})
-                        if self.__eventMap[event] == JoyStick.BTN_DOWN:
-                                return pygame.event.Event(KEYDOWN, {'key': K_DOWN})
+				return pygame.event.Event(KEYDOWN, {'key': K_f})
+			if self.__eventMap[event] == JoyStick.BTN_EXIT:
+				return pygame.event.Event(KEYDOWN, {'key': K_ESCAPE})
+			if self.__eventMap[event] == JoyStick.BTN_LEFT:
+				return pygame.event.Event(KEYDOWN, {'key': K_LEFT})
+			if self.__eventMap[event] == JoyStick.BTN_RIGHT:
+				return pygame.event.Event(KEYDOWN, {'key': K_RIGHT})
+			if self.__eventMap[event] == JoyStick.BTN_UP:
+				return pygame.event.Event(KEYDOWN, {'key': K_UP})
+			if self.__eventMap[event] == JoyStick.BTN_DOWN:
+				return pygame.event.Event(KEYDOWN, {'key': K_DOWN})
 			if self.__eventMap[event] == JoyStick.BTN_SHOULDER_LEFT:
 				return pygame.event.Event(KEYDOWN, {'key': K_PAGEUP})
 			if self.__eventMap[event] == JoyStick.BTN_SHOULDER_RIGHT:
 				return pygame.event.Event(KEYDOWN, {'key': K_PAGEDOWN})
-                return None
+		return None
 
-        def getButton(self, event):
+	def getButton(self, event):
 		event = str(event)
-                if event in self.__eventMap:
-                        return self.__eventMap[event]
-                return None
+		if event in self.__eventMap:
+			return self.__eventMap[event]
+		return None
 
 	def getButtonValue(self, name):
 		if name in self.__btnMap:
 			return self.__btnMap[name]
 		return None
 
-        def getName(self):
-                return self.__name
+	def getName(self):
+		return self.__name
 
 	def getRetroArchButtonValue(self, btn):
 		if not btn in self.__btnMap or self.__btnMap[btn] == None:
@@ -1117,8 +1135,8 @@ class JoyStick(object):
 		cfg += 'input_r_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_SHOULDER_RIGHT), self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_RIGHT))
 		cfg += 'input_l2_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_SHOULDER_LEFT2), self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_LEFT2))
 		cfg += 'input_r2_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_SHOULDER_RIGHT2), self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_RIGHT2))
-		cfg += 'input_l3_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_SHOULDER_LEFT3), self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_LEFT3))
-		cfg += 'input_r3_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_SHOULDER_RIGHT3), self.getRetroArchButtonValue(JoyStick.BTN_SHOULDER_RIGHT3))
+		cfg += 'input_l3_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_LEFT3), self.getRetroArchButtonValue(JoyStick.BTN_LEFT3))
+		cfg += 'input_r3_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_RIGHT3), self.getRetroArchButtonValue(JoyStick.BTN_RIGHT3))
 		cfg += 'input_start_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_START))
 		cfg += 'input_select_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_SELECT))
 		cfg += 'input_up_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_UP), self.getRetroArchButtonValue(JoyStick.BTN_UP))
@@ -1129,14 +1147,14 @@ class JoyStick(object):
 		cfg += 'input_load_state_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_LOAD_STATE))
 		cfg += 'input_exit_emulator_btn = "%s"\n' % (self.getRetroArchButtonValue(JoyStick.BTN_EXIT))
 		cfg += 'input_pause_toggle = "nul"\n'
-		cfg += 'input_l_x_plus_btn = "nul"\n'
-		cfg += 'input_l_x_minus_btn = "nul"\n'
-		cfg += 'input_l_y_plus_btn = "nul"\n'
-		cfg += 'input_l_y_minus_btn = "nul"\n'
-		cfg += 'input_r_x_plus_btn = "nul"\n'
-		cfg += 'input_r_x_minus_btn = "nul"\n'
-		cfg += 'input_r_y_plus_btn = "nul"\n'
-		cfg += 'input_r_y_minus_btn = "nul"\n'
+		cfg += 'input_l_x_plus_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_LEFT_AXIS_RIGHT), self.getRetroArchButtonValue(JoyStick.BTN_LEFT_AXIS_RIGHT))
+		cfg += 'input_l_x_minus_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_LEFT_AXIS_LEFT), self.getRetroArchButtonValue(JoyStick.BTN_LEFT_AXIS_LEFT))
+		cfg += 'input_l_y_plus_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_LEFT_AXIS_UP), self.getRetroArchButtonValue(JoyStick.BTN_LEFT_AXIS_UP))
+		cfg += 'input_l_y_minus_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_LEFT_AXIS_DOWN), self.getRetroArchButtonValue(JoyStick.BTN_LEFT_AXIS_DOWN))
+		cfg += 'input_r_x_plus_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_RIGHT_AXIS_RIGHT), self.getRetroArchButtonValue(JoyStick.BTN_RIGHT_AXIS_RIGHT))
+		cfg += 'input_r_x_minus_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_RIGHT_AXIS_LEFT), self.getRetroArchButtonValue(JoyStick.BTN_RIGHT_AXIS_LEFT))
+		cfg += 'input_r_y_plus_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_RIGHT_AXIS_UP), self.getRetroArchButtonValue(JoyStick.BTN_RIGHT_AXIS_UP))
+		cfg += 'input_r_y_minus_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_RIGHT_AXIS_DOWN), self.getRetroArchButtonValue(JoyStick.BTN_RIGHT_AXIS_DOWN))
 		return cfg
 
 	def getAxisOrBtn(self, btn):
@@ -2199,8 +2217,8 @@ class JoyStickConfigurationPanel(Panel):
 		self.__font = pygame.font.Font(font, fontSize)
 		self.__redraw = True
 		self.__lastBtn = None
-		self.__prompts = ['Start', 'Select', 'Up', 'Down', 'Left', 'Right', 'A', 'B', 'X', 'Y', 'Shoulder L', 'Shoulder R', 'Shoulder L2', 'Shoulder R2', 'Exit Game', 'Save State', 'Load State']
-		self.__btns = [JoyStick.BTN_START, JoyStick.BTN_SELECT, JoyStick.BTN_UP, JoyStick.BTN_DOWN, JoyStick.BTN_LEFT, JoyStick.BTN_RIGHT, JoyStick.BTN_A, JoyStick.BTN_B, JoyStick.BTN_X, JoyStick.BTN_Y, JoyStick.BTN_SHOULDER_LEFT, JoyStick.BTN_SHOULDER_RIGHT, JoyStick.BTN_SHOULDER_RIGHT2, JoyStick.BTN_SHOULDER_LEFT2, JoyStick.BTN_EXIT, JoyStick.BTN_SAVE_STATE, JoyStick.BTN_LOAD_STATE]
+		self.__prompts = ['Start', 'Select', 'Up', 'Down', 'Left', 'Right', 'A', 'B', 'X', 'Y', 'Shoulder L', 'Shoulder R', 'Shoulder L2', 'Shoulder R2', 'L3 Up', 'L3 Down', 'L3 Left', 'L3 Right', 'R3 Up', 'R3 Down', 'R3 Left', 'R3 Right', 'Exit Game', 'Save State', 'Load State']
+		self.__btns = [JoyStick.BTN_START, JoyStick.BTN_SELECT, JoyStick.BTN_UP, JoyStick.BTN_DOWN, JoyStick.BTN_LEFT, JoyStick.BTN_RIGHT, JoyStick.BTN_A, JoyStick.BTN_B, JoyStick.BTN_X, JoyStick.BTN_Y, JoyStick.BTN_SHOULDER_LEFT, JoyStick.BTN_SHOULDER_RIGHT, JoyStick.BTN_SHOULDER_RIGHT2, JoyStick.BTN_SHOULDER_LEFT2, JoyStick.BTN_LEFT_AXIS_UP, JoyStick.BTN_LEFT_AXIS_DOWN, JoyStick.BTN_LEFT_AXIS_LEFT, JoyStick.BTN_LEFT_AXIS_RIGHT, JoyStick.BTN_RIGHT_AXIS_UP, JoyStick.BTN_RIGHT_AXIS_DOWN, JoyStick.BTN_RIGHT_AXIS_LEFT, JoyStick.BTN_RIGHT_AXIS_RIGHT, JoyStick.BTN_EXIT, JoyStick.BTN_SAVE_STATE, JoyStick.BTN_LOAD_STATE]
 		self.__answers = []
 		i = 0
 		while i < len(self.__prompts):

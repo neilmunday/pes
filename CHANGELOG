@@ -3,6 +3,17 @@ PES Changelog
 =============
 
 ----------------------------
+PES 1.3 (in development)
+----------------------------
+
+Date: 2015-03-24
+
+Changes (and bug fixes):
+
+	- Fixed bug in game scraper where games with missing cover art were removed unintentionally from the PES database
+	- Added support for L3 and R3 buttons
+
+----------------------------
 PES 1.2
 ----------------------------
 
