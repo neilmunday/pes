@@ -63,7 +63,7 @@ AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
 VERSION_NUMBER = '1.3 (development version)'
-VERSION_DATE = '2015-03-24'
+VERSION_DATE = '2015-03-29'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -373,8 +373,6 @@ class PES(object):
 		self.__mainMenu = Menu(menuItems, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 20, self.__fontColour, self.__bgColour, [self.__screenMarginLeft, self.__screenMarginRight, self.__screenMarginTop, self.__screenMarginBottom])
 		self.__menuStack = [self.__mainMenu]
 		self.__mainMenu.setActive(True)
-		
-		#self.__updateMupen64plusConfig()
 
 	def __checkDir(self, dir):
 		if not os.path.exists(dir):
@@ -642,15 +640,13 @@ class PES(object):
 						if not activeMenu.isLocked() and len(self.__menuStack) > 1:
 							self.__goBack()
 					else:
-                                                rtn = activeMenu.handleEvent(event)
-                                                if rtn != None:
-                                                        ok = False
+						rtn = activeMenu.handleEvent(event)
+						if rtn != None:
+							ok = False
 				elif activeMenu.handlesJoyStickEvents():
 					activeMenu.handleEvent(event)
 				elif self.__joystick and self.__js.get_id() == event.joy and (event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYAXISMOTION):
-				#elif self.__joystick and self.__js.get_id() == event.joy and event.type == pygame.JOYBUTTONDOWN:
 					keyEvent = None
-					# need to handle joystick axis events here!
 					if event.type == pygame.JOYAXISMOTION:
 						keyEvent = self.__joystick.axisToKeyEvent(event)
 					else:
@@ -659,7 +655,7 @@ class PES(object):
 							pass
         	                                elif self.__joystick.getButton(event.button) == JoyStick.BTN_B:
         	                                        if not activeMenu.isLocked() and len(self.__menuStack) > 1:
-								self.__goBack()
+														self.__goBack()
         	                                else:
         	                                        keyEvent = self.__joystick.buttonToKeyEvent(event.button)
 
@@ -674,6 +670,9 @@ class PES(object):
 
 		pygame.display.quit()
 		pygame.quit()
+		
+		#self.__updateMupen64plusConfig()
+		
 		return rtn
 
 	def __showMessageBox(self, message):
@@ -695,10 +694,13 @@ class PES(object):
 		
 	def __updateMupen64plusConfig(self):
 		if os.path.exists(self.__mupen64plusConfigFile) and os.path.isfile(self.__mupen64plusConfigFile):
-			configParser = ConfigParser.ConfigParser()
+			configParser = ConfigParser.ConfigParser(allow_no_value = True)
 			configParser.read(self.__mupen64plusConfigFile)
-			if configParser.has_section('CoreEvents'):
-				print "Found CoreEvents"
+			if configParser.has_section('CoreEvents') and configParser.has_option('CoreEvents', 'Joy Mapping Stop'):
+				configParser.set('CoreEvents', 'Joy Mapping Stop', 'J0B' + self.__joystick.getButtonValue(JoyStick.BTN_EXIT))
+				logging.debug('saving Mupen64plus configuration: %s' % (self.__mupen64plusConfigFile))
+				with open(self.__mupen64plusConfigFile, 'wb') as f:
+					configParser.write(f)
 
 class UpdateDbThread(threading.Thread):
 	def __init__(self, db, consoles):
@@ -1047,7 +1049,7 @@ class JoyStick(object):
 					del self.__axisHistory[event.joy][event.axis] # remove from event history dictionary
 
 					if value in self.__eventMap:
-		                                if self.__eventMap[value] == JoyStick.BTN_A:
+						if self.__eventMap[value] == JoyStick.BTN_A:
 							return pygame.event.Event(KEYDOWN, {'key': K_RETURN})
 						if self.__eventMap[value] == JoyStick.BTN_B:
 							return pygame.event.Event(KEYDOWN, {'key': K_BACKSPACE})
@@ -1065,10 +1067,18 @@ class JoyStick(object):
 							return pygame.event.Event(KEYDOWN, {'key': K_UP})
 						if self.__eventMap[value] == JoyStick.BTN_DOWN:
 							return pygame.event.Event(KEYDOWN, {'key': K_DOWN})
-						if self.__eventMap[event] == JoyStick.BTN_SHOULDER_LEFT:
+						if self.__eventMap[value] == JoyStick.BTN_SHOULDER_LEFT:
 							return pygame.event.Event(KEYDOWN, {'key': K_PAGEUP})
-						if self.__eventMap[event] == JoyStick.BTN_SHOULDER_RIGHT:
+						if self.__eventMap[value] == JoyStick.BTN_SHOULDER_RIGHT:
 							return pygame.event.Event(KEYDOWN, {'key': K_PAGEDOWN})
+						if self.__eventMap[value] == JoyStick.BTN_LEFT_AXIS_LEFT:
+							return pygame.event.Event(KEYDOWN, {'key': K_LEFT})
+						if self.__eventMap[value] == JoyStick.BTN_LEFT_AXIS_RIGHT:
+							return pygame.event.Event(KEYDOWN, {'key': K_RIGHT})
+						if self.__eventMap[value] == JoyStick.BTN_LEFT_AXIS_UP:
+							return pygame.event.Event(KEYDOWN, {'key': K_UP})
+						if self.__eventMap[value] == JoyStick.BTN_LEFT_AXIS_DOWN:
+							return pygame.event.Event(KEYDOWN, {'key': K_DOWN})
 						
 		return None
 		
