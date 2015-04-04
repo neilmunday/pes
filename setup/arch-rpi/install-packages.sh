@@ -34,7 +34,8 @@ run sudo pacman -S bluez bluez-libs bluez-utils \
 	rsync \
 	samba \
 	sdl sdl_mixer sdl_ttf sdl_image \
-	mesa mesa-libgl
+	mesa mesa-libgl \
+	zip unzip
 
 run sudo pip2 install --upgrade pip
 run sudo pip2 install python-uinput
