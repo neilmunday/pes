@@ -63,7 +63,7 @@ AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
 VERSION_NUMBER = '1.3 (development version)'
-VERSION_DATE = '2015-03-29'
+VERSION_DATE = '2015-04-06'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -873,7 +873,7 @@ class UpdateDbThread(threading.Thread):
 												output.close()
 												imageSaved = True
 											except urllib2.URLError, e:
-												logging.error("an error occurred whilst trying to open url: %s" % e.args)
+												logging.error("an error occurred whilst trying to open url: %s" % e.message)
 
 											if imageSaved:
 												# resize the image if it is too big
@@ -2239,6 +2239,7 @@ class JoyStickConfigurationPanel(Panel):
 		self.__error = False
 		self.__errorMsg = ''
 		self.__axisHistory = {}
+		self.__firstPass = True
 
 	def draw(self, x, y):
 		if self.isActive() and self.__redraw:
@@ -2254,6 +2255,7 @@ class JoyStickConfigurationPanel(Panel):
 				self.__lastTime = time.time()
 				self.__currentTime = self.__lastTime
 				self.__axisHistory = {}
+				self.__firstPass = True
 
 			if self.__configComplete:
 				jsName = self.__js.get_name()
@@ -2325,10 +2327,21 @@ class JoyStickConfigurationPanel(Panel):
 
 				configValue = None
 
-				if self.__promptIdx == 0 and self.__firstPass:
+				if self.__firstPass:
 					logging.debug("joystick config: ignoring first button sweep")
-					self.__firstPass = False
-					self.__lastButton = -1
+
+					# check that all buttons are reset
+					buttonSet = False
+					for i in range(0, self.__js.get_numbuttons()):
+						if self.__js.get_button(i):
+							buttonSet = True
+							break
+
+					if not buttonSet:
+						self.__firstPass = False
+						self.__lastButton = -1
+					else:
+						logging.debug("joystick config: at least one button is not reset")
 				else:
 					# loop through buttons
 					for i in range(0, self.__js.get_numbuttons()):
@@ -2353,7 +2366,6 @@ class JoyStickConfigurationPanel(Panel):
 										configValue = "-%d" % i
 
 				if configValue:
-					logging.debug("joystick config: %s" % configValue)
 					logging.debug("joystick config: looking for %s in joystick answers array" % configValue)
 					if self.__promptIdx > 0 and self.__answers[0] == configValue:
 						logging.debug("joystick config: skipping button assignment")
@@ -2396,6 +2408,7 @@ class JoyStickConfigurationPanel(Panel):
 				self.__redraw = True
 				if self.__jsDetect:
 					if event.type == pygame.JOYBUTTONDOWN:
+						logging.debug("joystick config: initial button press from joystick %d, button %d" % (event.joy, event.button))
 						self.__jsIdx = event.joy
 						self.__js = pygame.joystick.Joystick(event.joy)
 						self.__initialAxis = []
