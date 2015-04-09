@@ -43,12 +43,15 @@ I would like to thank the following people/groups as without them PES would not 
 * Frank Raiser for his [image scaling code](http://www.pygame.org/pcr/transform_scale>) that I have modified for use by PES to scale thumbnail images
 * The maintainers of [RetroArch](http://www.libretro.com>) and all of the emulators that PES uses:
 
+  * libretro-fba https://github.com/libretro/libretro-fba
   * fceu-next https://github.com/libretro/fceu-next
   * gambatte-libretro https://github.com/libretro/gambatte-libretro
-  * Genesis-Plus-GX https://github.com/ekeeke/Genesis-Plus-GX.git
+  * Genesis-Plus-GX https://github.com/ekeeke/Genesis-Plus-GX
+  * gpsp https://github.com/libretro/gpsp
   * pcsx_rearmed https://github.com/notaz/pcsx_rearmed
-  * PicoDrive https://github.com/libretro/picodrive.git
+  * PicoDrive https://github.com/libretro/picodrive
   * Pocket SNES https://github.com/libretro/pocketsnes-libretro
+  * Ric RPi's Mupen64Plus fork https://github.com/ricrpi
 
 * falkTX for creating the [QtSixA](http://qtsixa.sourceforge.net) daemon and utilities which is used by PES for using Sony PlayStation 3 control pads via Bluetooth.
 * All the maintainers of [Arch Linux](http://archlinuxarm.org/platforms/armv6/raspberry-pi>)
