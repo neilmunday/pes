@@ -30,6 +30,7 @@ import sys
 import os
 import argparse
 import signal
+import time
 from signal import SIGTERM
 import pygame
 from pygame.locals import *
@@ -68,6 +69,7 @@ if __name__ == "__main__":
 	lastAxis = -1
 	lastAxisValue = 0
 	lastButton = -1
+	buttonTime = 0
 
 	print "Please press a button once your control pad's axes are in their rest positions"
 
@@ -91,17 +93,20 @@ if __name__ == "__main__":
 			# loop through buttons
 			for i in range(0, js.get_numbuttons()):
 				if js.get_button(i) and lastButton != i:
-					print "joystick %d, button %d pressed" % (args.jsNumber, i)
+					buttonTime = time.time()
+					print "joystick %d, button %d pressed, time: %d" % (args.jsNumber, i, buttonTime)
 					lastButton = i
 
-			# loop through axes
-			for i in range(0, js.get_numaxes()):
-				value = js.get_axis(i)
-				if lastAxis != i or (lastAxis == i and ((value < 0 and lastAxisValue > 0) or (value > 0 and lastAxisValue < 0))):
-					if abs(value) > 0.9 and abs(value - initialAxis[i]) > 0.5:
-						print "joystick %d, axis %d, value: %f" % (args.jsNumber, i, value)
-						lastAxis = i
-						lastAxisValue = value
+			# loop through axis
+			if buttonTime == 0 or time.time() - buttonTime >= 1:
+				for i in range(0, js.get_numaxes()):
+					value = js.get_axis(i)
+					if lastAxis != i or (lastAxis == i and ((value < 0 and lastAxisValue > 0) or (value > 0 and lastAxisValue < 0))):
+						if abs(value) > 0.9 and abs(value - initialAxis[i]) > 0.5:
+							print buttonTime
+							print "joystick %d, axis %d, value: %f, time: %d" % (args.jsNumber, i, value, time.time())
+							lastAxis = i
+							lastAxisValue = value
 
 			#print "Sleeping..."
 			pygame.time.wait(10)
