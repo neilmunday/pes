@@ -63,7 +63,7 @@ AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
 VERSION_NUMBER = '1.3 (development version)'
-VERSION_DATE = '2015-04-06'
+VERSION_DATE = '2015-03-29'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -2252,6 +2252,7 @@ class JoyStickConfigurationPanel(Panel):
 				self.__reinit = False
 				self.__configComplete = False
 				self.__lastBtn = None
+				self.__lastButtonTime = 0
 				self.__lastTime = time.time()
 				self.__currentTime = self.__lastTime
 				self.__axisHistory = {}
@@ -2348,9 +2349,10 @@ class JoyStickConfigurationPanel(Panel):
 						if self.__js.get_button(i) and self.__lastButton != i:
 							logging.debug("joystick config: joystick %d, button %d pressed" % (self.__js.get_id(), i))
 							self.__lastButton = i
+							self.__lastButtonTime = time.time()
 							configValue = str(i)
 
-					if configValue == None:
+					if configValue == None and time.time() - self.__lastButtonTime >= 1:
 						# loop through axes
 						for i in range(0, self.__js.get_numaxes()):
 							value = self.__js.get_axis(i)
@@ -2423,6 +2425,7 @@ class JoyStickConfigurationPanel(Panel):
 						self.__lastAxis = -1
 						self.__lastAxisValue = 0
 						self.__lastButton = event.button
+						self.__lastButtonTime = 0
 						self.__firstPass = True
 						self.__jsDetect = False
 
