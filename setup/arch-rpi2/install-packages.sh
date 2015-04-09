@@ -26,7 +26,7 @@ source /home/pi/pes/setup/arch-rpi2/functions.sh
 
 # install packages
 
-run sudo pacman -S bluez bluez-libs bluez-utils \
+run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
 	gcc git make patch pkg-config scons wget \
 	libusb-compat linuxconsole libcec-rpi \
 	python2 python2-levenshtein python2-pip python2-imaging \
