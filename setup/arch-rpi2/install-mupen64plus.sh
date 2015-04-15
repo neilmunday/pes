@@ -111,7 +111,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX V=1 -j install
+run make PREFIX=$PREFIX V=1 VC=1 -j install
 
 #
 # input-sdl
