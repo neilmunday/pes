@@ -35,9 +35,6 @@ run $setupDir/install-packages.sh
 header "Customising OS..."
 run $setupDir/customise-os.sh
 
-header "Installing pygame..."
-run $setupDir/install-pygame.sh
-
 header "Setting up PS3 Bluetooth control pad support.."
 run $setupDir/install-qtsixad.sh
 
