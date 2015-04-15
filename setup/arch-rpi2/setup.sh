@@ -35,9 +35,6 @@ run $setupDir/install-packages.sh
 header "Customising OS..."
 run $setupDir/customise-os.sh
 
-header "Installing pygame..."
-run $setupDir/install-pygame.sh
-
 header "Setting up PS3 Bluetooth control pad support.."
 run $setupDir/install-qtsixad.sh
 
@@ -52,7 +49,7 @@ run $setupDir/install-picodrive.sh
 run $setupDir/install-pocketsnes.sh
 run $setupDir/install-psx_rearmed.sh
 run $setupDir/install-gpsp.sh
-#run $setupDir/install-mupen64plus.sh
+run $setupDir/install-mupen64plus.sh
 
 header "Setting up Samba..."
 run $setupDir/install-samba.sh
