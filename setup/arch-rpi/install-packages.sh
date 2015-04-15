@@ -41,8 +41,6 @@ run sudo pip2 install --upgrade pip
 run sudo pip2 install python-uinput
 run sudo pip2 install cec
 
-#run sudo pacman -R mesa mesa-libgl
-
 # enable services
 run sudo systemctl enable ntpd.service
 run sudo systemctl start ntpd.service

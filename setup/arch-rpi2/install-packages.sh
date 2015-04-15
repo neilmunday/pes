@@ -29,7 +29,7 @@ source /home/pi/pes/setup/arch-rpi2/functions.sh
 run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
 	gcc git make patch pkg-config scons wget \
 	libusb-compat linuxconsole libcec-rpi \
-	python2 python2-levenshtein python2-pip python2-imaging \
+	python2 python2-levenshtein python2-pip python2-imaging python2-pygame \
 	ntp \
 	rsync \
 	samba \
@@ -40,8 +40,6 @@ run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
 run sudo pip2 install --upgrade pip
 run sudo pip2 install python-uinput
 run sudo pip2 install cec
-
-#run sudo pacman -R mesa mesa-libgl
 
 # enable services
 run sudo systemctl enable ntpd.service
