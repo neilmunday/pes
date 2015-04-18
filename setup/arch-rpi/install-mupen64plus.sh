@@ -219,3 +219,4 @@ run echo "sudo modprobe evdev" >> $launchScript
 run echo "$PREFIX/bin/mupen64plus --corelib $PREFIX/lib/libmupen64plus.so.2 --datadir $PREFIX/share/mupen64plus --plugindir $PREFIX/lib/mupen64plus --configdir $baseDir/conf.d/mupen64plus \"\\$1\"" >> $launchScript
 run echo "sudo rmmod evdev" >> $launchScript
 
+run chmod 700 $launchScript
