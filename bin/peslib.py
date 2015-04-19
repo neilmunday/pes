@@ -63,7 +63,7 @@ AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
 VERSION_NUMBER = '1.3 (development version)'
-VERSION_DATE = '2015-03-29'
+VERSION_DATE = '2015-04-19'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -273,7 +273,7 @@ class PES(object):
 			cur = con.cursor()
 			cur.execute('CREATE TABLE IF NOT EXISTS `games`(`game_id` INTEGER PRIMARY KEY, `api_id` INT, `exists` INT, `console_id` INT, `name` TEXT, `cover_art` TEXT, `game_path` TEXT, `overview` TEXT, `released` INT, `last_played` INT, `favourite` INT(1), `play_count` INT, `size` INT )')
 			cur.execute('CREATE INDEX IF NOT EXISTS "games_index" on games (game_id ASC)')
-			cur.execute('CREATE TABLE IF NOT EXISTS `consoles`(`console_id` INTEGER PRIMARY KEY, `name` TEXT)')
+			cur.execute('CREATE TABLE IF NOT EXISTS `consoles`(`console_id` INTEGER PRIMARY KEY, `name` TEXT, `emulator` TEXT)')
 			cur.execute('CREATE INDEX IF NOT EXISTS "console_index" on consoles (console_id ASC)')
 		except sqlite3.Error, e:
 			self.__exit("Error: %s" % e.args[0], True)
@@ -293,14 +293,14 @@ class PES(object):
 				extensions = configParser.get(c, 'extensions').split(' ')
 				command = configParser.get(c, 'command').replace('%%BASE%%', self.__baseDir)
 				consoleImg = configParser.get(c, 'image').replace('%%BASE%%', self.__baseDir)
+				emulator = configParser.get(c, 'emulator')
 				self.__checkFile(consoleImg)
 				nocoverart = configParser.get(c, 'nocoverart').replace('%%BASE%%', self.__baseDir)
 				self.__checkFile(nocoverart)
 				consoleId = configParser.get(c, 'id')
-				console = Console(c, consoleId, extensions, self.__romsDir + os.sep + c, command, self.__userDb, consoleImg, nocoverart, self.__imgCacheDir)
+				console = Console(c, consoleId, extensions, self.__romsDir + os.sep + c, command, self.__userDb, consoleImg, nocoverart, self.__imgCacheDir, emulator)
 				if console.isNew():
 					console.save()
-				#console.getGames()
 				self.__consoles.append(console)
 			except ConfigParser.NoOptionError, e:
 				self.__exit('Error parsing config file %s: %s' % (self.__pesConfigFile, e.message), True)
@@ -400,31 +400,35 @@ class PES(object):
 
 	def detectJoysticks(self):
 		logging.debug("looking for joysticks...")
-                if pygame.joystick.get_init():
-                       pygame.joystick.quit()
-                pygame.joystick.init()
+		if pygame.joystick.get_init():
+			pygame.joystick.quit()
+		pygame.joystick.init()
 
-                self.__js = None # PyGame joystick object
-                self.__joystick = None # PES joystick object
-                self.__joystickTotal = pygame.joystick.get_count()
-                logging.debug("found %d joystick(s)" % self.__joystickTotal)
-                if self.__joystickTotal > 0:
+		self.__js = None # PyGame joystick object
+		self.__joystick = None # PES joystick object
+		self.__joystickTotal = pygame.joystick.get_count()
+		self.__joysticksConnected = {} # stores a dictionary of connected joysticks that are *recognised by PES*, the key is the js number and the value is a JoyStick object
+		logging.debug("found %d joystick(s)" % self.__joystickTotal)
+		if self.__joystickTotal > 0:
 			primaryFound = False
 			for i in range(0, self.__joystickTotal):
 				js = pygame.joystick.Joystick(i)
 				js.init()
-				logging.debug("joystick %d: %s" % (i, js.get_name()))
+				jsName = js.get_name()
+				jsIndex = js.get_id()
+				logging.debug("joystick %d: %s" % (jsIndex, jsName))
 				matchFound = False
 				for j in self.__joysticks:
-					if j.isMatch(js.get_name()):
+					if j.isMatch(jsName):
 						matchFound = True
-						logging.debug("joystick recognised: %s" % js.get_name())
+						logging.debug("joystick recognised: %s" % jsName)
+						self.__joysticksConnected[jsIndex] = j
 						if not primaryFound:
+							logging.debug("primary joystick is joystick: %d, %s" % (jsIndex, jsName))
 							self.__joystick = j
 							self.__js = js
 							primaryFound = True
-							break
-
+							#break
 				if not matchFound:
 					logging.debug("joystick not recognised!")
 
@@ -650,14 +654,14 @@ class PES(object):
 					if event.type == pygame.JOYAXISMOTION:
 						keyEvent = self.__joystick.axisToKeyEvent(event)
 					else:
-	                                        if self.__joystick.getButton(event.button) == JoyStick.BTN_EXIT:
-        	                                        #ok = False
+						if self.__joystick.getButton(event.button) == JoyStick.BTN_EXIT:
+							#ok = False
 							pass
-        	                                elif self.__joystick.getButton(event.button) == JoyStick.BTN_B:
-        	                                        if not activeMenu.isLocked() and len(self.__menuStack) > 1:
-														self.__goBack()
-        	                                else:
-        	                                        keyEvent = self.__joystick.buttonToKeyEvent(event.button)
+						elif self.__joystick.getButton(event.button) == JoyStick.BTN_B:
+							if not activeMenu.isLocked() and len(self.__menuStack) > 1:
+								self.__goBack()
+						else:
+							keyEvent = self.__joystick.buttonToKeyEvent(event.button)
 
 					if keyEvent:
 						rtn = activeMenu.handleEvent(keyEvent)
@@ -668,12 +672,18 @@ class PES(object):
 			#pygame.display.update()
 			pygame.display.flip()
 
+		returnValue = None
+			
+		if rtn:
+			(command, emulator) = rtn
+			# hack for Mupen64plus joystick config update
+			if emulator == 'Mupen64Plus':
+				self.__updateMupen64plusConfig()
+			returnValue = command
+			
 		pygame.display.quit()
 		pygame.quit()
-		
-		#self.__updateMupen64plusConfig()
-		
-		return rtn
+		return returnValue
 
 	def __showMessageBox(self, message):
 		activeMenu = self.__getActiveMenu()
@@ -693,11 +703,67 @@ class PES(object):
 		self.__header.setTitle('%s: %s' % (self.__name, 'Update Database'))
 		
 	def __updateMupen64plusConfig(self):
-		if os.path.exists(self.__mupen64plusConfigFile) and os.path.isfile(self.__mupen64plusConfigFile):
-			configParser = ConfigParser.ConfigParser(allow_no_value = True)
+		if self.__joystickTotal > 0 and os.path.exists(self.__mupen64plusConfigFile) and os.path.isfile(self.__mupen64plusConfigFile):
+			logging.debug('loading Mupen64plus config file: %s' % self.__mupen64plusConfigFile)
+			configParser = ConfigParser.SafeConfigParser()
+			configParser.optionxform=str
 			configParser.read(self.__mupen64plusConfigFile)
 			if configParser.has_section('CoreEvents') and configParser.has_option('CoreEvents', 'Joy Mapping Stop'):
-				configParser.set('CoreEvents', 'Joy Mapping Stop', 'J0B' + self.__joystick.getButtonValue(JoyStick.BTN_EXIT))
+				exitBtn = self.__joystick.getButtonValue(JoyStick.BTN_EXIT)
+				if exitBtn == None:
+					msg = 'Warning: no exit button has been defined for %s!' % self.__joystick.getName()
+					logging.info(msg)
+					self.__showMessageBox(msg)
+					configParser.set('CoreEvents', 'Joy Mapping Stop', '')
+				else:
+					configParser.set('CoreEvents', 'Joy Mapping Stop', 'J0B' + exitBtn)
+				# loop through each joystick that is connected and save to button config file
+				# note: max of 4 control pads for this emulator
+				i = 0
+				for jsNumber, js in self.__joysticksConnected.iteritems():
+					jsName = js.getName()
+					logging.debug('generating Mupen64Plus config for joystick %d: %s' % (jsNumber, jsName))
+					section = 'Input-SDL-Control%d' % (i + 1)
+					if configParser.has_section(section):
+						configParser.set(section, 'device', str(i))
+						configParser.set(section, 'name', '"%s"' % jsName)
+						configParser.set(section, 'plugged', 'True')
+						configParser.set(section, 'mouse', 'False')
+						configParser.set(section, 'mode', '0') # this must be set to 0 for the following values to take effect
+						configParser.set(section, 'DPad R', js.getMupen64PlusButtonValue(JoyStick.BTN_RIGHT))
+						configParser.set(section, 'DPad L', js.getMupen64PlusButtonValue(JoyStick.BTN_LEFT))
+						configParser.set(section, 'DPad D', js.getMupen64PlusButtonValue(JoyStick.BTN_DOWN))
+						configParser.set(section, 'DPad U', js.getMupen64PlusButtonValue(JoyStick.BTN_UP))
+						configParser.set(section, 'Start', js.getMupen64PlusButtonValue(JoyStick.BTN_START))
+						configParser.set(section, 'Z Trig', js.getMupen64PlusButtonValue(JoyStick.BTN_SHOULDER_LEFT))
+						configParser.set(section, 'B Button', js.getMupen64PlusButtonValue(JoyStick.BTN_Y))
+						configParser.set(section, 'A Button', js.getMupen64PlusButtonValue(JoyStick.BTN_B))
+						configParser.set(section, 'C Button R', js.getMupen64PlusButtonValue(JoyStick.BTN_RIGHT_AXIS_RIGHT))
+						configParser.set(section, 'C Button L', js.getMupen64PlusButtonValue(JoyStick.BTN_RIGHT_AXIS_LEFT))
+						configParser.set(section, 'C Button D', js.getMupen64PlusButtonValue(JoyStick.BTN_RIGHT_AXIS_DOWN))
+						configParser.set(section, 'C Button U', js.getMupen64PlusButtonValue(JoyStick.BTN_RIGHT_AXIS_UP))
+						configParser.set(section, 'R Trig', js.getMupen64PlusButtonValue(JoyStick.BTN_SHOULDER_LEFT2))
+						configParser.set(section, 'L Trig', js.getMupen64PlusButtonValue(JoyStick.BTN_SHOULDER_RIGHT2))
+						configParser.set(section, 'X Axis', js.getMupen64PlusButtonValue(JoyStick.BTN_LEFT_AXIS_LEFT))
+						configParser.set(section, 'Y Axis', js.getMupen64PlusButtonValue(JoyStick.BTN_LEFT_AXIS_UP))
+					
+					if i == 3:
+						break
+					i += 1
+					
+				while i < 4:
+					section = 'Input-SDL-Control%d' % (i + 1)
+					if configParser.has_section(section):
+						configParser.set(section, 'device', '-1') # no joystick connected
+						configParser.set(section, 'name', '""')
+					i += 3
+				
+				# and so begins some crap code to set empty values to "" as Python's ConfigParser strips these
+				for s in configParser.sections():
+					for k, v in configParser.items(s):
+						if v == None or v == '':
+							configParser.set(s, k, '""')
+				
 				logging.debug('saving Mupen64plus configuration: %s' % (self.__mupen64plusConfigFile))
 				with open(self.__mupen64plusConfigFile, 'wb') as f:
 					configParser.write(f)
@@ -1081,7 +1147,6 @@ class JoyStick(object):
 							return pygame.event.Event(KEYDOWN, {'key': K_DOWN})
 						
 		return None
-		
 
 	def buttonToKeyEvent(self, event):
 		event = str(event)
@@ -1110,6 +1175,14 @@ class JoyStick(object):
 				return pygame.event.Event(KEYDOWN, {'key': K_PAGEDOWN})
 		return None
 
+	def getAxisOrBtn(self, btn):
+		if not btn in self.__btnMap or self.__btnMap[btn] == None:
+			return 'btn'
+		value = self.__btnMap[btn]
+		if value[0:1] == '-' or value[0:1] == '+':
+			return 'axis'
+		return 'btn'
+		
 	def getButton(self, event):
 		event = str(event)
 		if event in self.__eventMap:
@@ -1121,6 +1194,19 @@ class JoyStick(object):
 			return self.__btnMap[name]
 		return None
 
+	def getMupen64PlusButtonValue(self, btn):
+		if not btn in self.__btnMap or self.__btnMap[btn] == None:
+			return ''
+		value = self.__btnMap[btn]
+		if btn == JoyStick.BTN_LEFT_AXIS_LEFT or btn == JoyStick.BTN_LEFT_AXIS_UP:
+			if value[0:1] == '-' or value[0:1] == '+':
+				return '"axis(%s-,%s+)"' % (value[1:], value[1:])
+			else:
+				return '""'
+		if value[0:1] == '-' or value[0:1] == '+':
+			return '"axis(%s%s)"' % (value[1:], value[0:1])
+		return '"button(%s)"' % value
+		
 	def getName(self):
 		return self.__name
 
@@ -1166,14 +1252,6 @@ class JoyStick(object):
 		cfg += 'input_r_y_plus_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_RIGHT_AXIS_UP), self.getRetroArchButtonValue(JoyStick.BTN_RIGHT_AXIS_UP))
 		cfg += 'input_r_y_minus_%s = "%s"\n' % (self.getAxisOrBtn(JoyStick.BTN_RIGHT_AXIS_DOWN), self.getRetroArchButtonValue(JoyStick.BTN_RIGHT_AXIS_DOWN))
 		return cfg
-
-	def getAxisOrBtn(self, btn):
-		if not btn in self.__btnMap or self.__btnMap[btn] == None:
-			return 'btn'
-		value = self.__btnMap[btn]
-		if value[0:1] == '-' or value[0:1] == '+':
-			return 'axis'
-		return 'btn'
 
 	def isMatch(self, js):
 		#for i in self.__matches:
@@ -1336,9 +1414,10 @@ class Record(object):
 
 class Console(Record):
 
-	def __init__(self, name, consoleId, extensions, romDir, command, db, consoleImg, noCoverArtImg, imgCacheDir):
-		super(Console, self).__init__(db, 'consoles', ['console_id', 'name'], 'console_id', int(consoleId), False)
+	def __init__(self, name, consoleId, extensions, romDir, command, db, consoleImg, noCoverArtImg, imgCacheDir, emulator):
+		super(Console, self).__init__(db, 'consoles', ['console_id', 'name', 'emulator'], 'console_id', int(consoleId), False)
 		self.setProperty('name', name)
+		self.setProperty('emulator', emulator)
 		self.__extensions = extensions
 		self.__romDir = romDir
 		self.__consoleImg = consoleImg
@@ -1354,6 +1433,9 @@ class Console(Record):
 	def getDir(self):
 		return self.__dir
 
+	def getEmulator(self):
+		return self.getProperty('emulator')
+		
 	def getGames(self, favouritesOnly=False):
 		con = None
 		try:
@@ -2600,7 +2682,7 @@ class GameMenuItem(MenuImgItem):
 		self.__game.setLastPlayed()
 		self.__game.setPlayCount()
 		self.__game.save()
-		return self.__game.getCommand()
+		return (self.__game.getCommand(), self.__game.getConsole().getEmulator())
 
 	def getGame(self):
 		return self.__game
