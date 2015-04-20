@@ -63,7 +63,7 @@ AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
 VERSION_NUMBER = '1.3 (development version)'
-VERSION_DATE = '2015-04-19'
+VERSION_DATE = '2015-04-20'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -2417,18 +2417,22 @@ class JoyStickConfigurationPanel(Panel):
 					buttonSet = False
 					for i in range(0, self.__js.get_numbuttons()):
 						if self.__js.get_button(i):
+							logging.debug("joystick %d button %d is set!" % (self.__js.get_id(), i))
 							buttonSet = True
 							break
 
 					if not buttonSet:
 						self.__firstPass = False
 						self.__lastButton = -1
+						self.__error = False
 					else:
+						self.__errorMsg = "Waiting for all buttons to reset..."
+						self.__error = True
 						logging.debug("joystick config: at least one button is not reset")
 				else:
 					# loop through buttons
 					for i in range(0, self.__js.get_numbuttons()):
-						if self.__js.get_button(i) and self.__lastButton != i:
+						if self.__js.get_button(i) and i != self.__lastButton:
 							logging.debug("joystick config: joystick %d, button %d pressed" % (self.__js.get_id(), i))
 							self.__lastButton = i
 							self.__lastButtonTime = time.time()
