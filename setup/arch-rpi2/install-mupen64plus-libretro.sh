@@ -32,6 +32,6 @@ run git clone https://github.com/libretro/mupen64plus-libretro
 checkDir mupen64plus-libretro
 cd mupen64plus-libretro
 
-run make WITH_DYNAREC=arm platform=rpi V=1
+run make WITH_DYNAREC=arm platform=rpi2 V=1
 checkFile mupen64plus_libretro.so
 run cp -v mupen64plus_libretro.so $retroArchCoresDir
