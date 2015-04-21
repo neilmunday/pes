@@ -42,6 +42,7 @@ run mkdir -p $retroArchConfigDir
 
 export CFLAGS="-O3 -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
 export CXXFLAGS=$CFLAGS
+#export PKG_CONFIG_PATH=/opt/sdl2/default/lib/pkgconfig
 
 run ./configure --prefix="$retroArchInstallDir" --disable-udev --disable-ffmpeg --disable-netplay --disable-pulse --disable-x11 --disable-sdl
 run make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1
