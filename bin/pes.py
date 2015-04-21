@@ -114,11 +114,14 @@ if __name__ == "__main__":
 
 		with open(commandFile, 'w') as f:
 			if command:
+				execLog = baseDir + os.sep + 'log/exec.log'
 				f.write("echo running %s\n" % command)
-				f.write("%s\n" % command)
+				f.write("echo see %s for console output\n" % execLog)
+				f.write("%s &> %s\n" % (command, execLog)) # redirect stdout and stderr to get a frame rate boost
 				f.write("exec %s/pes.sh %s\n" % (scriptDir, launchArgs))
 			else:
-				f.write('exit')
+				f.write("exit\n")
 		sys.exit(0)
 	except Exception, e:
 		logging.exception(e)
+		sys.exit(1)
