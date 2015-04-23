@@ -40,6 +40,9 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 script="$DIR/commands.sh"
 
+# remove previous script file
+rm -f $script
+
 # prevent console from power saving
 setterm -blank 0
 
