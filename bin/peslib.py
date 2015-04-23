@@ -22,6 +22,7 @@
 
 import os
 import sys
+import math
 import threading
 import pygame
 import ConfigParser
@@ -44,6 +45,7 @@ from xml.etree import ElementTree
 from xml.etree.ElementTree import Element, SubElement
 import logging
 
+# HDMI-CEC codes
 CEC_UP = 1
 CEC_DOWN = 2
 CEC_LEFT = 3
@@ -52,18 +54,20 @@ CEC_ENTER = 0
 CEC_EXIT = 13
 CEC_RETURN = 145
 
+# PES event codes
 EVENT_DATABASE_UPDATED = 1
 EVENT_JOYSTICKS_UPDATED = 2
 EVENT_MESSAGE_BOX_OK = 3
 EVENT_LOAD_GAME_INFO = 4
 EVENT_WARNING = 5
 
+# axis codes used for event handling
 AXIS_PRESSED = 1
 AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
 VERSION_NUMBER = '1.3 (development version)'
-VERSION_DATE = '2015-04-20'
+VERSION_DATE = '2015-04-24'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -1145,7 +1149,8 @@ class JoyStick(object):
 							return pygame.event.Event(KEYDOWN, {'key': K_UP})
 						if self.__eventMap[value] == JoyStick.BTN_LEFT_AXIS_DOWN:
 							return pygame.event.Event(KEYDOWN, {'key': K_DOWN})
-						
+						if self.__eventMap[value] == JoyStick.BTN_SELECT:
+							return pygame.event.Event(KEYDOWN, {'key': K_s})	
 		return None
 
 	def buttonToKeyEvent(self, event):
@@ -1173,6 +1178,8 @@ class JoyStick(object):
 				return pygame.event.Event(KEYDOWN, {'key': K_PAGEUP})
 			if self.__eventMap[event] == JoyStick.BTN_SHOULDER_RIGHT:
 				return pygame.event.Event(KEYDOWN, {'key': K_PAGEDOWN})
+			if self.__eventMap[event] == JoyStick.BTN_SELECT:
+				return pygame.event.Event(KEYDOWN, {'key': K_s})
 		return None
 
 	def getAxisOrBtn(self, btn):
@@ -2037,7 +2044,7 @@ class GamesMenu(Panel):
 		if self.__menuItemsTotal <= self.__visibleItems:
 			self.__pageTotal = 1
 		else:
-			self.__pageTotal = round(float(self.__menuItemsTotal) / float(self.__visibleItems), 0)
+			self.__pageTotal = math.ceil(float(self.__menuItemsTotal) / float(self.__visibleItems))
 		self.__page = 1
 		self.__selected = 0
 		self.__startIndex = 0
@@ -2161,6 +2168,11 @@ class GamesMenu(Panel):
 					else:
 						self.__showFavourites = not self.__showFavourites
 						self.__setMenuItems(games)
+				elif event.key == K_s:
+					game = self.__menuItems[self.__selected].getGame()
+					game.setFavourite(not game.isFavourite())
+					game.save()
+					self.__redraw = True
 				elif event.key == K_PAGEUP:
 					self.__menuItems[self.__selected].setSelected(False)
 					if self.__selected - self.__visibleItems < 0:
@@ -2190,6 +2202,12 @@ class GamesMenu(Panel):
 
 	def setActive(self, active):
 		if active:
+			games = self.__console.getGames(self.__showFavourites)
+			if len(games) == 0:
+				# if no favourites, then show all games
+				games = self.__console.getGames()
+				self.__showFavourites = False
+			self.__setMenuItems(games)
 			self.__redraw = True
 		super(GamesMenu, self).setActive(active)
 
@@ -2785,7 +2803,7 @@ class GameInfoPanel(Panel):
 		self.__game.setLastPlayed()
 		self.__game.setPlayCount()
 		self.__game.save()
-		return self.__console.getCommand(self.__game)
+		return (self.__console.getCommand(self.__game), self.__console.getEmulator())
 
 	def setActive(self, active):
 		if active:
