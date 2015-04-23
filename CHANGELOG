@@ -6,18 +6,21 @@ PES Changelog
 PES 1.3 (in development)
 ----------------------------
 
-Date: 2015-04-19
+Date: 2015-04-24
 
 Changes (and bug fixes):
 
 	- Fixed bug in game scraper where games with missing cover art were removed unintentionally from the PES database
-	- Added support for L3 and R3 buttons
+	- Fixed page total bug in game thumbnail menus
+	- Fixed minor game favouriting bug
 	- Fixed two button detection bugs when configuring control pads
+	- Added support for L3 and R3 buttons
 	- Added Sony PlayStation 4 control pad configuration files
-	- Added ColecoVision support thanks to libreto-fba
 	- Added N64 support thanks to ricrpi's Mupen64Plus Raspberry Pi port
 	- Added control pad button configuration generation for Mupen64Plus
-	- Added SDL2 GLES build for use by Mupen64Plus
+	- Added SDL2 GLES installation for use by Mupen64Plus
+	- Added ability to favourite games using the select button or the S key
+	- Added netplay support to RetroArch installations
 
 ----------------------------
 PES 1.2
