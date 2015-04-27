@@ -39,6 +39,7 @@ echo -e "\t-Delete PES and PESPad logs"
 echo -e "\t-Delete pi user RetroArch config"
 echo -e "\t-Delete all cached packages from pacman"
 echo -e "\t-Delete command history for root and pi users"
+echo -e "\t-Delete pip cache"
 echo -e "\t-Delete SSH known_hosts files for root and pi users"
 echo -e "\t-Delete $baseDir/build contents"
 echo ""
@@ -73,6 +74,9 @@ if [ "$response" == "y" ]; then
 	echo ""
 	echo "Deleting root bash history..."
 	run sudo rm -fv /root/.bash_history
+	echo ""
+	echo "Deleting pip cache..."
+	run sudo rm -rfv /root/.cache/pip
 	echo ""
 	echo "Deleting root SSH known hosts..."
 	run sudo rm -fv /root/.ssh/known_hosts
