@@ -67,7 +67,7 @@ AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
 VERSION_NUMBER = '1.3 (development version)'
-VERSION_DATE = '2015-04-24'
+VERSION_DATE = '2015-04-29'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -294,6 +294,10 @@ class PES(object):
 		for c in self.__supportedConsoles:
 			# check the console definition from the config file
 			try:
+				consolePath = self.__romsDir + os.sep + c
+				if not os.path.exists(consolePath):
+					logging.debug("%s does not exist, creating..." % consolePath)
+					os.mkdir(consolePath)
 				extensions = configParser.get(c, 'extensions').split(' ')
 				command = configParser.get(c, 'command').replace('%%BASE%%', self.__baseDir)
 				consoleImg = configParser.get(c, 'image').replace('%%BASE%%', self.__baseDir)
@@ -302,7 +306,7 @@ class PES(object):
 				nocoverart = configParser.get(c, 'nocoverart').replace('%%BASE%%', self.__baseDir)
 				self.__checkFile(nocoverart)
 				consoleId = configParser.get(c, 'id')
-				console = Console(c, consoleId, extensions, self.__romsDir + os.sep + c, command, self.__userDb, consoleImg, nocoverart, self.__imgCacheDir, emulator)
+				console = Console(c, consoleId, extensions, consolePath, command, self.__userDb, consoleImg, nocoverart, self.__imgCacheDir, emulator)
 				if console.isNew():
 					console.save()
 				self.__consoles.append(console)
@@ -312,10 +316,10 @@ class PES(object):
 		# set-up pygame display
 		pygame.init()
 		if window == False:
-                        self.__screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
-                else:
-                        self.__screen = pygame.display.set_mode((1024, 768))
-                        pygame.display.set_caption("PES")
+			self.__screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
+		else:
+			self.__screen = pygame.display.set_mode((1024, 768))
+			pygame.display.set_caption("PES")
 		self.__screenWidth = self.__screen.get_rect().width
 		self.__screenHeight = self.__screen.get_rect().height
 		self.__clock = self.clock = pygame.time.Clock()
@@ -324,7 +328,7 @@ class PES(object):
 		self.__header = Header(self.__name, self.__screenWidth - 10, self.__headerHeight, self.__fontFile, 18, self.__fontColour, self.__bgColour)
 		self.__header.setActive(True)
 
-                # set-up footer
+		# set-up footer
 		self.__footer = Footer(self.__screenWidth - 10, self.__footerHeight, self.__fontFile, 14, self.__fontColour, self.__bgColour)
 		self.__footer.setField("IP", self.__ip)
 		self.__footer.setActive(True)
@@ -364,7 +368,7 @@ class PES(object):
 		self.__consolesMenu = ThumbnailMenu(consoleMenuItems, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 20, self.__fontColour, self.__bgColour)
 		self.__consolesMenu.setTitle('Games')
 
-                # create main menu
+		# create main menu
 		menuItems = []
 		menuItems.append(MenuItem("Games", self.__loadConsolesMenu))	
 		menuItems.append(MenuItem('Update Database', self.__updateDb))
