@@ -38,15 +38,19 @@ EOF
 if [ ! -e ~/.bash_pes ]; then
 	echo "Creating ~/.bash_pes ..."
 	echo "if [ ! -n \"\$SSH_CONNECTION\" ] && [ ! -n \"\$DESKTOP_SESSION\" ]; then" > ~/.bash_pes
+	echo -e "\tif [ ! -d /data/roms ]; then" >> ~/.bash_pes
+	echo -e "\t\techo \"Setting up /data partition - this will use all available space on your SD card!\"" >> ~/.bash_pes
+	echo -e "\t\tsudo /opt/sbin/make_rom_partition.py -v -d /dev/mmcblk0" >> ~/.bash_pes
+	echo -e "\tfi" >> ~/.bash_pes
 	echo -e "\techo \"Giving time for network interface to start...\"" >> ~/.bash_pes
 	echo -e "\tfor i in \`seq 1 10\`; do" >> ~/.bash_pes
-	echo -e "\ts=\$((10-i))" >> ~/.bash_pes
-	echo -e "\t\techo -e -n \"Wating for \${j}s \\\r\"" >> ~/.bash_pes
+	echo -e "\t\ts=\$((10-i))" >> ~/.bash_pes
+	echo -e "\t\techo -e -n \"Wating for \${s}s \\\r\"" >> ~/.bash_pes
 	echo -e "\t\tsleep 1" >> ~/.bash_pes
 	echo -e "\tdone" >> ~/.bash_pes
 	echo -e "\techo \"Truncating log file...\"" >> ~/.bash_pes
 	echo -e "\t> $baseDir/log/pes.log" >> ~/.bash_pes
-	echo -e "\techo \"Starting PES...\"" >> ~/.bash_pes
+    echo -e "\techo \"Starting PES...\"" >> ~/.bash_pes
 	echo -e "\t~/pes/bin/pes.sh -l $baseDir/log/pes.log" >> ~/.bash_pes
 	echo "fi" >> ~/.bash_pes
 fi
