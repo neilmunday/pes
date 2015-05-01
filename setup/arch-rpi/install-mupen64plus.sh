@@ -54,8 +54,6 @@ SDL_LDLIBS=`$SDL2_CONFIG --libs`
 
 checkDir projects/unix
 cd projects/unix
-echo "Fixing Makefile..."
-run sed -r -i "s/else if/else ifeq/" Makefile
 
 #run make USE_GLES=1 VFP=1 clean
 run make PREFIX=$PREFIX USE_GLES=1 VFP=1 RPIFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -L/opt/vc/lib -fgcse-after-reload -finline-functions -fipa-cp-clone -funswitch-loops -fpredictive-commoning -ftree-loop-distribute-patterns -ftree-vectorize -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s -D__ARM_PCS_VFP" SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 install
@@ -216,7 +214,7 @@ launchScript="$PREFIX/bin/mupen64plus-launcher.sh"
 
 run echo "#!/bin/bash" > $launchScript
 run echo "sudo modprobe evdev" >> $launchScript
-run echo "$PREFIX/bin/mupen64plus --corelib $PREFIX/lib/libmupen64plus.so.2 --datadir $PREFIX/share/mupen64plus --plugindir $PREFIX/lib/mupen64plus --configdir $baseDir/conf.d/mupen64plus \"\\$1\"" >> $launchScript
+run echo "$PREFIX/bin/mupen64plus --corelib $PREFIX/lib/libmupen64plus.so.2 --datadir $PREFIX/share/mupen64plus --plugindir $PREFIX/lib/mupen64plus --configdir $baseDir/conf.d/mupen64plus \"\$1\"" >> $launchScript
 run echo "sudo rmmod evdev" >> $launchScript
 
 run chmod 700 $launchScript
