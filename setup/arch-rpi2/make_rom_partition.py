@@ -23,7 +23,7 @@
 #
 
 #
-#	This script will automatically create the /roms partition for the
+#	This script will automatically create the /data partition for the
 #	PES ArchLinux Raspberry Pi images.
 #	It is intended to be called at boot time.
 #
@@ -43,7 +43,7 @@ def die(msg):
 
 if __name__ == "__main__":
 
-	parser = argparse.ArgumentParser(description='Automatically create /roms partition for PES', add_help=True)
+	parser = argparse.ArgumentParser(description='Automatically create /data partition for PES', add_help=True)
 	parser.add_argument('-v', '--verbose', help='Turn on debug messages', dest='verbose', action='store_true')
 	parser.add_argument('-d', '--device', help='Device to operate on', type=str, dest='device', required=True)
 	args = parser.parse_args()
