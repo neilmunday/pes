@@ -25,7 +25,6 @@
 source /home/pi/pes/setup/arch-rpi2/functions.sh
 
 cd $buildDir
-pwd
 rmSourceDir "libretro-fba"
 
 header "Downloading Final Burn Alpha emulator"

@@ -22,29 +22,16 @@
 #    along with PES.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-source /home/pi/pes/setup/arch-rpi2/functions.sh
+source /home/pi/pes/setup/arch-rpi/functions.sh
 
-# install packages
+cd $buildDir
 
-run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
-	gcc git make patch pkg-config scons vim wget \
-	libusb-compat linuxconsole libcec-rpi \
-	python2 python2-pygame python2-levenshtein python2-pip python2-imaging \
-	ntp \
-	rsync \
-	samba \
-	sdl sdl_mixer sdl_ttf sdl_image \
-	mesa mesa-libgl \
-	zip unzip
-
-run sudo pip2 install --upgrade pip
-run sudo pip2 install python-uinput
-run sudo pip2 install cec
-run sudo pip2 install reparted
-run sudo pip2 install fstab
-
-# enable services
-run sudo systemctl enable ntpd.service
-run sudo systemctl start ntpd.service
-
+rmSourceDir "imame4all-libretro"
+header "Downloading MAME emulator - imame4all"
+run git clone https://github.com/libretro/imame4all-libretro
+checkDir "imame4all-libretro"
+cd imame4all-libretro
+run make -f makefile.libretro ARM=1
+checkFile libretro.so
+run cp libretro.so $retroArchCoresDir/imame4all_libretro.so
 
