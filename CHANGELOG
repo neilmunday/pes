@@ -6,7 +6,7 @@ PES Changelog
 PES 1.3 (in development)
 ----------------------------
 
-Date: 2015-04-24
+Date: 2015-05-03
 
 Changes (and bug fixes):
 
@@ -14,6 +14,7 @@ Changes (and bug fixes):
 	- Fixed page total bug in game thumbnail menus
 	- Fixed minor game favouriting bug
 	- Fixed two button detection bugs when configuring control pads
+	- Fixed incorrect title on game info panel when switching games
 	- Added support for L3 and R3 buttons
 	- Added Sony PlayStation 4 control pad configuration files
 	- Added N64 support thanks to ricrpi's Mupen64Plus Raspberry Pi port
@@ -21,6 +22,9 @@ Changes (and bug fixes):
 	- Added SDL2 GLES installation for use by Mupen64Plus
 	- Added ability to favourite games using the select button or the S key
 	- Added netplay support to RetroArch installations
+	- Added Final Burn Alpha libretro core which also supports Neo Geo and Colecovision games
+	- Added ZX Spectrum support thanks to libretro's Fuse core
+	- Added MAME support thanks to libretro's imame4all core
 
 ----------------------------
 PES 1.2
