@@ -25,6 +25,7 @@ Changes (and bug fixes):
 	- Added Final Burn Alpha libretro core which also supports Neo Geo and Colecovision games
 	- Added ZX Spectrum support thanks to libretro's Fuse core
 	- Added MAME support thanks to libretro's imame4all core
+	- Added auto-partitioning of the user's SD card to take advantage of all available space
 
 ----------------------------
 PES 1.2
