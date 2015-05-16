@@ -67,7 +67,7 @@ AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
 VERSION_NUMBER = '1.3 (development version)'
-VERSION_DATE = '2015-05-06'
+VERSION_DATE = '2015-05-16'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -280,7 +280,7 @@ class PES(object):
 			cur = con.cursor()
 			cur.execute('CREATE TABLE IF NOT EXISTS `games`(`game_id` INTEGER PRIMARY KEY, `api_id` INT, `exists` INT, `console_id` INT, `name` TEXT, `cover_art` TEXT, `game_path` TEXT, `overview` TEXT, `released` INT, `last_played` INT, `favourite` INT(1), `play_count` INT, `size` INT )')
 			cur.execute('CREATE INDEX IF NOT EXISTS "games_index" on games (game_id ASC)')
-			cur.execute('CREATE TABLE IF NOT EXISTS `consoles`(`console_id` INTEGER PRIMARY KEY, `name` TEXT, `emulator` TEXT)')
+			cur.execute('CREATE TABLE IF NOT EXISTS `consoles`(`console_id` INTEGER PRIMARY KEY, `api_id` INT, `name` TEXT)')
 			cur.execute('CREATE INDEX IF NOT EXISTS "console_index" on consoles (console_id ASC)')
 			#cur.execute('CREATE TABLE IF NOT EXISTS `games_catalogue` (`short_name` TEXT, `full_name` TEXT)')
 			#cur.execute('CREATE INDEX IF NOT EXISTS "games_catalogue_index" on games_catalogue (short_name ASC)')
@@ -323,8 +323,24 @@ class PES(object):
 				self.__checkFile(consoleImg)
 				nocoverart = configParser.get(c, 'nocoverart').replace('%%BASE%%', self.__baseDir)
 				self.__checkFile(nocoverart)
-				consoleId = configParser.get(c, 'id')
-				console = Console(c, consoleId, extensions, consolePath, command, self.__userDb, consoleImg, nocoverart, self.__imgCacheDir, emulator)
+				consoleApiId = configParser.getint(c, 'api_id')
+				consoleId = None
+				# have we already saved this console to the database?
+				try:
+					con = sqlite3.connect(self.__userDb)
+					con.row_factory = sqlite3.Row
+					cur = con.cursor()
+					cur.execute('SELECT `console_id` FROM `consoles` WHERE `name` = "%s";' % c)
+					row = cur.fetchone()
+					if row:
+						consoleId = int(row['console_id'])
+				except sqlite3.Error, e:
+					self.__exit("Error: %s" % e.args[0], True)
+				finally:
+					if con:
+						con.close()
+				
+				console = Console(c, consoleId, consoleApiId, extensions, consolePath, command, self.__userDb, consoleImg, nocoverart, self.__imgCacheDir, emulator)
 				if console.isNew():
 					console.save()
 				self.__consoles.append(console)
@@ -836,7 +852,7 @@ class UpdateDbThread(threading.Thread):
 
 			try:
 				# get API name for this console
-				request = urllib2.Request("%sGetPlatform.php" % url, urllib.urlencode({ 'id': consoleId }), headers=headers)
+				request = urllib2.Request("%sGetPlatform.php" % url, urllib.urlencode({ 'id':  c.getApiId() }), headers=headers)
 				logging.debug('loading URL: %s?%s' % (request.get_full_url(), request.get_data()))
 				response = urllib2.urlopen(request)
 				urlLoaded = True
@@ -1409,6 +1425,9 @@ class Record(object):
 				self.__isNew = False
 				self._dirtyFields = []
 			self.__dataLoaded = True
+		else:
+			self.__isNew = True
+			self.__dataLoaded = False
 		self.disconnect()
 
 	def save(self):
@@ -1464,18 +1483,22 @@ class Record(object):
 
 class Console(Record):
 
-	def __init__(self, name, consoleId, extensions, romDir, command, db, consoleImg, noCoverArtImg, imgCacheDir, emulator):
-		super(Console, self).__init__(db, 'consoles', ['console_id', 'name', 'emulator'], 'console_id', int(consoleId), False)
+	def __init__(self, name, consoleId, apiId, extensions, romDir, command, db, consoleImg, noCoverArtImg, imgCacheDir, emulator):
+		super(Console, self).__init__(db, 'consoles', ['console_id', 'name'], 'console_id', consoleId, True)
 		self.setProperty('name', name)
-		self.setProperty('emulator', emulator)
+		self.__apiId = apiId
 		self.__extensions = extensions
 		self.__romDir = romDir
 		self.__consoleImg = consoleImg
 		self.__noCoverArtImg = noCoverArtImg
+		self.__emulator = emulator
 		self.__games = []
 		self.__command = command
 		self.__imgCacheDir = imgCacheDir
 		self.__gameTotal = 0
+		
+	def getApiId(self):
+		return self.__apiId
 
 	def getCommand(self, game):
 		return self.__command.replace('%%GAME%%', "\"%s\"" % game.getPath())
@@ -1484,7 +1507,7 @@ class Console(Record):
 		return self.__dir
 
 	def getEmulator(self):
-		return self.getProperty('emulator')
+		return self.__emulator
 		
 	def getGames(self, favouritesOnly=False, limit=0, count=0):
 		self.connect()
