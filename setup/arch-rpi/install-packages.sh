@@ -29,6 +29,7 @@ source /home/pi/pes/setup/arch-rpi/functions.sh
 run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
 	gcc git make patch pkg-config scons vim wget \
 	libusb-compat linuxconsole libcec-rpi \
+	parted \
 	python2 python2-pygame python2-levenshtein python2-pip python2-imaging \
 	ntp \
 	rsync \

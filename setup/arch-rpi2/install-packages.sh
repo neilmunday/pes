@@ -31,6 +31,7 @@ run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
 	libusb-compat linuxconsole libcec-rpi \
 	python2 python2-pygame python2-levenshtein python2-pip python2-imaging \
 	ntp \
+	parted \
 	rsync \
 	samba \
 	sdl sdl_mixer sdl_ttf sdl_image \
