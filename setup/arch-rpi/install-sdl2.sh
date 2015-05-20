@@ -50,7 +50,7 @@ run tar xvfz $sdl2Tar
 checkDir $sdl2Dir
 run cd $sdl2Dir
 
-./configure --prefix=$prefix --disable-video-opengl --disable-video-x11 --disable-pulseaudio --disable-esd --enable-video-opengles --enable-libudev
+LDFLAGS="-L/opt/vc/lib -lGLESv2" CFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads" ./configure --prefix=$prefix --disable-video-opengl --disable-video-x11 --disable-pulseaudio --disable-esd --enable-video-opengles --enable-libudev
 
 run make
 run sudo make install
