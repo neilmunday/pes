@@ -205,6 +205,8 @@ checkDir projects/unix
 cd projects/unix
 run make clean
 run make SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" PREFIX=$PREFIX V=1 install
+# remove shared installation of gles2n64.conf so that PES' copy takes precedence
+run rm -fv $PREFIX/share/mupen64plus/gles2n64.conf
 
 #
 # launcher script
