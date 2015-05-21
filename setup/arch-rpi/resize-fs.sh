@@ -22,6 +22,10 @@
 #    along with PES.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+echo "This script is now obsolete!"
+
+exit
+
 if [ "$USER" != "root" ]; then
 	echo "This script must be run as root. Try running: \"sudo ./resize-fs.sh\" instead."
 	exit 1
