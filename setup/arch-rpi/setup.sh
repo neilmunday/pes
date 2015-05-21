@@ -52,7 +52,10 @@ run $setupDir/install-picodrive.sh
 run $setupDir/install-pocketsnes.sh
 run $setupDir/install-psx_rearmed.sh
 run $setupDir/install-gpsp.sh
-#run $setupDir/install-mupen64plus.sh
+run $setupDir/install-mupen64plus.sh
+run $setupDir/install-fuse-libretro.sh
+run $setupDir/install-fba-libretro.sh
+run $setupDir/install-imame4all.sh
 
 header "Setting up Samba..."
 run $setupDir/install-samba.sh
