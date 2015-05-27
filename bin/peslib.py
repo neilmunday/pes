@@ -67,7 +67,7 @@ AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
 VERSION_NUMBER = '1.3 (development version)'
-VERSION_DATE = '2015-05-16'
+VERSION_DATE = '2015-05-27'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -1030,7 +1030,11 @@ class UpdateDbThread(threading.Thread):
 
 							if self.__stopCheck(con, cur):
 								return
-
+								
+				logging.debug('purging missing games for: %s' % consoleName)
+				cur.execute('DELETE FROM `games` WHERE `exists` = 0 AND console_id = %d' % consoleId)
+				con.commit()
+								
 			except sqlite3.Error, e:
 				logging.error('could not update database: %s' % e.args[0])
 				if con:
@@ -1038,18 +1042,6 @@ class UpdateDbThread(threading.Thread):
 				self.__progress = 'An error occurred whilst updating the database'
 				self.__finished = True
 				return
-
-		try:
-			logging.debug('purging missing games')
-			cur.execute('DELETE FROM `games` WHERE `exists` = 0')
-			con.commit()
-			con.close()
-		except sqlite3.Error, e:
-			logging.error('could not delete missing games from database: %s' % e.args[0])
-			if con:
-				con.rollback()
-			self.__progress = 'An error occurred whilst updating the database'
-			self.__finished = True
 
 		self.__progress = 'Update complete'
 		self.__finished = True
@@ -1072,7 +1064,8 @@ class UpdateDbThread(threading.Thread):
 		if self.__stop:
 			if cur != None and con != None:
 				try:
-					cur.execute('DELETE FROM `games` WHERE `exists` = 0')
+					# revert exists field
+					cur.execute('UPDATE `games` SET `exists` = 1 WHERE `exists` = 0')
 					con.commit()
 					con.close()
 				except sqlite3.Error, e:
