@@ -67,7 +67,7 @@ AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
 VERSION_NUMBER = '1.3 (development version)'
-VERSION_DATE = '2015-05-27'
+VERSION_DATE = '2015-05-28'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -2105,6 +2105,7 @@ class GamesMenu(Panel):
 		self.__favImage = pygame.transform.scale(self.__favImage, (int(round(self.__thumbWidth * 0.25, 0)), int(round(self.__thumbHeight * 0.25, 0))))
 		self.__visibleItems = self.__thumbsInX * self.__thumbsInY
 		self.__showFavourites = False
+		self.__menuItems = []
 
 	def __getStartIndex(self, index):
 		return (index / self.__visibleItems) * self.__visibleItems
@@ -2248,6 +2249,12 @@ class GamesMenu(Panel):
 					game = self.__menuItems[self.__selected].getGame()
 					game.setFavourite(not game.isFavourite())
 					game.save()
+					if self.__showFavourites:
+						# number of favourites has changed, need to redraw thumbnails
+						if self.__console.getFavouriteTotal() == 0:
+							self.__showFavourites = False
+						games = self.__console.getGames(self.__showFavourites)
+						self.__setMenuItems(games)
 					self.__redraw = True
 				elif event.key == K_PAGEUP:
 					self.__menuItems[self.__selected].setSelected(False)
@@ -2278,14 +2285,21 @@ class GamesMenu(Panel):
 
 	def setActive(self, active):
 		if active:
-			games = None
-			if self.__console.getFavouriteTotal() == 0:
-				# if no favourites, then show all games
-				games = self.__console.getGames()
-				self.__showFavourites = False
-			else:
+			if len(self.__menuItems) == 0:
+				if self.__console.getFavouriteTotal() == 0:
+					self.__showFavourites = False
 				games = self.__console.getGames(self.__showFavourites)
-			self.__setMenuItems(games)
+				self.__setMenuItems(games)
+			else:
+				if self.__showFavourites and self.__console.getFavouriteTotal() == 0:
+					self.__showFavourites = False
+					games = self.__console.getGames(self.__showFavourites)
+					self.__setMenuItems(games)
+			#if self.__console.getFavouriteTotal() == 0:
+			#	# if no favourites, then show all games
+			#	games = self.__console.getGames()
+			#	self.__showFavourites = False
+			#	self.__setMenuItems(games)
 			self.__redraw = True
 		super(GamesMenu, self).setActive(active)
 
@@ -2809,9 +2823,9 @@ class GameInfoPanel(Panel):
 		self.__colour = colour
 		self.__font = pygame.font.Font(font, fontSize)
 		self.__redraw = True
-		self.__menuItems = [MenuItem('Favourite: %s' % (self.__game.isFavourite(('Yes', 'No'))), self.favourite), MenuItem('Play', self.play)]
+		self.__menuItems = [MenuItem('Play', self.play)]
 		self.__menu = Menu(self.__menuItems, 200, 80, font, fontSize, colour, bgColour, [0,0,0,0], 0)
-		self.__menu.setSelected(1)
+		self.__menu.setSelected(0)
 		self.__menu.setActive(True)
 
 	def draw(self, x, y):
@@ -2819,9 +2833,7 @@ class GameInfoPanel(Panel):
 
 		if self.isActive() and self.__redraw:
 			self.fillBackground()
-
-			self.__menuItems[0].setText('Favourite: %s' % (self.__game.isFavourite(('Yes', 'No'))))
-
+			
 			width = self.getWidth()
 			height = self.getHeight()
 
@@ -2852,7 +2864,7 @@ class GameInfoPanel(Panel):
 
 			fileSize = getHumanReadableSize(self.__game.getSize())
 
-			labels = self.getLabels(['Released: %s' % released, 'Last played: %s' % lastPlayed, 'Played: %d times' % self.__game.getPlayCount(), 'Size: %s' % fileSize], self.__font, self.__colour, self.getBackgroundColour(), width - (currentX + imgWidth) - 10, imgHeight)
+			labels = self.getLabels(['Released: %s' % released, 'Last played: %s' % lastPlayed, 'Played: %d times' % self.__game.getPlayCount(), 'Size: %s' % fileSize, 'Favourite: %s' % (self.__game.isFavourite(('Yes', 'No')))], self.__font, self.__colour, self.getBackgroundColour(), width - (currentX + imgWidth) - 10, imgHeight)
 			labelHeight = labels[0].get_rect().height
 			currentX += imgWidth + 10
 			for l in labels:
@@ -2874,13 +2886,6 @@ class GameInfoPanel(Panel):
 			self.__menu.draw(self.__menuX, self.__menuY)
 
 			self.__redraw = False
-
-	def favourite(self):
-		logging.debug('process favourite request for %s' % self.__game.getName())
-		self.__game.setFavourite(not self.__game.isFavourite())
-		self.__game.save()
-		self.__redraw = True
-		return None
 
 	def handleEvent(self, event):
 		if self.isActive():
