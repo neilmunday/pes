@@ -67,7 +67,7 @@ AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
 VERSION_NUMBER = '1.3 (development version)'
-VERSION_DATE = '2015-05-28'
+VERSION_DATE = '2015-06-02'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -227,50 +227,44 @@ class PES(object):
 		self.__consolesConfigFile = self.__confDir + os.sep + 'consoles.ini'
 		self.__checkFile(self.__consolesConfigFile)
 		self.__joysticksConfigFile = self.__confDir + os.sep + 'joysticks.ini'
-                self.__checkFile(self.__joysticksConfigFile)
+		self.__checkFile(self.__joysticksConfigFile)
+		self.__gamesCatalogueFile = self.__confDir + os.sep + 'games_catalogue.ini'
+		self.__checkFile(self.__gamesCatalogueFile)
 		self.__commandFile = commandFile
 
 		# read in program settings
 		configParser = ConfigParser.ConfigParser()
 		configParser.read(self.__pesConfigFile)
 		try:
-			self.__fontFile = os.path.abspath(self.__baseDir + os.sep + configParser.get('pes', 'fontFile'))
-			self.__romsDir = configParser.get('pes', 'romsDir')
-			self.__favImage = os.path.abspath(self.__baseDir + os.sep + configParser.get('pes', 'favImage'))
+			self.__fontFile = configParser.get('pes', 'fontFile').replace('%%BASE%%', self.__baseDir)
+			self.__romsDir = configParser.get('pes', 'romsDir').replace('%%BASE%%', self.__baseDir)
+			self.__favImage = configParser.get('pes', 'favImage').replace('%%BASE%%', self.__baseDir)
+			self.__coverartDir = configParser.get('pes', 'coverartDir').replace('%%BASE%%', self.__baseDir)
 			self.__rebootCommand = configParser.get('pes', 'rebootCommand')
 			self.__shutdownCommand = configParser.get('pes', 'shutdownCommand')
 			self.__tempCommand = configParser.get('pes', 'tempCommand')
-			#self.__gamesCatalogueFile = configParser.get('pes', 'gamesCatalogueFile')
 		except ConfigParser.NoOptionError, e:
 			self.__exit('Error parsing config file %s: %s' % (self.__pesConfigFile, e.message), True)
 		
 		self.__checkFile(self.__favImage)
 		self.__checkFile(self.__fontFile)
 		self.__checkDir(self.__romsDir)
-		#self.__checkFile(self.__gamesCatalogueFile)
+		
+		# if the coverart dir does not exist, then make it
+		self.__mkdir(self.__coverartDir)
 
 		# check for user settings
-		if not os.path.exists(self.__userDir):
-			os.mkdir(self.__userDir)
-		elif not os.path.isdir(self.__userDir):
-			self.__exit("Error: %s is not a directory!" % self.__userDir, True)
-		elif not os.access(self.__userDir, os.W_OK):
-			self.__exit("Error: %s is not writable!" % self.__userDir, True)
+		self.__mkdir(self.__userDir)
 
-		if not os.path.exists(self.__imgCacheDir):
-			os.mkdir(self.__imgCacheDir)
-		elif not os.path.isdir(self.__imgCacheDir):
-			self.__exit("Error: %s is not a directory!" % self.__imgCacheDir, True)
-		elif not os.access(self.__imgCacheDir, os.W_OK):
-			self.__exit("Error: %s is not writable!" % self.__imgCacheDir, True)
+		#if not os.path.exists(self.__imgCacheDir):
+		#	os.mkdir(self.__imgCacheDir)
+		#elif not os.path.isdir(self.__imgCacheDir):
+		#	self.__exit("Error: %s is not a directory!" % self.__imgCacheDir, True)
+		#elif not os.access(self.__imgCacheDir, os.W_OK):
+		#	self.__exit("Error: %s is not writable!" % self.__imgCacheDir, True)
 
 		# check for retroarch joysticks autoconfig dir
-		if not os.path.exists(self.__retroarchJoysticksDir):
-			os.mkdir(self.__retroarchJoysticksDir)
-		elif not os.path.isdir(self.__retroarchJoysticksDir):
-			self.__exit("Error: %s is not a directory!" % self.__retroarchJoysticksDir, True)
-		elif not os.access(self.__retroarchJoysticksDir, os.W_OK):
-			self.__exit("Error: %s is not writeable!" % self.__retroarchJoysticksDir, True)
+		self.__mkdir(self.__retroarchJoysticksDir)
 
 		# create database (if needed)
 		logging.debug('connecting to database: %s' % self.__userDb)
@@ -282,20 +276,25 @@ class PES(object):
 			cur.execute('CREATE INDEX IF NOT EXISTS "games_index" on games (game_id ASC)')
 			cur.execute('CREATE TABLE IF NOT EXISTS `consoles`(`console_id` INTEGER PRIMARY KEY, `api_id` INT, `name` TEXT)')
 			cur.execute('CREATE INDEX IF NOT EXISTS "console_index" on consoles (console_id ASC)')
-			#cur.execute('CREATE TABLE IF NOT EXISTS `games_catalogue` (`short_name` TEXT, `full_name` TEXT)')
-			#cur.execute('CREATE INDEX IF NOT EXISTS "games_catalogue_index" on games_catalogue (short_name ASC)')
+			cur.execute('CREATE TABLE IF NOT EXISTS `games_catalogue` (`short_name` TEXT, `full_name` TEXT)')
+			cur.execute('CREATE INDEX IF NOT EXISTS "games_catalogue_index" on games_catalogue (short_name ASC)')
 			
 			# is the games catalogue populated?
-			#cur.execute('SELECT COUNT(*) AS `total` FROM `games_catalogue`')
-			#row = cur.fetchone()
-			#if row['total'] == 0:
-			#	logging.info("populating games catalogue...")
-			#	with open(self.__gamesCatalogueFile, 'r') as f:
-			#		for line in f:
-			#			fields = line.replace("\n", "").split('|')
-			#			if len(fields) == 2:
-			#				logging.debug("inserting game: %s -> %s" % (fields[0], fields[1]))
-			#				cur.execute('INSERT OR REPLACE INTO `games_catalogue` (`short_name`, `full_name`) VALUES ("%s", "%s")' % (fields[0], fields[1]))		
+			cur.execute('SELECT COUNT(*) AS `total` FROM `games_catalogue`')
+			row = cur.fetchone()
+			if row['total'] == 0:
+				logging.info("populating games catalogue using file: %s" % self.__gamesCatalogueFile)
+				catalogueConfigParser = ConfigParser.ConfigParser()
+				catalogueConfigParser.read(self.__gamesCatalogueFile)
+				
+				for section in catalogueConfigParser.sections():
+					if catalogueConfigParser.has_option(section, 'full_name'):
+						fullName = catalogueConfigParser.get(section, 'full_name')
+						logging.debug("inserting game into catalogue: %s -> %s" % (section, fullName))
+						cur.execute('INSERT INTO `games_catalogue` (`short_name`, `full_name`) VALUES ("%s", "%s");' % (section, fullName))
+					else:
+						logging.error("games catalogue section \"%s\" has no \"full_name\" option!" % section)
+						
 			con.commit()
 		except sqlite3.Error, e:
 			self.__exit("Error: %s" % e.args[0], True)
@@ -313,9 +312,9 @@ class PES(object):
 			# check the console definition from the config file
 			try:
 				consolePath = self.__romsDir + os.sep + c
-				if not os.path.exists(consolePath):
-					logging.debug("%s does not exist, creating..." % consolePath)
-					os.mkdir(consolePath)
+				self.__mkdir(consolePath)
+				consoleCoverartDir = self.__coverartDir + os.sep + c
+				self.__mkdir(consoleCoverartDir)
 				extensions = configParser.get(c, 'extensions').split(' ')
 				command = configParser.get(c, 'command').replace('%%BASE%%', self.__baseDir)
 				consoleImg = configParser.get(c, 'image').replace('%%BASE%%', self.__baseDir)
@@ -340,7 +339,7 @@ class PES(object):
 					if con:
 						con.close()
 				
-				console = Console(c, consoleId, consoleApiId, extensions, consolePath, command, self.__userDb, consoleImg, nocoverart, self.__imgCacheDir, emulator)
+				console = Console(c, consoleId, consoleApiId, extensions, consolePath, command, self.__userDb, consoleImg, nocoverart, consoleCoverartDir, emulator)
 				if configParser.has_option(c, 'ignore_roms'):
 					for r in configParser.get(c, 'ignore_roms').split(','):
 						console.addIgnoreRom(r.strip())
@@ -389,7 +388,7 @@ class PES(object):
 
 		# create settings menu
 		menuItems = [MenuItem("Configure Joystick", self.__loadJoyStickConfiguration), MenuItem("Reset Database", self.__resetDb)]
-                self.__settingsMenu = Menu(menuItems, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 20, self.__fontColour, self.__bgColour, [self.__screenMarginLeft, self.__screenMarginRight, self.__screenMarginTop, self.__screenMarginBottom])
+		self.__settingsMenu = Menu(menuItems, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 20, self.__fontColour, self.__bgColour, "Settings", [self.__screenMarginLeft, self.__screenMarginRight, self.__screenMarginTop, self.__screenMarginBottom])
 
 		# create about menu
 		self.__aboutMenu = None
@@ -415,7 +414,7 @@ class PES(object):
 		menuItems.append(MenuItem("About", self.__loadAboutMenu))
 		menuItems.append(MenuItem("Exit to command line", self.__exit))
 
-		self.__mainMenu = Menu(menuItems, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 20, self.__fontColour, self.__bgColour, [self.__screenMarginLeft, self.__screenMarginRight, self.__screenMarginTop, self.__screenMarginBottom])
+		self.__mainMenu = Menu(menuItems, self.__screenWidth, self.__screenHeight - (self.__footerHeight + self.__headerHeight), self.__fontFile, 20, self.__fontColour, self.__bgColour, "", [self.__screenMarginLeft, self.__screenMarginRight, self.__screenMarginTop, self.__screenMarginBottom])
 		self.__menuStack = [self.__mainMenu]
 		self.__mainMenu.setActive(True)
 
@@ -442,6 +441,15 @@ class PES(object):
 			
 		except subprocess.CalledProcessError, e:
 			logging.error("unable to check temperature: %s", e.args)
+			
+	def __mkdir(self, path):
+		if not os.path.exists(path):
+			logging.debug("creating directory: %s" % path)
+			os.mkdir(path)
+		elif not os.path.isdir(path):
+			self.__exit("Error: %s is not a directory!" % path, True)
+		elif not os.access(path, os.W_OK):
+			self.__exit("Error: %s is not writeable!" % path, True)
 
 	def detectJoysticks(self):
 		logging.debug("looking for joysticks...")
@@ -571,12 +579,12 @@ class PES(object):
 		self.__header.setTitle('%s: %s' % (self.__name, 'JoyStick Configuration'))
 
 	def __loadSettingsMenu(self):
-                activeMenu = self.__getActiveMenu()
+		activeMenu = self.__getActiveMenu()
 		activeMenu.setActive(False)
 		activeMenu = self.__settingsMenu
 		activeMenu.setActive(True)
 		self.__menuStack.append(activeMenu)
-		self.__header.setTitle('%s: Settings' % self.__name)
+		self.__header.setTitle('%s: %s' % (self.__name, activeMenu.getTitle()))
 
 	def __poweroff(self):
                 logging.info("shutting down...")
@@ -613,7 +621,6 @@ class PES(object):
 			logging.debug("trapping PES event: database update")
 			i = 0
 			for c in self.__consoles:
-				#c.getGames()
 				self.__consolesMenu.setLabelText(i, "%s (%d)" % (c.getName(), c.getGameTotal()))
 				i += 1
 			
@@ -831,6 +838,8 @@ class UpdateDbThread(threading.Thread):
 		url = 'http://thegamesdb.net/api/'
 
 		headers = {'User-Agent': 'PES Scraper'}
+		
+		imgExtensions = ['jpg', 'jpeg', 'png', 'gif']
 
 		con = None
 		cur = None
@@ -849,6 +858,7 @@ class UpdateDbThread(threading.Thread):
 		for c in self.__consoles:
 			consoleName = c.getName()
 			consoleId = c.getId()
+			cacheDir = c.getImgCacheDir()
 
 			urlLoaded = False
 			consoleApiName = None
@@ -893,18 +903,26 @@ class UpdateDbThread(threading.Thread):
 								self.__progress = 'Found game: %s' % name
 								
 								# look up name in games catalogue
-								#cur.execute('SELECT `full_name` FROM `games_catalogue` WHERE `short_name` = "%s"' % name)
-								#row = cur.fetchone()
-								#if row:
-								#	logging.debug("found match for %s in games catalogue: %s" % (name, row['full_name']))
-								#	name = row['full_name']
+								cur.execute('SELECT `full_name` FROM `games_catalogue` WHERE `short_name` = "%s"' % name)
+								row = cur.fetchone()
+								if row:
+									logging.debug("found match for %s in games catalogue: %s" % (name, row['full_name']))
+									name = row['full_name']
 
 								cur.execute('SELECT `game_id`, `name`, `cover_art`, `game_path`, `api_id` FROM `games` WHERE `game_path` = "%s";' % f)
 								row = cur.fetchone()
 								if row == None or (row['cover_art'] == "0" and row['api_id'] == -1):
 									gameApiId = None
 									bestName = name
-									thumbPath = 0
+									thumbPath = '0'
+									
+									# has coverart already been provided by the user or downloaded previously?
+									for e in imgExtensions:
+										path = cacheDir + os.sep + name.replace('/', '_') + '.' + e
+										if os.path.exists(path):
+											thumbPath = path
+											break
+									
 									overview = ''
 									released = -1
 									if consoleApiName != None:
@@ -918,7 +936,7 @@ class UpdateDbThread(threading.Thread):
 
 										try:
 											request = urllib2.Request("%sGetGamesList.php" % url, urllib.urlencode(obj), headers=headers)
-											logging.debug('Loading URL: %s?%s' % (request.get_full_url(), request.get_data()))
+											logging.debug('loading URL: %s?%s' % (request.get_full_url(), request.get_data()))
 											response = urllib2.urlopen(request)
 											urlLoaded = True
 										except urllib2.URLError, e:
@@ -955,7 +973,7 @@ class UpdateDbThread(threading.Thread):
 										urlLoaded = False
 										try:
 											request = urllib2.Request("%sGetGame.php" % url, urllib.urlencode({"id": gameApiId}), headers=headers)
-											logging.debug('Loading URL: %s?%s' % (request.get_full_url(), request.get_data()))
+											logging.debug('loading URL: %s?%s' % (request.get_full_url(), request.get_data()))
 											response = urllib2.urlopen(request)
 											urlLoaded = True
 										except urllib2.URLError, e:
@@ -976,38 +994,35 @@ class UpdateDbThread(threading.Thread):
 													# thrown if date is not valid
 													logging.warning("release date: %s is not in m/d/Y format!" % released)
 													released = -1
-											boxartElement = xmlData.find("Game/Images/boxart[@side='front']")
-											if boxartElement != None:
-												imageSaved = False
-												try:
-													imgUrl = "http://thegamesdb.net/banners/%s" % boxartElement.text
-													logging.debug("downloading cover art: %s" % imgUrl)
-													self.__downloading = name
-													self.__progress = 'Downloading cover art for %s' % name
-													extension = imgUrl[imgUrl.rfind('.'):]
-													thumbPath = c.getImgCacheDir() + os.sep + str(gameApiId) + extension
-													request = urllib2.Request(imgUrl, headers=headers)
-													response = urllib2.urlopen(request).read()
-													output = open(thumbPath, 'wb')
-													output.write(response)
-													output.close()
-													imageSaved = True
-												except urllib2.URLError, e:
-													logging.error("an error occurred whilst trying to open url: %s" % e.message)
+													
+											if thumbPath == "0":
+												boxartElement = xmlData.find("Game/Images/boxart[@side='front']")
+												if boxartElement != None:
+													imageSaved = False
+													try:
+														imgUrl = "http://thegamesdb.net/banners/%s" % boxartElement.text
+														logging.debug("downloading cover art: %s" % imgUrl)
+														self.__downloading = name
+														self.__progress = 'downloading cover art for %s' % name
+														extension = imgUrl[imgUrl.rfind('.'):]
+														thumbPath =  c.getImgCacheDir() + os.sep + name.replace('/', '_') + extension
+														request = urllib2.Request(imgUrl, headers=headers)
+														response = urllib2.urlopen(request).read()
+														logging.debug("opening file: %s" % thumbPath)
+														output = open(thumbPath, 'wb')
+														output.write(response)
+														output.close()
+														imageSaved = True
+													except urllib2.URLError, e:
+														logging.error("an error occurred whilst trying to open url: %s" % e.message)
 
-												if imageSaved:
-													# resize the image if it is too big
-													img = Image.open(thumbPath)
-													width, height = img.size
-													if width > 300 or height > 300:
-														# scale image
-														self.__progress = 'Scaling cover art for %s' % name
-														logging.debug("scaling image: %s" % thumbPath)
-														ratio = min(float(400.0 / width), float(400.0 / height))
-														newWidth = width * ratio
-														newHeight = height * ratio
-														img.thumbnail((newWidth, newHeight), Image.ANTIALIAS)
-														img.save(thumbPath)
+													if imageSaved:
+														# resize the image if it is too big
+														self.__scaleImage(thumbPath, name)
+											else:
+												logging.debug("using cached cover art: %s" % thumbPath)
+												# does the provided image need to be scaled?
+												self.__scaleImage(thumbPath, name)
 															
 									else:
 										self.__progress = 'Could not find game data for %s' % name
@@ -1017,11 +1032,11 @@ class UpdateDbThread(threading.Thread):
 									if row == None:
 										self.__progress = 'Adding %s to database...' % name
 										logging.debug('inserting new game record into database...')
-										cur.execute("INSERT INTO `games`(`exists`, `console_id`, `name`, `game_path`, `api_id`, `cover_art`, `overview`, `released`, `favourite`, `last_played`, `play_count`, `size`) VALUES (1, %d, '%s', '%s', %d, '%s', '%s', %d, 0, -1, 0, %d);" % (consoleId, name.replace("'", "''"), f.replace("'", "''"), gameApiId, thumbPath, overview.replace("'", "''"), released, fileSize))
+										cur.execute("INSERT INTO `games`(`exists`, `console_id`, `name`, `game_path`, `api_id`, `cover_art`, `overview`, `released`, `favourite`, `last_played`, `play_count`, `size`) VALUES (1, %d, '%s', '%s', %d, '%s', '%s', %d, 0, -1, 0, %d);" % (consoleId, name.replace("'", "''"), f.replace("'", "''"), gameApiId, thumbPath.replace("'", "''"), overview.replace("'", "''"), released, fileSize))
 									elif gameApiId != -1:
 										self.__progress = 'Updating %s...' % name
 										logging.debug('updating game record in database...')
-										cur.execute("UPDATE `games` SET `api_id` = %d, `cover_art` = '%s', `overview` = '%s', `exists` = 1 WHERE `game_id` = %d;" % (gameApiId, thumbPath, overview.replace("'", "''"), row['game_id']))
+										cur.execute("UPDATE `games` SET `api_id` = %d, `cover_art` = '%s', `overview` = '%s', `exists` = 1 WHERE `game_id` = %d;" % (gameApiId, thumbPath.replace("'", "''"), overview.replace("'", "''"), row['game_id']))
 									else:
 										self.__progress = 'No need to update %s' % name
 										logging.debug("no need to update - could not find %s in online database" % name)
@@ -1042,7 +1057,7 @@ class UpdateDbThread(threading.Thread):
 				con.commit()
 								
 			except sqlite3.Error, e:
-				logging.error('could not update database: %s' % e.args[0])
+				logging.error('could not update database: %s, %s' % (e.args[0]))
 				if con:
 					con.rollback()
 				self.__progress = 'An error occurred whilst updating the database'
@@ -1063,6 +1078,19 @@ class UpdateDbThread(threading.Thread):
 	def hasStarted(self):
 		return self.__started
 
+	def __scaleImage(self, path, name):
+		img = Image.open(path)
+		width, height = img.size
+		ratio = min(float(400.0 / width), float(400.0 / height))
+		newWidth = width * ratio
+		newHeight = height * ratio
+		if width > newWidth or height > newHeight:
+			# scale image
+			self.__progress = 'Scaling cover art for %s' % name
+			logging.debug("scaling image: %s" % path)
+			img.thumbnail((newWidth, newHeight), Image.ANTIALIAS)
+			img.save(path)
+		
 	def stop(self):
 		self.__stop = True
 
@@ -2632,8 +2660,8 @@ class JoyStickConfigurationPanel(Panel):
 
 class Menu(Panel):
 
-	def __init__(self, entries, width, height, font, fontSize, colour, bgColour, margins=[0,0,0,0], menuItemGap = 10):
-		super(Menu, self).__init__(width, height, bgColour, '', margins)
+	def __init__(self, entries, width, height, font, fontSize, colour, bgColour, title = "", margins=[0,0,0,0], menuItemGap = 10):
+		super(Menu, self).__init__(width, height, bgColour, title, margins)
 		self.__marginTop = margins[2]
 		self.__marginBottom = margins[3]
 		self.__menuItemGap = menuItemGap
@@ -2824,7 +2852,7 @@ class GameInfoPanel(Panel):
 		self.__font = pygame.font.Font(font, fontSize)
 		self.__redraw = True
 		self.__menuItems = [MenuItem('Play', self.play)]
-		self.__menu = Menu(self.__menuItems, 200, 80, font, fontSize, colour, bgColour, [0,0,0,0], 0)
+		self.__menu = Menu(self.__menuItems, 200, 80, font, fontSize, colour, bgColour, '', [0,0,0,0], 0)
 		self.__menu.setSelected(0)
 		self.__menu.setActive(True)
 
