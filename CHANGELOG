@@ -28,6 +28,8 @@ Changes (and bug fixes):
 	- Added ZX Spectrum support thanks to libretro's Fuse core
 	- Added MAME support thanks to libretro's imame4all core
 	- Added auto-partitioning of the user's SD card to take advantage of all available space
+	- Added support for user supplied cover art
+	- Added PES "games catalogue" to allow short ROM names to be mapped to their full names (e.g. for MAME and FBA ROM sets)
 
 ----------------------------
 PES 1.2
