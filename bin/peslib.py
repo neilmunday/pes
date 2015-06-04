@@ -67,7 +67,7 @@ AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
 VERSION_NUMBER = '1.3 (development version)'
-VERSION_DATE = '2015-06-02'
+VERSION_DATE = '2015-06-04'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -892,7 +892,8 @@ class UpdateDbThread(threading.Thread):
 							if self.__stopCheck(con, cur):
 								return
 
-							name = os.path.split(c.getRomDir() + os.sep + f)[1]
+							filename = os.path.split(c.getRomDir() + os.sep + f)[1]
+							name = filename
 							fileSize = os.path.getsize(f)
 							for e in c.getExtensions():
 								name = name.replace(e, '')
@@ -911,13 +912,17 @@ class UpdateDbThread(threading.Thread):
 
 								cur.execute('SELECT `game_id`, `name`, `cover_art`, `game_path`, `api_id` FROM `games` WHERE `game_path` = "%s";' % f)
 								row = cur.fetchone()
-								if row == None or (row['cover_art'] == "0" and row['api_id'] == -1):
+								if row == None or (row['cover_art'] == "0" and row['api_id'] == -1) or (row['cover_art'] != "0" and not os.path.exists(row['cover_art'])):
 									gameApiId = None
 									bestName = name
 									thumbPath = '0'
 									
-									# has coverart already been provided by the user or downloaded previously?
+									# has cover art already been provided by the user or downloaded previously?
 									for e in imgExtensions:
+										path = cacheDir + os.sep + filename + '.' + e
+										if os.path.exists(path):
+											thumbPath = path
+											break
 										path = cacheDir + os.sep + name.replace('/', '_') + '.' + e
 										if os.path.exists(path):
 											thumbPath = path
@@ -933,36 +938,45 @@ class UpdateDbThread(threading.Thread):
 										data = urllib.urlencode(obj)
 										urlLoaded = False
 										nameLower = name.lower()
+										fullUrl = ''
 
 										try:
 											request = urllib2.Request("%sGetGamesList.php" % url, urllib.urlencode(obj), headers=headers)
-											logging.debug('loading URL: %s?%s' % (request.get_full_url(), request.get_data()))
+											fullUrl = '%s?%s' % (request.get_full_url(), request.get_data())
+											logging.debug('loading URL: %s' % fullUrl)
 											response = urllib2.urlopen(request)
 											urlLoaded = True
 										except urllib2.URLError, e:
-											logging.error("an error occurred whilst trying to open url: %s" % e.message)
+											logging.error("an error occurred whilst trying to open %s: %s" % (fullUrl, e.message))
 
 										if urlLoaded:
 											bestResultDistance = -1
-											xmlData = ElementTree.parse(response)
-											for x in xmlData.findall("Game"):
-												xname = x.find("GameTitle").text.encode('ascii', 'ignore')
-												xid = int(x.find("id").text)
-												logging.debug("potential result: %s (%d)" % (xname, xid))
+											dataOk = False
+											try:
+												xmlData = ElementTree.parse(response)
+												dataOk = True
+											except ParseError, e:
+												logging.error('Unable to parse data from %s: %s' % (fullUrl, e.message))
+											
+											if dataOk:
+												for x in xmlData.findall("Game"):
+													xname = x.find("GameTitle").text.encode('ascii', 'ignore')
+													xid = int(x.find("id").text)
+													logging.debug("potential result: %s (%d)" % (xname, xid))
 
-												if xname.lower() == nameLower:
-													logging.debug("exact match!")
-													gameApiId = xid
-													break
+													if xname.lower() == nameLower:
+														logging.debug("exact match!")
+														gameApiId = xid
+														break
 
-												stringMatcher = StringMatcher(str(nameLower), xname.lower())
-												distance = stringMatcher.distance()
-												logging.debug("string distance: %d" % distance)
+													stringMatcher = StringMatcher(str(nameLower), xname.lower())
+													distance = stringMatcher.distance()
+													logging.debug("string distance: %d" % distance)
 
-												if bestResultDistance == -1 or distance < bestResultDistance:
-													bestResultDistance = distance
-													bestName = xname
-													gameApiId = xid
+													if bestResultDistance == -1 or distance < bestResultDistance:
+														bestResultDistance = distance
+														bestName = xname
+														gameApiId = xid
 
 									if self.__stopCheck(con, cur):
 										return
@@ -1546,7 +1560,7 @@ class Console(Record):
 		query = 'SELECT `game_id` FROM `games` WHERE `console_id` = %d ' % self.getId()
 		if favouritesOnly:
 			query += ' AND favourite = 1 '
-		query += 'ORDER BY `name`'
+		query += 'ORDER BY UPPER(`name`)'
 		if limit >= 0 and count > 0:
 			query += ' LIMIT %d, %d' % (limit, count)
 		query += ';'
@@ -1613,6 +1627,9 @@ class Game(Record):
 	def getCoverArt(self):
 		coverArt = self.getProperty('cover_art')
 		if coverArt == '0':
+			return None
+		if not os.path.exists(coverArt):
+			logging.warning('cover art %s does not exist!' % coverArt)
 			return None
 		return coverArt
 
