@@ -94,6 +94,11 @@ else
 	fi
 fi
 
+# enable services
+header "Enabling services"
+run sudo systemctl enable ntpd.service
+run sudo systemctl start ntpd.service
+
 header "Creating /opt/sbin and populating"
 
 run sudo mkdir -p -v /opt/sbin

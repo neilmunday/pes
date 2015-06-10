@@ -44,7 +44,3 @@ run sudo pip2 install cec
 run sudo pip2 install reparted
 run sudo pip2 install fstab
 
-# enable services
-run sudo systemctl enable ntpd.service
-run sudo systemctl start ntpd.service
-

@@ -63,6 +63,7 @@ if __name__ == "__main__":
 	label = "data"
 	mountPoint = os.sep + label
 	romsDir = mountPoint + os.sep + "roms"
+	coverartDir = mountPoint + os.sep + "coverart"
 	user = 'pi'
 	
 	# look for existing "roms" partition - uses disk label to see if we have already made it or not
@@ -142,5 +143,8 @@ if __name__ == "__main__":
 	logging.debug("making %s" % romsDir)
 	os.mkdir(romsDir)
 	os.chown(romsDir, userAttrs.pw_uid, userAttrs.pw_gid)
+	logging.debug("making %s" % coverartDir)
+	os.mkdir(coverartDir)
+	os.chown(coverartDir, userAttrs.pw_uid, userAttrs.pw_gid)
 	logging.info("operations completed successfully")
 	sys.exit(0)

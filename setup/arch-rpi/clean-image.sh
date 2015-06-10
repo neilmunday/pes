@@ -25,6 +25,8 @@
 source /home/pi/pes/setup/arch-rpi/functions.sh
 
 romDir=$baseDir/roms
+coverartDir=$baseDir/coverart
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 header "Clean Image"
 
@@ -33,6 +35,7 @@ echo ""
 
 echo "WARNING: Answering yes to the following question will perform the following operations:"
 echo -e "\t-Delete all ROMs from $romDir including any game saves"
+echo -e "\t-Delete all cover art from $coverartDir"
 echo -e "\t-Delete any BIOSes installed in $baseDir/emulators/BIOS"
 echo -e "\t-Delete PES user preferences and cover art cache from $userDir/.pes"
 echo -e "\t-Delete PES and PESPad logs"
@@ -42,20 +45,24 @@ echo -e "\t-Delete command history for root and pi users"
 echo -e "\t-Delete pip cache"
 echo -e "\t-Delete SSH known_hosts files for root and pi users"
 echo -e "\t-Delete $baseDir/build contents"
+echo -e "\t-Remove unnecessary packages, including compilation utilities"
 echo ""
 
 read -p "Are you sure you want to proceed? [y/n]" response
 if [ "$response" == "y" ]; then
 	echo "Beginning purge..."
 	echo ""
-	echo "Stopping PESPad..."
-	run sudo systemctl stop pespad.service
+	#echo "Stopping PESPad..."
+	#run sudo systemctl stop pespad.service
 	echo ""
 	echo "Removing cached packages..."
 	run sudo pacman -Scc
 	echo ""
-	echo "Deleting ROMs..."
-	run rm -rfv $baseDir/roms/GameBoy/* $baseDir/roms/GameBoy\ Advance/* $baseDir/roms/GameBoy\ Color/* $baseDir/roms/GameGear/* $baseDir/roms/MasterSystem/* $baseDir/roms/Mega\ CD/* $baseDir/roms/MegaDrive/* $baseDir/roms/N64/* $baseDir/roms/NES/* $baseDir/roms/PSX/* $baseDir/roms/SNES/*
+	echo "Deleting ROMs from $romDir ..."
+	run rm -rfv $romDir/*
+	echo ""
+	echo "Deleting covert art from $coverartDir ..."
+	run rm -rfv $coverartDir/*
 	echo ""
 	echo "Deleting BIOSes..."
 	run rm -fv $baseDir/emulators/BIOS/*.bin
@@ -71,6 +78,9 @@ if [ "$response" == "y" ]; then
 	echo ""
 	echo "Deleting PES and PESPad logs..."
 	run sudo rm -fv /var/log/pespad.log $baseDir/log/*
+	echo ""
+	echo "Removing unnecessary packages..."
+	run sudo $DIR/remove-packages.sh
 	echo ""
 	echo "Deleting root bash history..."
 	run sudo rm -fv /root/.bash_history
