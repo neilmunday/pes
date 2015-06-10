@@ -67,7 +67,7 @@ AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
 VERSION_NUMBER = '1.3 (development version)'
-VERSION_DATE = '2015-06-04'
+VERSION_DATE = '2015-06-10'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -1017,7 +1017,7 @@ class UpdateDbThread(threading.Thread):
 														imgUrl = "http://thegamesdb.net/banners/%s" % boxartElement.text
 														logging.debug("downloading cover art: %s" % imgUrl)
 														self.__downloading = name
-														self.__progress = 'downloading cover art for %s' % name
+														self.__progress = 'Downloading cover art for %s' % name
 														extension = imgUrl[imgUrl.rfind('.'):]
 														thumbPath =  c.getImgCacheDir() + os.sep + name.replace('/', '_') + extension
 														request = urllib2.Request(imgUrl, headers=headers)
