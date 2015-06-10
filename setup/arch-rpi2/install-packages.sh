@@ -35,7 +35,7 @@ run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
 	rsync \
 	samba \
 	sdl sdl_mixer sdl_ttf sdl_image \
-	fbset mesa mesa-libgl \
+	fbset mesa mesa-libgl alsa-utils \
 	zip unzip
 
 run sudo pip2 install --upgrade pip
