@@ -67,7 +67,7 @@ AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
 VERSION_NUMBER = '1.3 (development version)'
-VERSION_DATE = '2015-06-10'
+VERSION_DATE = '2015-06-21'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -668,13 +668,13 @@ class PES(object):
                         
 			self.__clock.tick(fps)
 			if frame == fps:
-                                frame = 0
-                                seconds += 1
+				frame = 0
+				seconds += 1
 
-                        if seconds == 10:
-                                seconds = 0
-                                self.detectJoysticks()
-				self.__checkTemp()
+				if seconds == 10:
+					seconds = 0
+					self.detectJoysticks()
+					self.__checkTemp()
 
 			self.__header.draw(5, 0)
 
@@ -821,16 +821,37 @@ class PES(object):
 					configParser.write(f)
 
 class UpdateDbThread(threading.Thread):
-	def __init__(self, db, consoles):
+	def __init__(self, db):
 		threading.Thread.__init__(self)
 		self.__db = db
-		self.__consoles = consoles
+		self.__consoles = []
 		self.__progress = 'Initialising...'
 		self.__downloading = ''
 		self.__started = False
 		self.__finished = False
+		self.__consoles = []
 		self.__stop = False
+		self.__added = 0
+		self.__updated = 0
 		logging.debug('UpdateDbThread created')
+		
+	def getAdded(self):
+		return self.__added
+		
+	def getProgress(self):
+		return self.__progress
+
+	def getUpdated(self):
+		return self.__updated
+		
+	def hasFinished(self):
+		return self.__finished
+
+	def hasStarted(self):
+		return self.__started
+		
+	def interrupted(self):
+		return self.__stop
 
 	def run(self):
 		logging.debug('UpdateDbThread: started')
@@ -1047,10 +1068,12 @@ class UpdateDbThread(threading.Thread):
 										self.__progress = 'Adding %s to database...' % name
 										logging.debug('inserting new game record into database...')
 										cur.execute("INSERT INTO `games`(`exists`, `console_id`, `name`, `game_path`, `api_id`, `cover_art`, `overview`, `released`, `favourite`, `last_played`, `play_count`, `size`) VALUES (1, %d, '%s', '%s', %d, '%s', '%s', %d, 0, -1, 0, %d);" % (consoleId, name.replace("'", "''"), f.replace("'", "''"), gameApiId, thumbPath.replace("'", "''"), overview.replace("'", "''"), released, fileSize))
+										self.__added += 1
 									elif gameApiId != -1:
 										self.__progress = 'Updating %s...' % name
 										logging.debug('updating game record in database...')
 										cur.execute("UPDATE `games` SET `api_id` = %d, `cover_art` = '%s', `overview` = '%s', `exists` = 1 WHERE `game_id` = %d;" % (gameApiId, thumbPath.replace("'", "''"), overview.replace("'", "''"), row['game_id']))
+										self.__updated += 1
 									else:
 										self.__progress = 'No need to update %s' % name
 										logging.debug("no need to update - could not find %s in online database" % name)
@@ -1083,15 +1106,6 @@ class UpdateDbThread(threading.Thread):
 		logging.debug('UpdateDbThread: finished')
 		return
 
-	def getProgress(self):
-		return self.__progress
-
-	def hasFinished(self):
-		return self.__finished
-
-	def hasStarted(self):
-		return self.__started
-
 	def __scaleImage(self, path, name):
 		img = Image.open(path)
 		width, height = img.size
@@ -1104,7 +1118,10 @@ class UpdateDbThread(threading.Thread):
 			logging.debug("scaling image: %s" % path)
 			img.thumbnail((newWidth, newHeight), Image.ANTIALIAS)
 			img.save(path)
-		
+	
+	def setConsoles(self, consoles):
+		self.__consoles = consoles
+	
 	def stop(self):
 		self.__stop = True
 
@@ -1235,7 +1252,9 @@ class JoyStick(object):
 						if self.__eventMap[value] == JoyStick.BTN_LEFT_AXIS_DOWN:
 							return pygame.event.Event(KEYDOWN, {'key': K_DOWN})
 						if self.__eventMap[value] == JoyStick.BTN_SELECT:
-							return pygame.event.Event(KEYDOWN, {'key': K_s})	
+							return pygame.event.Event(KEYDOWN, {'key': K_s})
+						if self__eventMap[event] == JoyStick.BTN_START:
+							return pygame.event.Event(KEYDOWN, {'key': K_SPACE})
 		return None
 
 	def buttonToKeyEvent(self, event):
@@ -1265,6 +1284,8 @@ class JoyStick(object):
 				return pygame.event.Event(KEYDOWN, {'key': K_PAGEDOWN})
 			if self.__eventMap[event] == JoyStick.BTN_SELECT:
 				return pygame.event.Event(KEYDOWN, {'key': K_s})
+			if self__eventMap[event] == JoyStick.BTN_START:
+				return pygame.event.Event(KEYDOWN, {'key': K_SPACE})
 		return None
 
 	def getAxisOrBtn(self, btn):
@@ -1726,7 +1747,7 @@ class Panel(object):
 		self.__listeners.append(l)
 
 	def blit(self, obj, coords, area=None):
-		newCoords = (coords[0] + self.__margins[0], coords[1] + self.__margins[1])
+		newCoords = (coords[0] + self.__margins[0], coords[1] + self.__margins[2])
 		self.__background.blit(obj, newCoords, area)
 
 	def fireEvent(self, event, args=None):
@@ -2384,38 +2405,60 @@ class UpdateDbPanel(Panel):
 	def __init__(self, width, height, font, fontSize, colour, bgColour, db, consoles, margins=[0,0,0,0]):
 		super(UpdateDbPanel, self).__init__(width, height, bgColour, 'Update Database', margins)
 		self.__margins = margins
+		self.__fontName = font
 		self.__font = pygame.font.Font(font, fontSize)
 		self.__fontSize = fontSize
 		self.__colour = colour
 		self.__bgColour = bgColour
 		self.__db = db
-		self.__consoles = consoles
+		self.__consoleDict = {}
 		self.__redraw = True
-		self.__updateThread = UpdateDbThread(self.__db, self.__consoles)
+		self.__updateThread = UpdateDbThread(self.__db)
 		self.__progressSymbols = ['/', '-', '\\', '|']
 		self.__progressIdx = 0
 		self.__prevProgress = ''
 		self.__abort = False
 		self.__updateStarted = False
-
+		
+		self.__menuItems = []
+		for c in consoles:
+			self.__menuItems.append(MenuToggleItem(c.getName(), True))
+			self.__consoleDict[c.getName()] = c
+		
+		self.__menu = None
+		#self.__menu = Menu(self.__menuItems, width, height, font, fontSize, colour, bgColour)
+		#self.__menu.setActive(True)
+		
+		self.__infoLabels = self.getLabels(['Please use the menu below to select/unselect which consoles to scan. When you are ready to begin the scan please press the START button. Press R1 to unselect all and L1 to select all consoles.'], self.__font, self.__colour, self.__bgColour, width - (self.__margins[0] + self.__margins[1]), height)
+		
+		self.__scanLabels = self.getLabels(['PES will now scan your ROMs directory for any changes and will update your database accordingly. Depending on the number of changes this may take several minutes. You will not be able to exit this screen until the scan has completed or you decide to abort. The progress of the scan will be displayed below:'], self.__font, self.__colour, self.__bgColour, width - (self.__margins[0] + self.__margins[1]), height)
+		
 	def draw(self, x, y):
 		if self.isActive() and self.__redraw:
 			self.fillBackground()
-
-			currentY = 10
-
-			for l in self.getLabels(['PES will now scan your ROMs directory for any changes and will update your database accordingly. Depending on the number of changes this may take several minutes. You will not be able to exit this screen until the scan has completed or you decide to abort. The progress of the scan will be displayed below:'], self.__font, self.__colour, self.getBackgroundColour(), self.getWidth() - (self.__margins[0] + self.__margins[1]), self.getHeight()):
-				self.blit(l, (0, currentY))
-				currentY += l.get_rect().height
-
-			currentY += 20
-
+			
+			currentY = y
+			
 			if not self.__updateStarted and not self.__updateThread.hasStarted() and not self.__updateThread.hasFinished():
-				logging.debug('starting update thread')
-				self.lock()
-				self.__updateThread.start()
-				self.__updateStarted = True
+				for l in self.__infoLabels:
+					self.blit(l, (0, currentY))
+					currentY += l.get_rect().height
+				
+				currentY += 20
+				
+				if self.__menu == None:
+					self.__menu = Menu(self.__menuItems, self.getWidth() - self.__margins[0], self.getHeight() - currentY - self.__margins[2], self.__fontName, self.__fontSize, self.__colour, self.__bgColour, '', [self.__margins[0] + 10,0,0,0], 0)
+					self.__menu.setActive(True)
+				
+				self.update(x, y)
+				self.__menu.setRedraw(True)
+				self.__menu.draw(x, y + currentY + self.__margins[2])
+				self.__redraw = False
 			elif self.__updateThread.hasStarted() and not self.__updateThread.hasFinished():
+				for l in self.__scanLabels:
+					self.blit(l, (0, currentY))
+					currentY += l.get_rect().height
+				currentY += 20
 				progress = self.__updateThread.getProgress()
 				if progress == self.__prevProgress:
 					progress += ' (%s)' % self.__progressSymbols[self.__progressIdx]
@@ -2433,25 +2476,61 @@ class UpdateDbPanel(Panel):
 				else:
 					label = self.__font.render('Aborting...', 1, self.__colour, self.getBackgroundColour())
 				self.blit(label, (0, currentY))
-					
+				self.update(x, y)
 			elif self.__updateThread.hasFinished():
 				logging.debug('update thread finished')
 				self.fireEvent(EVENT_DATABASE_UPDATED)
 				self.__redraw = False
 				self.unlock()
-				label = self.__font.render(self.__updateThread.getProgress(), 1, self.__colour, self.getBackgroundColour())
-				self.blit(label, (0, currentY))	
-
-			self.update(x, y)
+				if self.__updateThread.interrupted():
+					label = self.__font.render('Database update was interrupted! Added %d, Updated %d games.' % (self.__updateThread.getAdded(), self.__updateThread.getUpdated()), 1, self.__colour, self.getBackgroundColour())
+				else:
+					label = self.__font.render('Database update completed successfully. Added %d, Updated %d games.' % (self.__updateThread.getAdded(), self.__updateThread.getUpdated()), 1, self.__colour, self.getBackgroundColour())
+				self.blit(label, (0, currentY))
+				self.update(x, y)
 
 	def handleEvent(self, event):
 		if self.isActive():
-			if self.__updateThread.hasStarted() and not self.__updateThread.hasFinished():
-				if event.type == KEYDOWN:
+			if event.type == KEYDOWN:
+				if self.__updateThread.hasStarted() and not self.__updateThread.hasFinished():
 					if not self.__abort and event.key == K_RETURN:
 						logging.debug('stopping update thread...')
 						self.__abort = True
 						self.__updateThread.stop()
+				else:
+					if event.key == K_PAGEUP:
+						for m in self.__menuItems:
+							m.setToggled(True)
+					elif event.key == K_PAGEDOWN:
+						for m in self.__menuItems:
+							m.setToggled(False)
+					elif event.key == K_SPACE:
+						if not self.__updateStarted and not self.__updateThread.hasStarted() and not self.__updateThread.hasFinished():
+							if self.__menu.getToggleCount() == 0:
+								self.fireEvent(EVENT_WARNING, ['Please select at least one console to scan!'])
+							else:
+								# only scan the toggled consoles
+								consoles = []
+								for m in self.__menuItems:
+									if m.isToggled():
+										logging.debug('adding %s to the list of consoles to scan' % m.getText())
+										consoles.append(self.__consoleDict[m.getText()])
+								# start thread
+								logging.debug('starting update thread')
+								self.lock()
+								self.__updateThread.setConsoles(consoles)
+								self.__updateThread.start()
+								self.__updateStarted = True
+					else:
+						self.__menu.handleEvent(event)
+				self.__redraw = True
+				
+			#if self.__updateThread.hasStarted() and not self.__updateThread.hasFinished():
+			#	if event.type == KEYDOWN:
+			#		if not self.__abort and event.key == K_RETURN:
+			#			logging.debug('stopping update thread...')
+			#			self.__abort = True
+			#			self.__updateThread.stop()
 
 class JoyStickConfigurationPanel(Panel):
 
@@ -2688,6 +2767,7 @@ class Menu(Panel):
 		self.__selected = 0
 		self.__entries[self.__selected].setSelected(True)
 		self.__font = pygame.font.Font(font, fontSize)
+		self.__fontWidth = self.__font.size('A')[0]
 		self.__fontHeight = self.__font.size('A')[1]
 		# work out number of visible items
 		self.__startIndex = 0
@@ -2701,6 +2781,7 @@ class Menu(Panel):
 		# x is where the panel is drawn
 		# all x, y values for drawing labels should be relative to zero!
 		if self.isActive() and self.__redraw:
+			currentX = 0
 			self.fillBackground()
 			nextY = self.__marginTop
 			i = self.__startIndex
@@ -2709,11 +2790,25 @@ class Menu(Panel):
 					label = self.__font.render(self.__entries[i].getText(), 1, self.getBackgroundColour(), self.__colour)
 				else:
 					label = self.__font.render(self.__entries[i].getText(), 1, self.__colour, self.getBackgroundColour())
-				self.blit(label, (0, nextY))
+				self.blit(label, (currentX, nextY))
+				if self.__entries[i].isToggled():
+					if self.__entries[i].isSelected():
+						label = self.__font.render('*', 1, self.getBackgroundColour(), self.__colour)
+					else:
+						label = self.__font.render('*', 1, self.__colour, self.getBackgroundColour())
+					self.blit(label, (currentX - self.__fontWidth + 1, nextY))
 				nextY += self.__fontHeight + self.__menuItemGap
 				i += 1
+
 			self.update(x, y)
 			self.__redraw = False
+			
+	def getToggleCount(self):
+		total = 0
+		for i in self.__entries:
+			if i.isToggled():
+				total += 1
+		return total
 
 	def handleEvent(self, event):
 		if self.isActive():
@@ -2773,6 +2868,9 @@ class Menu(Panel):
 			i += 1
 		self.__redraw = True
 
+	def setRedraw(self, redraw):
+		self.__redraw = redraw
+		
 	def setSelected(self, i):
 		self.__entries[self.__selected].setSelected(False)
 		self.__selected = i
@@ -2809,6 +2907,24 @@ class MenuItem(object):
 
 	def setText(self, text):
 		self.__text = text
+		
+	def isToggled(self):
+		return False
+		
+class MenuToggleItem(MenuItem):
+
+	def __init__(self, text, toggled = False):
+		super(MenuToggleItem, self).__init__(text)
+		self.__toggled = toggled
+		
+	def activate(self):
+		self.__toggled = not self.__toggled
+		
+	def isToggled(self):
+		return self.__toggled
+		
+	def setToggled(self, toggled):
+		self.__toggled = toggled
 
 class MenuImgItem(MenuItem):
 
