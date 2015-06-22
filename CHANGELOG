@@ -6,7 +6,7 @@ PES Changelog
 PES 1.3 (in development)
 ----------------------------
 
-Date: 2015-06-02
+Date: 2015-06-21
 
 Changes (and bug fixes):
 
@@ -30,6 +30,7 @@ Changes (and bug fixes):
 	- Added auto-partitioning of the user's SD card to take advantage of all available space
 	- Added support for user supplied cover art
 	- Added PES "games catalogue" to allow short ROM names to be mapped to their full names (e.g. for MAME and FBA ROM sets)
+	- Added ability to select which consoles are updated when scanning for ROMs
 
 ----------------------------
 PES 1.2
