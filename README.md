@@ -1,9 +1,9 @@
 pes
 ===
 
-PES is a graphical front end for a variety of games console emulators that has been written in Python which is intended for use on the Raspberry Pi.
+PES is a graphical front end for a variety of games console emulators that has been written in [Python](https://www.python.org>) which is intended for use on the Raspberry Pi.
 
-At the heart of PES is the pes.py GUI. This can be used on any OS that supports Python and PyGame.
+At the heart of PES is the pes.py GUI. This can be used on any OS that supports [Python](https://www.python.org>) and [PyGame](http://pygame.org>).
 
 ![PES GUI 1](http://pes.mundayweb.com/html/_images/pes-main.png)
 ![PES GUI 2](http://pes.mundayweb.com/html/_images/pes-nes.png)
@@ -57,6 +57,7 @@ I would like to thank the following people/groups as without them PES would not 
 * All the maintainers of [Arch Linux](http://archlinuxarm.org/platforms/armv6/raspberry-pi>)
 * [theGamesDB.net](http://thegamesdb.net) for their comprehensive game meta data API
 * All the maintainers of the [Python](https://www.python.org>) programming language in which PES is written
+* All the maintainers of [PyGame](http://pygame.org>) which PES uses to create its GUI
 * The [Raspberry Pi Foundation](http://www.raspberrypi.org)
 * Eric Smith for his many hours of testing, finding bugs, suggesting new features and for supplying graphics for PES
 
