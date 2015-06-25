@@ -808,8 +808,8 @@ class PES(object):
 						configParser.set(section, 'C Button L', js.getMupen64PlusButtonValue(JoyStick.BTN_RIGHT_AXIS_LEFT))
 						configParser.set(section, 'C Button D', js.getMupen64PlusButtonValue(JoyStick.BTN_RIGHT_AXIS_DOWN))
 						configParser.set(section, 'C Button U', js.getMupen64PlusButtonValue(JoyStick.BTN_RIGHT_AXIS_UP))
-						configParser.set(section, 'R Trig', js.getMupen64PlusButtonValue(JoyStick.BTN_SHOULDER_LEFT2))
-						configParser.set(section, 'L Trig', js.getMupen64PlusButtonValue(JoyStick.BTN_SHOULDER_RIGHT2))
+						configParser.set(section, 'L Trig', js.getMupen64PlusButtonValue(JoyStick.BTN_SHOULDER_LEFT2))
+						configParser.set(section, 'R Trig', js.getMupen64PlusButtonValue(JoyStick.BTN_SHOULDER_RIGHT2))
 						configParser.set(section, 'X Axis', js.getMupen64PlusButtonValue(JoyStick.BTN_LEFT_AXIS_LEFT))
 						configParser.set(section, 'Y Axis', js.getMupen64PlusButtonValue(JoyStick.BTN_LEFT_AXIS_UP))
 					
