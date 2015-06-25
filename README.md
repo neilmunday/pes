@@ -20,8 +20,12 @@ The PES Raspberry Pi image has the following features:
 * Automatic pairing of PS3 control pads
 * File sharing support to allow you to install new games (requires network connection)
 * Uses ArchLinux for a minimal system installation
-* Provides console emulation via RetroArch for:
+* Provides game platform emulation for:
 
+  * Final Burn Alpha (FBA)
+  * MAME
+  * Neo Geo
+  * Nintendo 64 (N64)
   * Nintendo Entertainment System (NES)
   * Nintendo Game Boy
   * Nintendo Game Boy Advance
@@ -32,6 +36,7 @@ The PES Raspberry Pi image has the following features:
   * Sega Mega Drive (aka Genesis)
   * Sega CD
   * Sony PlayStation
+  * ZX Spectrum
   
 The documentation and Raspberry Pi image for PES can be found at: http://pes.mundayweb.com
 
@@ -43,11 +48,12 @@ I would like to thank the following people/groups as without them PES would not 
 * Frank Raiser for his [image scaling code](http://www.pygame.org/pcr/transform_scale>) that I have modified for use by PES to scale thumbnail images
 * The maintainers of [RetroArch](http://www.libretro.com>) and all of the emulators that PES uses:
 
-  * libretro-fba https://github.com/libretro/libretro-fba
   * fceu-next https://github.com/libretro/fceu-next
+  * fuse-libretro https://github.com/libretro/fuse-libretro
   * gambatte-libretro https://github.com/libretro/gambatte-libretro
   * Genesis-Plus-GX https://github.com/ekeeke/Genesis-Plus-GX
   * gpsp https://github.com/libretro/gpsp
+  * libretro-fba https://github.com/libretro/libretro-fba
   * pcsx_rearmed https://github.com/notaz/pcsx_rearmed
   * PicoDrive https://github.com/libretro/picodrive
   * Pocket SNES https://github.com/libretro/pocketsnes-libretro
