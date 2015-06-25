@@ -761,14 +761,28 @@ class PES(object):
 			configParser.optionxform=str
 			configParser.read(self.__mupen64plusConfigFile)
 			if configParser.has_section('CoreEvents') and configParser.has_option('CoreEvents', 'Joy Mapping Stop'):
+				jsName = self.__joystick.getName()
 				exitBtn = self.__joystick.getButtonValue(JoyStick.BTN_EXIT)
 				if exitBtn == None:
-					msg = 'Warning: no exit button has been defined for %s!' % self.__joystick.getName()
-					logging.info(msg)
+					msg = 'Warning: no exit button has been defined for %s!' % jsName
+					logging.warning('no exit button has been defined for %s!' % jsName)
 					self.__showMessageBox(msg)
 					configParser.set('CoreEvents', 'Joy Mapping Stop', '')
 				else:
 					configParser.set('CoreEvents', 'Joy Mapping Stop', 'J0B' + exitBtn)
+				saveStateBtn = self.__joystick.getButtonValue(JoyStick.BTN_SAVE_STATE)
+				if saveStateBtn:
+					configParser.set('CoreEvents', 'Joy Mapping Save State', 'J0B' + saveStateBtn)
+				else:
+					logging.info('no save state button has been defined for %s' % jsName)
+					configParser.set('CoreEvents', 'Joy Mapping Save State', '')
+				loadStateBtn = self.__joystick.getButtonValue(JoyStick.BTN_LOAD_STATE)
+				if loadStateBtn:
+					configParser.set('CoreEvents', 'Joy Mapping Load State', 'J0B' + loadStateBtn)
+				else:
+					logging.info('no load state button has been defined for %s' % jsName)
+					configParser.set('CoreEvents', 'Joy Mapping Load State', '')
+					
 				# loop through each joystick that is connected and save to button config file
 				# note: max of 4 control pads for this emulator
 				i = 0
