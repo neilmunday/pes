@@ -67,7 +67,7 @@ AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
 VERSION_NUMBER = '1.3 (development version)'
-VERSION_DATE = '2015-06-21'
+VERSION_DATE = '2015-06-25'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -1253,7 +1253,7 @@ class JoyStick(object):
 							return pygame.event.Event(KEYDOWN, {'key': K_DOWN})
 						if self.__eventMap[value] == JoyStick.BTN_SELECT:
 							return pygame.event.Event(KEYDOWN, {'key': K_s})
-						if self__eventMap[event] == JoyStick.BTN_START:
+						if self.__eventMap[value] == JoyStick.BTN_START:
 							return pygame.event.Event(KEYDOWN, {'key': K_SPACE})
 		return None
 
@@ -1284,7 +1284,7 @@ class JoyStick(object):
 				return pygame.event.Event(KEYDOWN, {'key': K_PAGEDOWN})
 			if self.__eventMap[event] == JoyStick.BTN_SELECT:
 				return pygame.event.Event(KEYDOWN, {'key': K_s})
-			if self__eventMap[event] == JoyStick.BTN_START:
+			if self.__eventMap[event] == JoyStick.BTN_START:
 				return pygame.event.Event(KEYDOWN, {'key': K_SPACE})
 		return None
 
@@ -2384,7 +2384,7 @@ class AboutPanel(Panel):
 		if self.isActive() and self.__redraw:
 			self.fillBackground()
 
-			for l in self.getLabels(['Pi Entertainment System version %s' % VERSION_NUMBER, ' ', 'Released: %s' % VERSION_DATE, ' ', 'License: Licensed under version 3 of the GNU Public License (GPL)', ' ', 'Author: %s' % VERSION_AUTHOR, ' ', 'Contributors: Eric Smith', ' ', 'Cover art: theGamesDB.net', ' ', 'Documentataion: http://pes.mundayweb.com', ' ', 'Help: pes@mundayweb.com'], self.__font, self.__colour, self.getBackgroundColour(), self.getWidth() - self.__margins[0], self.getHeight()):
+			for l in self.getLabels(['Pi Entertainment System version %s' % VERSION_NUMBER, ' ', 'Released: %s' % VERSION_DATE, ' ', 'License: Licensed under version 3 of the GNU Public License (GPL)', ' ', 'Author: %s' % VERSION_AUTHOR, ' ', 'Contributors: Eric Smith', ' ', 'Cover art: theGamesDB.net', ' ', 'Documentation: http://pes.mundayweb.com', ' ', 'Help: pes@mundayweb.com'], self.__font, self.__colour, self.getBackgroundColour(), self.getWidth() - self.__margins[0], self.getHeight()):
 				self.blit(l, (0, currentY))
 				currentY += l.get_rect().height
 
