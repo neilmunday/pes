@@ -53,6 +53,7 @@ I would like to thank the following people/groups as without them PES would not 
   * gambatte-libretro https://github.com/libretro/gambatte-libretro
   * Genesis-Plus-GX https://github.com/ekeeke/Genesis-Plus-GX
   * gpsp https://github.com/libretro/gpsp
+  * imame4all-libretro https://github.com/libretro/imame4all-libretro
   * libretro-fba https://github.com/libretro/libretro-fba
   * pcsx_rearmed https://github.com/notaz/pcsx_rearmed
   * PicoDrive https://github.com/libretro/picodrive
