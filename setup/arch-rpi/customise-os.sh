@@ -109,6 +109,6 @@ run sudo systemctl start ntpd.service
 header "Creating /opt/sbin and populating"
 
 run sudo mkdir -p -v /opt/sbin
-run sudo chmod 700 /opt/bin
+run sudo chmod 700 /opt/sbin
 run sudo cp make_rom_partition.py /opt/sbin/
 run sudo chmod 700 /opt/sbin/make_rom_partition.py
