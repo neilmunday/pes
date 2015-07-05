@@ -6,7 +6,7 @@ PES Changelog
 PES 1.3 (in development)
 ----------------------------
 
-Date: 2015-06-25
+Date: 2015-07-05
 
 Changes (and bug fixes):
 
@@ -15,6 +15,7 @@ Changes (and bug fixes):
 	- Fixed minor game favouriting bug
 	- Fixed two button detection bugs when configuring control pads
 	- Fixed incorrect title on game info panel when switching games
+	- Updated set-up scripts to work out the location of the set-up directory dynamically
 	- Game object loading now more efficient which should reduce game pages loading time
 	- More than one console can now use the same API ID
 	- Added support for L3 and R3 buttons
