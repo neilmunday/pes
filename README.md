@@ -67,4 +67,4 @@ I would like to thank the following people/groups as without them PES would not 
 * All the maintainers of [PyGame](http://pygame.org>) which PES uses to create its GUI
 * The [Raspberry Pi Foundation](http://www.raspberrypi.org)
 * Eric Smith for his many hours of testing, finding bugs, suggesting new features and for supplying graphics for PES
-
+* Alex Moriarty for finding and fixing bugs in some of PES' set-up scripts.
