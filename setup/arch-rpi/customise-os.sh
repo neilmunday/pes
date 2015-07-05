@@ -6,7 +6,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2014 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -26,7 +26,14 @@
 # This script customises the OS to PES' needs.
 #
 
-source /home/pi/pes/setup/arch-rpi/functions.sh
+setupDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+if [ ! -e $setupDir/functions.sh ]; then
+	echo "Error! $setupDir/functions does not exist!"
+	exit 1
+fi
+
+source $setupDir/functions.sh
 
 header "Setting timezone to London, UK"
 run sudo timedatectl set-timezone Europe/London
