@@ -22,11 +22,17 @@
 #    along with PES.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-source /home/pi/pes/setup/arch-rpi2/functions.sh
+setupDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-setupDir="$baseDir/setup/arch"
+if [ ! -e $setupDir/functions.sh ]; then
+	echo "Error! $setupDir/functions does not exist!"
+	exit 1
+fi
+
+source $setupDir/functions.sh
 
 header "Updating OS..."
+
 run sudo pacman -Syu
 
 header "Installing additional packages..."
@@ -38,7 +44,10 @@ run $setupDir/customise-os.sh
 header "Setting up PS3 Bluetooth control pad support.."
 run $setupDir/install-qtsixad.sh
 
-header "Setting up RetroArch..."
+header "Installing SDL2..."
+run $setupDir/install-sdl2.sh
+
+header "Installing up RetroArch..."
 run $setupDir/install-retroarch.sh
 
 header "Installing emulator cores..."
@@ -50,6 +59,9 @@ run $setupDir/install-pocketsnes.sh
 run $setupDir/install-psx_rearmed.sh
 run $setupDir/install-gpsp.sh
 run $setupDir/install-mupen64plus.sh
+run $setupDir/install-fuse-libretro.sh
+run $setupDir/install-fba-libretro.sh
+run $setupDir/install-imame4all.sh
 
 header "Setting up Samba..."
 run $setupDir/install-samba.sh

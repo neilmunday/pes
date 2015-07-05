@@ -22,11 +22,17 @@
 #    along with PES.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-source /home/pi/pes/setup/arch-rpi/functions.sh
+setupDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-setupDir="$baseDir/setup/arch"
+if [ ! -e $setupDir/functions.sh ]; then
+	echo "Error! $setupDir/functions does not exist!"
+	exit 1
+fi
+
+source $setupDir/functions.sh
 
 header "Updating OS..."
+
 run sudo pacman -Syu
 
 header "Installing additional packages..."
