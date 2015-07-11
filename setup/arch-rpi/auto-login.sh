@@ -53,7 +53,7 @@ if [ ! -e ~/.bash_pes ]; then
 	echo -e "\techo \"Giving time for network interface to start...\"" >> ~/.bash_pes
 	echo -e "\tfor i in \`seq 1 10\`; do" >> ~/.bash_pes
 	echo -e "\t\ts=\$((10-i))" >> ~/.bash_pes
-	echo -e "\t\techo -e -n \"Wating for \${s}s \\\r\"" >> ~/.bash_pes
+	echo -e "\t\techo -e -n \"Waiting for \${s}s \\\r\"" >> ~/.bash_pes
 	echo -e "\t\tsleep 1" >> ~/.bash_pes
 	echo -e "\tdone" >> ~/.bash_pes
 	echo -e "\techo \"Truncating log file...\"" >> ~/.bash_pes
