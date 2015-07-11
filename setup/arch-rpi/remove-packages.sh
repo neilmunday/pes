@@ -44,3 +44,5 @@ for p in $packages; do
 	echo "Removing $p"
 	sudo pacman -R $p
 done
+
+exit 0
