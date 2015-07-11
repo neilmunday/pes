@@ -35,7 +35,6 @@ source $setupDir/functions.sh
 
 packages="binutils
 gcc
-git
 libyaml
 lua
 make

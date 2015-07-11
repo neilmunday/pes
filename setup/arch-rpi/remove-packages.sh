@@ -28,7 +28,6 @@ source /home/pi/pes/setup/arch-rpi/functions.sh
 
 packages="binutils
 gcc
-git
 libyaml
 lua
 make
