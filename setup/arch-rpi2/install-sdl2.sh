@@ -1,5 +1,5 @@
 #!/bin/bash
-0
+
 #
 #    This file is part of the Pi Entertainment System (PES).
 #
