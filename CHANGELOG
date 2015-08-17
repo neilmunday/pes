@@ -3,6 +3,17 @@ PES Changelog
 =============
 
 ----------------------------
+PES 1.4
+----------------------------
+
+Date: 2015-08-17
+
+Changes (and bug fixes):
+
+	- Fixed incorrect L2 / R2 button mappings. Thanks to Steve McNamara for reporting the bug.
+	- Updated joystick config files with correct L2 / R2 button mappings
+
+----------------------------
 PES 1.3
 ----------------------------
 
