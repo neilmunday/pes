@@ -66,8 +66,8 @@ AXIS_PRESSED = 1
 AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
-VERSION_NUMBER = '1.3'
-VERSION_DATE = '2015-07-05'
+VERSION_NUMBER = '1.4'
+VERSION_DATE = '2015-08-17'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -2398,7 +2398,7 @@ class AboutPanel(Panel):
 		if self.isActive() and self.__redraw:
 			self.fillBackground()
 
-			for l in self.getLabels(['Pi Entertainment System version %s' % VERSION_NUMBER, ' ', 'Released: %s' % VERSION_DATE, ' ', 'License: Licensed under version 3 of the GNU Public License (GPL)', ' ', 'Author: %s' % VERSION_AUTHOR, ' ', 'Contributors: Eric Smith', ' ', 'Cover art: theGamesDB.net', ' ', 'Documentation: http://pes.mundayweb.com', ' ', 'Help: pes@mundayweb.com'], self.__font, self.__colour, self.getBackgroundColour(), self.getWidth() - self.__margins[0], self.getHeight()):
+			for l in self.getLabels(['Pi Entertainment System version %s' % VERSION_NUMBER, ' ', 'Released: %s' % VERSION_DATE, ' ', 'License: Licensed under version 3 of the GNU Public License (GPL)', ' ', 'Author: %s' % VERSION_AUTHOR, ' ', 'Contributors: Eric Smith', ' ', 'Cover art: theGamesDB.net', ' ', 'Documentation: http://pes.mundayweb.com', ' ', 'Facebook: https://www.facebook.com/pientertainmentsystem', ' ', 'Help: pes@mundayweb.com'], self.__font, self.__colour, self.getBackgroundColour(), self.getWidth() - self.__margins[0], self.getHeight()):
 				self.blit(l, (0, currentY))
 				currentY += l.get_rect().height
 
@@ -2557,8 +2557,61 @@ class JoyStickConfigurationPanel(Panel):
 		self.__font = pygame.font.Font(font, fontSize)
 		self.__redraw = True
 		self.__lastBtn = None
-		self.__prompts = ['Start', 'Select', 'Up', 'Down', 'Left', 'Right', 'A', 'B', 'X', 'Y', 'Shoulder L', 'Shoulder R', 'Shoulder L2', 'Shoulder R2', 'L3 Up', 'L3 Down', 'L3 Left', 'L3 Right', 'R3 Up', 'R3 Down', 'R3 Left', 'R3 Right', 'Exit Game', 'Save State', 'Load State']
-		self.__btns = [JoyStick.BTN_START, JoyStick.BTN_SELECT, JoyStick.BTN_UP, JoyStick.BTN_DOWN, JoyStick.BTN_LEFT, JoyStick.BTN_RIGHT, JoyStick.BTN_A, JoyStick.BTN_B, JoyStick.BTN_X, JoyStick.BTN_Y, JoyStick.BTN_SHOULDER_LEFT, JoyStick.BTN_SHOULDER_RIGHT, JoyStick.BTN_SHOULDER_RIGHT2, JoyStick.BTN_SHOULDER_LEFT2, JoyStick.BTN_LEFT_AXIS_UP, JoyStick.BTN_LEFT_AXIS_DOWN, JoyStick.BTN_LEFT_AXIS_LEFT, JoyStick.BTN_LEFT_AXIS_RIGHT, JoyStick.BTN_RIGHT_AXIS_UP, JoyStick.BTN_RIGHT_AXIS_DOWN, JoyStick.BTN_RIGHT_AXIS_LEFT, JoyStick.BTN_RIGHT_AXIS_RIGHT, JoyStick.BTN_EXIT, JoyStick.BTN_SAVE_STATE, JoyStick.BTN_LOAD_STATE]
+		self.__prompts = [
+			'Start',
+			'Select',
+			'Up',
+			'Down',
+			'Left',
+			'Right',
+			'A',
+			'B',
+			'X',
+			'Y',
+			'Shoulder L',
+			'Shoulder R',
+			'Shoulder L2',
+			'Shoulder R2',
+			'L3 Up',
+			'L3 Down',
+			'L3 Left',
+			'L3 Right',
+			'R3 Up',
+			'R3 Down',
+			'R3 Left',
+			'R3 Right',
+			'Exit Game',
+			'Save State',
+			'Load State'
+		]
+		# the order of the btns array must match the prompts!
+		self.__btns = [
+			JoyStick.BTN_START,
+			JoyStick.BTN_SELECT,
+			JoyStick.BTN_UP,
+			JoyStick.BTN_DOWN,
+			JoyStick.BTN_LEFT,
+			JoyStick.BTN_RIGHT,
+			JoyStick.BTN_A,
+			JoyStick.BTN_B,
+			JoyStick.BTN_X,
+			JoyStick.BTN_Y,
+			JoyStick.BTN_SHOULDER_LEFT,
+			JoyStick.BTN_SHOULDER_RIGHT,
+			JoyStick.BTN_SHOULDER_LEFT2,
+			JoyStick.BTN_SHOULDER_RIGHT2,
+			JoyStick.BTN_LEFT_AXIS_UP,
+			JoyStick.BTN_LEFT_AXIS_DOWN,
+			JoyStick.BTN_LEFT_AXIS_LEFT,
+			JoyStick.BTN_LEFT_AXIS_RIGHT,
+			JoyStick.BTN_RIGHT_AXIS_UP,
+			JoyStick.BTN_RIGHT_AXIS_DOWN,
+			JoyStick.BTN_RIGHT_AXIS_LEFT,
+			JoyStick.BTN_RIGHT_AXIS_RIGHT,
+			JoyStick.BTN_EXIT,
+			JoyStick.BTN_SAVE_STATE,
+			JoyStick.BTN_LOAD_STATE
+		]
 		self.__answers = []
 		i = 0
 		while i < len(self.__prompts):
