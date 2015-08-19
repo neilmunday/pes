@@ -37,12 +37,14 @@ packages="binutils
 gcc
 libyaml
 lua
+cmake
 make
 patch
 pkg-config
 python2-pip
 ruby
 scons
+swig
 vim
 vim-runtime
 wget"
