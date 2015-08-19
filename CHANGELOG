@@ -6,12 +6,16 @@ PES Changelog
 PES 1.4
 ----------------------------
 
-Date: 2015-08-17
+Date: 2015-08-19
 
 Changes (and bug fixes):
 
 	- Fixed incorrect L2 / R2 button mappings. Thanks to Steve McNamara for reporting the bug.
+	- Added libcec install script for ArchLinux from source to enable Python bindings as python-cec does not support libcec above version 2 (current version of libcec is 3)
 	- Updated joystick config files with correct L2 / R2 button mappings
+	- Updated packages to add/remove to include cmake and swig for libcec build process
+	- Updated PES to use libcec Python bindings - this allows PES to set its name on the CEC network too unlike before
+	- Removed Python packages that are no longer required since moving to libcec rather than python-cec.
 
 ----------------------------
 PES 1.3
