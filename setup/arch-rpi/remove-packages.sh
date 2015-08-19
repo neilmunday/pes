@@ -22,7 +22,14 @@
 #    along with PES.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-source /home/pi/pes/setup/arch-rpi/functions.sh
+setupDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+if [ ! -e $setupDir/functions.sh ]; then
+	echo "Error! $setupDir/functions does not exist!"
+	exit 1
+fi
+
+source $setupDir/functions.sh
 
 # remove packages to reduce the size of the root partition
 
@@ -30,12 +37,14 @@ packages="binutils
 gcc
 libyaml
 lua
+cmake
 make
 patch
 pkg-config
 python2-pip
 ruby
 scons
+swig
 vim
 vim-runtime
 wget"
