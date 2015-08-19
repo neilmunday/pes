@@ -34,11 +34,11 @@ source $setupDir/functions.sh
 # install packages
 
 run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
-	gcc git make patch pkg-config scons vim wget \
-	libusb-compat linuxconsole libcec-rpi \
-	parted \
+	gcc git cmake make patch pkg-config scons swig vim wget \
+	libusb-compat linuxconsole libplatform \
 	python2 python2-pygame python2-levenshtein python2-pip python2-imaging \
 	ntp \
+	parted \
 	rsync \
 	samba \
 	sdl sdl_mixer sdl_ttf sdl_image \
@@ -46,8 +46,5 @@ run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
 	zip unzip
 
 run sudo pip2 install --upgrade pip
-run sudo pip2 install python-uinput
-run sudo pip2 install cec
 run sudo pip2 install reparted
 run sudo pip2 install fstab
-
