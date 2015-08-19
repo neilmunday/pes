@@ -31,11 +31,6 @@ import pygame
 from pygame.locals import *
 import peslib
 
-def handleCecEvent(event, *args):
-	global pes
-	if pes:
-		pes.handleCecEvent(event, args)
-
 if __name__ == "__main__":
 	global pes
 
@@ -60,8 +55,8 @@ if __name__ == "__main__":
 		logging.basicConfig(format='%(asctime)s:%(levelname)s: %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logLevel)
 
 	try:
-		# and so begins some rubbish code to handle CEC events
-		# it would seem that trying to add the CEC event handler to a method of a Python object is a no go :-(	
+		# and so begins some duplicated config parser code to handle CEC events...
+		# it would seem that trying to add the CEC event handler in the constructor of the PES object whilst using PyGame is a no go.	
 		baseDir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + os.sep + '../')
 		confFile= baseDir + os.sep + 'conf.d' + os.sep + 'pes' + os.sep + 'pes.ini'
 		if not os.path.exists(confFile) or not os.path.isfile(confFile):
@@ -88,20 +83,37 @@ if __name__ == "__main__":
 				logging.info("CEC module not found, disabling CEC functions")
 		else:
 			logging.debug("CEC disabled in pes.ini")
-
-		pygame.init()
-
+		
 		logging.debug("script dir is: %s" % scriptDir)
 		logging.info("loading GUI...")
 		pes = peslib.PES(args.window, commandFile)
 		if cecEnabled:
+			# set-up CEC
 			try:
-				cec.init()
+				logging.debug("create CEC config")
+				cecconfig = cec.libcec_configuration()
+				cecconfig.strDeviceName   = "PES"
+				cecconfig.bActivateSource = 0
+				cecconfig.deviceTypes.Add(cec.CEC_DEVICE_TYPE_RECORDING_DEVICE)
+				cecconfig.clientVersion = cec.LIBCEC_VERSION_CURRENT
 				logging.debug("adding CEC callback...")
-				cec.add_callback(handleCecEvent, cec.EVENT_KEYPRESS)
+				cecconfig.SetKeyPressCallback(pes.handleCecEvent)
+				lib = cec.ICECAdapter.Create(cecconfig)
+				logging.debug("looking for CEC adapters...")
+				adapters = lib.DetectAdapters()
+				adapterCount = len(adapters)
+				if adapterCount == 0:
+					logging.warning("could not find any CEC adapters!")
+				else:
+					logging.debug("found %d CEC adapters, attempting to open first adapter..." % adapterCount)
+					if lib.Open(adapters[0].strComName):
+						logging.info("CEC adapter opened")
+					else:
+						logging.error("unable to open CEC adapter!")
 			except Exception, e:
 				cecEnabled = False
 				logging.error("CEC module initilisation failed, disabling CEC functions")
+				logging.error(e)
 		command = pes.run()
 
 		launchArgs = ''

@@ -46,6 +46,27 @@ rm -f $script
 # prevent console from power saving
 setterm -blank 0
 
+# set-up environment
+
+libcecPath="/opt/libcec/current/lib"
+pythonPath="/opt/libcec/current/lib/python2.7/dist-packages"
+
+if [ -d $libcecPath ]; then
+	if [ -z $LD_LIBRARY_PATH ]; then
+		export LD_LIBRARY_PATH="$libcecPath"
+	else
+		export LD_LIBRARY_PATH="$libcecPath:$LD_LIBRARY_PATH"
+	fi
+fi
+
+if [ -d $pythonPath ]; then
+	if [ -z $PYTHONPATH ]; then
+		export PYTHONPATH="$pythonPath"
+	else
+		export PYTHONPATH="$PYTHONPATH:$pythonPath"
+	fi
+fi
+
 $DIR/pes.py $@
 
 if [ $? -eq 0 ]; then

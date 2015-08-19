@@ -216,7 +216,6 @@ class PES(object):
 		# do sanity checks first before we draw the screen
 		self.__userDir = os.path.expanduser('~') + os.sep + '.pes'
 		self.__userDb = self.__userDir + os.sep + 'pes.db'
-		self.__imgCacheDir = self.__userDir + os.sep + 'cache'
 		self.__baseDir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + os.sep + '../')
 		self.__confDir = self.__baseDir + os.sep + 'conf.d' + os.sep + 'pes'
 		self.__checkDir(self.__confDir)
@@ -243,6 +242,7 @@ class PES(object):
 			self.__rebootCommand = configParser.get('pes', 'rebootCommand')
 			self.__shutdownCommand = configParser.get('pes', 'shutdownCommand')
 			self.__tempCommand = configParser.get('pes', 'tempCommand')
+			self.__cecEnabled = configParser.getboolean('pes', 'hdmi-cec')
 		except ConfigParser.NoOptionError, e:
 			self.__exit('Error parsing config file %s: %s' % (self.__pesConfigFile, e.message), True)
 		
@@ -256,16 +256,9 @@ class PES(object):
 		# check for user settings
 		self.__mkdir(self.__userDir)
 
-		#if not os.path.exists(self.__imgCacheDir):
-		#	os.mkdir(self.__imgCacheDir)
-		#elif not os.path.isdir(self.__imgCacheDir):
-		#	self.__exit("Error: %s is not a directory!" % self.__imgCacheDir, True)
-		#elif not os.access(self.__imgCacheDir, os.W_OK):
-		#	self.__exit("Error: %s is not writable!" % self.__imgCacheDir, True)
-
 		# check for retroarch joysticks autoconfig dir
 		self.__mkdir(self.__retroarchJoysticksDir)
-
+		
 		# create database (if needed)
 		logging.debug('connecting to database: %s' % self.__userDb)
 		try:
@@ -594,10 +587,7 @@ class PES(object):
                 logging.info("rebooting...")
                 subprocess.call(self.__rebootCommand, shell=True)
 
-	def handleCecEvent(self, event, args):
-		btn = args[0]
-		dur = args[1]
-
+	def handleCecEvent(self, btn, dur):
 		if dur == 0:
 			if btn == CEC_DOWN:
 				pygame.event.post(pygame.event.Event(KEYDOWN, {'key': K_DOWN}))
