@@ -36,7 +36,7 @@ rmSourceDir "libcec"
 
 header "Downloading libcec"
 
-run git clone git://github.com/Pulse-Eight/libcec
+run git clone https://github.com/Pulse-Eight/libcec
 checkDir libcec
 cd libcec
 run mkdir build
