@@ -34,16 +34,19 @@ source $setupDir/functions.sh
 # remove packages to reduce the size of the root partition
 
 packages="binutils
+cmake
 gcc
+libxml2
 libyaml
 lua
-cmake
+jsoncpp
 make
 patch
 pkg-config
 python2-pip
 ruby
 scons
+shared-mime-info
 swig
 vim
 vim-runtime
