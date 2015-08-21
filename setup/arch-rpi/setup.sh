@@ -47,6 +47,9 @@ run $setupDir/install-qtsixad.sh
 header "Installing SDL2..."
 run $setupDir/install-sdl2.sh
 
+header "Installing libcec and Python bindings"
+run $setupDir/install-libcec.sh
+
 header "Installing up RetroArch..."
 run $setupDir/install-retroarch.sh
 
@@ -65,9 +68,6 @@ run $setupDir/install-imame4all.sh
 
 header "Setting up Samba..."
 run $setupDir/install-samba.sh
-
-header "Setting up PESPad..."
-run $setupDir/install-pespad.sh
 
 header "Setting up auto login..."
 run $setupDir/auto-login.sh
