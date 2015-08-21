@@ -99,7 +99,7 @@ Edit /etc/motd and set as you wish, e.g. sudo nano /etc/motd
 
 	Welcome to the Pi Entertainment System (PES)
 	
-	Image Version: 2015-08-17 (Raspberry Pi, Arm6)
+	Image Version: 2015-08-17 (Raspberry Pi 2, Arm7)
 	
 	PES Version: 1.4
 	
@@ -121,7 +121,7 @@ Note: the /data partition will be automatically created when PES first loads.
 	
 Now put the kettle on for the next step (you might need to leave this going overnight):
 
-	cd ~/pes/setup/arch-rpi
+	cd ~/pes/setup/arch-rpi2
 	./setup.sh
 	
 Or you can opt to run each "install-" script yourself. Note: not all are run by setup.sh as some install emulators etc. that are not production ready.
