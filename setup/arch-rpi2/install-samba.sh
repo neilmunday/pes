@@ -29,9 +29,9 @@ if [ ! -e $setupDir/functions.sh ]; then
 	exit 1
 fi
 
-checkFile $setupDir/smb.conf
-
 source $setupDir/functions.sh
+
+checkFile $setupDir/smb.conf
 
 run sudo rm -vf /etc/samba/smb.conf.default
 run sudo cp -v $setupDir/smb.conf /etc/samba/smb.conf
