@@ -33,7 +33,12 @@ source $setupDir/functions.sh
 
 # remove packages to reduce the size of the root partition
 
-packages="binutils
+packages="shared-mime-info
+gcc
+vim
+vim-runtime
+ruby
+binutils
 cmake
 gcc
 libxml2
@@ -44,12 +49,9 @@ make
 patch
 pkg-config
 python2-pip
-ruby
 scons
 shared-mime-info
 swig
-vim
-vim-runtime
 wget"
 
 for p in $packages; do
