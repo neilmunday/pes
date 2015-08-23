@@ -76,7 +76,6 @@ Description=sixad daemon
 After=sys-subsystem-bluetooth-devices-hci0.device
 
 [Service]
-ExecStartPre=/usr/bin/hciconfig hci0 pscan
 ExecStart=/usr/bin/nohup /usr/sbin/sixad --start
 
 [Install]
