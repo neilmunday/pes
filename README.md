@@ -68,3 +68,4 @@ I would like to thank the following people/groups as without them PES would not 
 * The [Raspberry Pi Foundation](http://www.raspberrypi.org)
 * Eric Smith for his many hours of testing, finding bugs, suggesting new features and for supplying graphics for PES
 * Alex Moriarty for finding and fixing bugs in some of PES' set-up scripts.
+* Steve McNamara for reporting bugs and testing fixes.
