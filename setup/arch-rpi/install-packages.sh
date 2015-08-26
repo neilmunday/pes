@@ -43,6 +43,7 @@ run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
 	samba \
 	sdl sdl_mixer sdl_ttf sdl_image \
 	fbset mesa mesa-libgl alsa-utils \
+	crda iw  wpa_supplicant \
 	zip unzip
 
 run sudo pip2 install --upgrade pip
