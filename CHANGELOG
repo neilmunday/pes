@@ -3,6 +3,16 @@ PES Changelog
 =============
 
 ----------------------------
+PES 1.4.1
+----------------------------
+
+Date: 2015-08-26
+
+Changes (and bug fixes):
+
+	- Fixed bug in Mupen64Plus config generation when four control pads are connected.
+
+----------------------------
 PES 1.4
 ----------------------------
 
