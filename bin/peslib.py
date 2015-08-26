@@ -66,8 +66,8 @@ AXIS_PRESSED = 1
 AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
-VERSION_NUMBER = '1.4'
-VERSION_DATE = '2015-08-17'
+VERSION_NUMBER = '1.4.1'
+VERSION_DATE = '2015-08-26'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -748,7 +748,7 @@ class PES(object):
 		if self.__joystickTotal > 0 and os.path.exists(self.__mupen64plusConfigFile) and os.path.isfile(self.__mupen64plusConfigFile):
 			logging.debug('loading Mupen64plus config file: %s' % self.__mupen64plusConfigFile)
 			configParser = ConfigParser.SafeConfigParser()
-			configParser.optionxform=str
+			configParser.optionxform = str # make options case sensitive
 			configParser.read(self.__mupen64plusConfigFile)
 			if configParser.has_section('CoreEvents') and configParser.has_option('CoreEvents', 'Joy Mapping Stop'):
 				jsName = self.__joystick.getName()
@@ -775,13 +775,13 @@ class PES(object):
 					
 				# loop through each joystick that is connected and save to button config file
 				# note: max of 4 control pads for this emulator
-				i = 0
+				i = 1
 				for jsNumber, js in self.__joysticksConnected.iteritems():
 					jsName = js.getName()
 					logging.debug('generating Mupen64Plus config for joystick %d: %s' % (jsNumber, jsName))
-					section = 'Input-SDL-Control%d' % (i + 1)
+					section = 'Input-SDL-Control%d' % i
 					if configParser.has_section(section):
-						configParser.set(section, 'device', str(i))
+						configParser.set(section, 'device', str(i - 1))
 						configParser.set(section, 'name', '"%s"' % jsName)
 						configParser.set(section, 'plugged', 'True')
 						configParser.set(section, 'mouse', 'False')
@@ -803,7 +803,7 @@ class PES(object):
 						configParser.set(section, 'X Axis', js.getMupen64PlusButtonValue(JoyStick.BTN_LEFT_AXIS_LEFT))
 						configParser.set(section, 'Y Axis', js.getMupen64PlusButtonValue(JoyStick.BTN_LEFT_AXIS_UP))
 					
-					if i == 3:
+					if i == 4:
 						break
 					i += 1
 					
@@ -812,7 +812,7 @@ class PES(object):
 					if configParser.has_section(section):
 						configParser.set(section, 'device', '-1') # no joystick connected
 						configParser.set(section, 'name', '""')
-					i += 3
+					i += 1
 				
 				# and so begins some crap code to set empty values to "" as Python's ConfigParser strips these
 				for s in configParser.sections():
@@ -823,6 +823,8 @@ class PES(object):
 				logging.debug('saving Mupen64plus configuration: %s' % (self.__mupen64plusConfigFile))
 				with open(self.__mupen64plusConfigFile, 'wb') as f:
 					configParser.write(f)
+		else:
+			logging.debug("not generating Mupen64Plus config - no joysticks connected!")
 
 class UpdateDbThread(threading.Thread):
 	def __init__(self, db):
