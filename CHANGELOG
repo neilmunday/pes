@@ -11,6 +11,8 @@ Date: 2015-08-26
 Changes (and bug fixes):
 
 	- Fixed bug in Mupen64Plus config generation when four control pads are connected.
+	- Added missing crda ArchLinux package to remove CRDA warnings at boot time when using a WiFi network connection with the ArchLinux Raspberry Pi and ArchLinux Raspberry Pi 2 images.
+	- Added missing wpa_supplicant package to ArchLinux Raspberry Pi image.
 
 ----------------------------
 PES 1.4
