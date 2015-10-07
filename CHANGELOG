@@ -3,6 +3,16 @@ PES Changelog
 =============
 
 ----------------------------
+PES 1.5.0 (Under development
+----------------------------
+
+Date: 2015-10-07
+
+Changes (and bug fixes):
+
+	- Added support for the Atari 2600 thanks to the Stella Libretro core.
+
+----------------------------
 PES 1.4.1
 ----------------------------
 

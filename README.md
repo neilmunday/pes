@@ -22,6 +22,7 @@ The PES Raspberry Pi image has the following features:
 * Uses ArchLinux for a minimal system installation
 * Provides game platform emulation for:
 
+  * Atari 2600
   * Final Burn Alpha (FBA)
   * MAME
   * Neo Geo
@@ -59,6 +60,7 @@ I would like to thank the following people/groups as without them PES would not 
   * PicoDrive https://github.com/libretro/picodrive
   * Pocket SNES https://github.com/libretro/pocketsnes-libretro
   * Ric RPi's Mupen64Plus fork https://github.com/ricrpi
+  * stella-libretro: https://github.com/libretro/stella-libretro
 
 * falkTX for creating the [QtSixA](http://qtsixa.sourceforge.net) daemon and utilities which is used by PES for using Sony PlayStation 3 control pads via Bluetooth.
 * All the maintainers of [Arch Linux](http://archlinuxarm.org/platforms/armv6/raspberry-pi>)

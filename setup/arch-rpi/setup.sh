@@ -65,6 +65,7 @@ run $setupDir/install-mupen64plus.sh
 run $setupDir/install-fuse-libretro.sh
 run $setupDir/install-fba-libretro.sh
 run $setupDir/install-imame4all.sh
+run $setupDir/install-stella-libretro.sh
 
 header "Setting up Samba..."
 run $setupDir/install-samba.sh
