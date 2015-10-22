@@ -66,8 +66,8 @@ AXIS_PRESSED = 1
 AXIS_RELEASED = 2
 AXIS_INITIALISED = 3
 
-VERSION_NUMBER = '1.5 (BETA)'
-VERSION_DATE = '2015-10-07'
+VERSION_NUMBER = '1.5'
+VERSION_DATE = '2015-10-22'
 VERSION_AUTHOR = 'Neil Munday'
 
 verbose = False
@@ -347,7 +347,7 @@ class PES(object):
 		if window == False:
 			self.__screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
 		else:
-			self.__screen = pygame.display.set_mode((1024, 768))
+			self.__screen = pygame.display.set_mode((1280, 900))
 			pygame.display.set_caption("PES")
 		self.__screenWidth = self.__screen.get_rect().width
 		self.__screenHeight = self.__screen.get_rect().height
@@ -1981,7 +1981,7 @@ class Header(Panel):
 
 class ThumbnailMenu(Panel):
 
-	def __init__(self, menuItems, width, height, font, fontSize, colour, bgColour, thumbsPerRow=4, fitToHeight=True):
+	def __init__(self, menuItems, width, height, font, fontSize, colour, bgColour, thumbsPerRow=5, fitToHeight=True):
 		super(ThumbnailMenu, self).__init__(width, height, bgColour)
 
 		self.__thumbMargin = 30
