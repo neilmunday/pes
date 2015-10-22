@@ -32,11 +32,13 @@ The PES Raspberry Pi image has the following features:
   * Nintendo Game Boy Advance
   * Nintendo Game Boy Color
   * Nintendo Super Entertainment System (SNES)
+  * Sega CD
   * Sega Game Gear
   * Sega Master System
   * Sega Mega Drive (aka Genesis)
-  * Sega CD
+  * Sega Mega Drive (aka Genesis) 32x
   * Sony PlayStation
+  * Turbo Grafx 16 (aka PC Engine)
   * ZX Spectrum
   
 The documentation and Raspberry Pi image for PES can be found at: http://pes.mundayweb.com
@@ -49,6 +51,7 @@ I would like to thank the following people/groups as without them PES would not 
 * Frank Raiser for his [image scaling code](http://www.pygame.org/pcr/transform_scale>) that I have modified for use by PES to scale thumbnail images
 * The maintainers of [RetroArch](http://www.libretro.com>) and all of the emulators that PES uses:
 
+  * beetle-pce-fast https://github.com/libretro/beetle-pce-fast-libretro
   * fceu-next https://github.com/libretro/fceu-next
   * fuse-libretro https://github.com/libretro/fuse-libretro
   * gambatte-libretro https://github.com/libretro/gambatte-libretro
