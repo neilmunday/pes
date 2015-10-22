@@ -42,4 +42,4 @@ cd stella-libretro
 checkFile Makefile
 run make
 checkFile stella_libretro.so
-run cp stella_libretro.so $retroArchCoresDir
+run cp  stella_libretro.so $retroArchCoresDir
