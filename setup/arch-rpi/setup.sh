@@ -54,6 +54,7 @@ header "Installing up RetroArch..."
 run $setupDir/install-retroarch.sh
 
 header "Installing emulator cores..."
+run $setupDir/install-beetle-pce-fast-libretro.sh
 run $setupDir/install-fceu-next.sh
 run $setupDir/install-gambatte.sh
 run $setupDir/install-Genesis-Plus-GX.sh
