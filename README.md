@@ -74,3 +74,6 @@ I would like to thank the following people/groups as without them PES would not 
 * Eric Smith for his many hours of testing, finding bugs, suggesting new features and for supplying graphics for PES
 * Alex Moriarty for finding and fixing bugs in some of PES' set-up scripts.
 * Steve McNamara for reporting bugs and testing fixes.
+* David Murray for his bug finding skills and testing
+* Gerald Davies for lending me his NES and SNES USB control pads for testing
+* Paul Palmer for lending me his XBOX 360 control pad for testing
