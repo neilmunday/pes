@@ -13,6 +13,7 @@ Changes (and bug fixes):
 	- Added support for the Atari 2600 thanks to the Stella Libretro core.
 	- Added support for the Sega Mega Drive (Genesis) 32x thanks to the Picodrive core.
 	- Added support for Turbo Grafx 16 (PC Engine) thanks to the beetle-pce-fast core.
+	- Added p7zip package.
 
 ----------------------------
 PES 1.4.1
