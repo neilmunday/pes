@@ -3,6 +3,16 @@ PES Changelog
 =============
 
 ----------------------------
+PES 1.5.1
+----------------------------
+
+Date: 2015-11-08
+
+Changes (and bug fixes):
+
+	- Corrected build flags for the picodrive libretro core to produce a more optimized version.
+
+----------------------------
 PES 1.5.0 
 ----------------------------
 

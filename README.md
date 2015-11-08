@@ -77,3 +77,4 @@ I would like to thank the following people/groups as without them PES would not 
 * David Murray for his bug finding skills and testing
 * Gerald Davies for lending me his NES and SNES USB control pads for testing
 * Paul Palmer for lending me his XBOX 360 control pad for testing
+* [Michell F](https://github.com/mfwhite) for testing and reviewing PES
