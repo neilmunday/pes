@@ -42,9 +42,8 @@ cd picodrive
 run git submodule init
 run git submodule update
 run ./configure
-#make -f Makefile.libretro
-export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -O3"
+export CFLAGS="-marm -mword-relocations -fomit-frame-pointer -ffast-math -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -O3"
 export CXXFLAGS=$CFLAGS
-make -f Makefile.libretro -j
+make -f Makefile.libretro platform="armv armasm"
 run cp picodrive_libretro.so $retroArchCoresDir
 
