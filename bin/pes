@@ -1,0 +1,75 @@
+#!/bin/bash
+
+#
+#    This file is part of the Pi Entertainment System (PES).
+#
+#    PES provides an interactive GUI for games console emulators
+#    and is designed to work on the Raspberry Pi.
+#
+#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
+#
+#    PES is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    PES is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with PES.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+#
+#	pes
+#
+#	This script is a launch wrapper for PES.
+#	
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+pesInstallDir="$DIR/../"
+script="$DIR/commands.sh"
+
+# remove previous script file
+rm -f $script
+
+# prevent console from power saving
+setterm -blank 0
+
+# set-up environment
+
+libcecPath="/opt/libcec/current/lib"
+pythonPath="/opt/libcec/current/lib/python2.7/dist-packages:$pesInstallDir/lib"
+
+if [ -d $libcecPath ]; then
+	if [ -z $LD_LIBRARY_PATH ]; then
+		export LD_LIBRARY_PATH="$libcecPath"
+	else
+		export LD_LIBRARY_PATH="$libcecPath:$LD_LIBRARY_PATH"
+	fi
+fi
+
+if [ -z $PYTHONPATH ]; then
+	export PYTHONPATH="$pythonPath"
+else
+	export PYTHONPATH="$PYTHONPATH:$pythonPath"
+fi
+
+$pesInstallDir/lib/pes/main.py $@
+
+#if [ $? -eq 0 ]; then
+#	if [ -e $script ]; then
+#		chmod 700 $script
+#		exec $script
+#	else
+#		echo "$script does not exist!"
+#		exit 1
+#	fi
+#else
+#	echo "PES experienced an error!"
+#	exit 1
+#fi
+
