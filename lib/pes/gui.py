@@ -93,12 +93,6 @@ class PESApp(object):
 		#self.__footerHeight = self.__headerHeight
 		self.__footerHeight = 0
 		
-		self.menuWidth = 200
-		self.menuHeight = self.__dimensions[1] - self.__footerHeight - self.__headerHeight
-		
-		self.menuRect = [0, self.__headerHeight + 1, self.menuWidth, self.__dimensions[1] - self.__headerHeight + 1]
-		self.screenRect = [self.menuWidth + 1, self.__headerHeight + 1, self.__dimensions[0] - self.menuWidth + 1, self.__dimensions[1] - self.__headerHeight + 1]
-		
 		# redraw hints
 		#self.redrawMainMenu = True
 		#self.__screenChange = True
@@ -144,11 +138,17 @@ class PESApp(object):
 			# assume full screen
 			logging.debug("PESApp.run: running fullscreen")
 			self.__dimensions = (videoMode.w, videoMode.h)
-			self.__window = sdl2.video.SDL_CreateWindow('PES', sdl2.video.SDL_WINDOWPOS_UNDEFINED, sdl2.video.SDL_WINDOWPOS_UNDEFINED, self.__dimensions[0], self.__dimensions[1], self.__dimensions[0], self.__dimensions[1], sdl2.video.SDL_WINDOW_FULLSCREEN)
+			self.__window = sdl2.video.SDL_CreateWindow('PES', sdl2.video.SDL_WINDOWPOS_UNDEFINED, sdl2.video.SDL_WINDOWPOS_UNDEFINED, self.__dimensions[0], self.__dimensions[1], self.__dimensions[0], self.__dimensions[1], sdl2.video.SDL_WINDOW_FULLSCREEN_DESKTOP)
 		else:
 			# windowed
 			logging.debug("PESApp.run: running windowed")
 			self.__window = sdl2.video.SDL_CreateWindow('PES', sdl2.video.SDL_WINDOWPOS_UNDEFINED, sdl2.video.SDL_WINDOWPOS_UNDEFINED, self.__dimensions[0], self.__dimensions[1], 0)
+		
+		self.menuWidth = 200
+		self.menuHeight = self.__dimensions[1] - self.__footerHeight - self.__headerHeight
+		
+		self.menuRect = [0, self.__headerHeight + 1, self.menuWidth, self.__dimensions[1] - self.__headerHeight + 1]
+		self.screenRect = [self.menuWidth + 1, self.__headerHeight + 1, self.__dimensions[0] - self.menuWidth + 1, self.__dimensions[1] - self.__headerHeight + 1]
 		
 		#self.__joystickTotal = sdl2.joystick.SDL_NumJoysticks()
         ##print "Joysticks: %d " % self.__joystickTotal
@@ -238,10 +238,10 @@ class PESApp(object):
 				sdl2.SDL_RenderCopy(self.renderer, splashTexture, None, sdl2.SDL_Rect(splashTextureX, splashTextureY, splashTextureWidth, splashTextureHeight))
 				if loadingThread.done and splashTextureAlpha >= 255:
 					loading = False
+					sdl2.SDL_DestroyTexture(splashTexture)
 				else:
 					progressBar.draw(loadingThread.progress)
 			else:
-				sdl2.SDL_DestroyTexture(splashTexture)
 				sdl2.sdlgfx.boxRGBA(self.renderer, 0, 0, self.__dimensions[0], self.__headerHeight, self.headerBackgroundColour.r, self.headerBackgroundColour.g, self.headerBackgroundColour.b, 255) # header bg
 				sdl2.sdlgfx.rectangleRGBA(self.renderer, 0, self.__headerHeight, self.__dimensions[0], self.__dimensions[1], self.lineColour.r, self.lineColour.g, self.lineColour.b, 255) # header line
 				sdl2.SDL_RenderCopy(self.renderer, headerTexture, None, sdl2.SDL_Rect(5, 0, headerTextureWidth, headerTextureHeight)) # header text
