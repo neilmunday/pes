@@ -20,10 +20,21 @@
 #    along with PES.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+#
+# TO DO:
+#
+# - games screens
+# - console selection for database scan
+# - show time elapsed for database scan
+# - added added/updated totals for database scan
+# - joystick integration and settings etc.
+#
+
 from ctypes import c_int, c_uint32, byref
 from datetime import datetime
 from pes import *
 from pes.data import *
+from pes.dbupdate import *
 from pes.util import *
 from PIL import Image
 from collections import OrderedDict
@@ -410,323 +421,6 @@ class PESLoadingThread(threading.Thread):
 		logging.debug("PESLoadingThread.run: %d complete" % self.progress)
 		self.done = True
 		return
-	
-class UpdateDbThread(threading.Thread):
-	def __init__(self, app):
-		threading.Thread.__init__(self)
-		self.app = app
-		self.__db = userPesDb
-		self.__consoles = self.app.consoles
-		self.progress = 0
-		self.status = 'stopped'
-		self.stop = False
-		self.added = 0
-		self.updated = 0
-		self.currentConsole = ''
-		self.done = False
-		self.started = False
-		logging.debug("UpdateDbThread.init: initialised")
-		
-	def __extensionOk(self, extensions, filename):
-		for e in extensions:
-			if filename.endswith(e):
-				return True
-		return False
-
-	def run(self):
-		logging.debug('UpdateDbThread.run: started')
-		self.started = True
-		url = 'http://thegamesdb.net/api/'
-
-		headers = {'User-Agent': 'PES Scraper'}
-		
-		imgExtensions = ['jpg', 'jpeg', 'png', 'gif']
-
-		con = None
-		cur = None
-
-		try:
-			con = sqlite3.connect(self.__db)
-			con.row_factory = sqlite3.Row
-			cur = con.cursor()
-		except sqlite3.Error, e:
-			if con:
-				con.rollback()
-			logging.error("UpdateDbThread.run: Error %s" % e.args[0])
-			self.app.exit(1)
-
-		for c in self.__consoles:
-			self.progress = 0
-			scanned = 0
-			consoleName = c.getName()
-			self.currentConsole = consoleName
-			consoleId = c.getId()
-			cacheDir = c.getImgCacheDir()
-
-			urlLoaded = False
-			consoleApiName = None
-
-			try:
-				# get API name for this console
-				request = urllib2.Request("%sGetPlatform.php" % url, urllib.urlencode({ 'id':  c.getApiId() }), headers=headers)
-				logging.debug('UpdateDbThread.run: loading URL: %s?%s' % (request.get_full_url(), request.get_data()))
-				response = urllib2.urlopen(request)
-				urlLoaded = True
-				xmlData = ElementTree.parse(response)
-				consoleApiName = xmlData.find('Platform/Platform').text
-				logging.debug("UpdateDbThread.run: console API name: %s" % consoleApiName)
-			except urllib2.URLError, e:
-				logging.error("UpdateDbThread.run: an error occurred whilst trying to open url: %s" % e.message)
-
-			logging.debug("UpdateDbThread.run: processing games for %s" % consoleName)
-			self.status = 'Processing games for %s' % consoleName
-
-			if self.__stopCheck():
-				return
-
-			try:
-				cur.execute("UPDATE `games` SET `exists` = 0 WHERE `console_id` = %d;" % consoleId)
-				con.commit()
-				
-				files = glob.glob("%s%s*" % (c.getRomDir(), os.sep))
-				fileTotal = len(files)
-				logging.debug("UpdateDbThread.run: found %d files to check" % fileTotal)
-				extensions = c.getExtensions()
-
-				for f in files:
-					if os.path.isfile(f) and self.__extensionOk(extensions, f):
-						if self.__stopCheck(con, cur):
-							return
-
-						filename = os.path.split(c.getRomDir() + os.sep + f)[1]
-						name = filename
-						fileSize = os.path.getsize(f)
-						for e in c.getExtensions():
-							name = name.replace(e, '')
-						
-						if c.ignoreRom(name):
-							logging.debug("UpdateDbThread: ignoring %s" % f)
-						else:
-							self.__progress = 'Found game: %s' % name
-							
-							# look up name in games catalogue
-							cur.execute("SELECT `full_name` FROM `games_catalogue` WHERE `short_name` = \"%s\"" % name)
-							row = cur.fetchone()
-							if row:
-								logging.debug("UpdateDbThread.run: found match for %s in games catalogue: %s" % (name, row['full_name']))
-								name = row['full_name']
-
-							cur.execute("SELECT `game_id`, `name`, `cover_art`, `game_path`, `api_id` FROM `games` WHERE `game_path` = \"%s\";" % f)
-							row = cur.fetchone()
-							if row == None or (row['cover_art'] == "0" and row['api_id'] == -1) or (row['cover_art'] != "0" and not os.path.exists(row['cover_art'])):
-								gameApiId = None
-								bestName = name
-								thumbPath = '0'
-								
-								# has cover art already been provided by the user or downloaded previously?
-								for e in imgExtensions:
-									path = cacheDir + os.sep + filename + '.' + e
-									if os.path.exists(path):
-										thumbPath = path
-										break
-									path = cacheDir + os.sep + name.replace('/', '_') + '.' + e
-									if os.path.exists(path):
-										thumbPath = path
-										break
-								
-								overview = ''
-								released = -1
-								if consoleApiName != None:
-									self.status = 'Downloading data for game: %s' % name
-									logging.debug('downloading game info for %s' % name)
-									# now grab thumbnail
-									obj = { 'name': '%s' % name, 'platform': consoleApiName }
-									data = urllib.urlencode(obj)
-									urlLoaded = False
-									nameLower = name.lower()
-									fullUrl = ''
-
-									try:
-										request = urllib2.Request("%sGetGamesList.php" % url, urllib.urlencode(obj), headers=headers)
-										fullUrl = '%s?%s' % (request.get_full_url(), request.get_data())
-										logging.debug("UpdateDbThread.run: loading URL: %s" % fullUrl)
-										response = urllib2.urlopen(request)
-										urlLoaded = True
-									except urllib2.URLError, e:
-										logging.error("UpdateDbThread.run: an error occurred whilst trying to open %s: %s" % (fullUrl, e.message))
-
-									if urlLoaded:
-										bestResultDistance = -1
-										dataOk = False
-										try:
-											xmlData = ElementTree.parse(response)
-											dataOk = True
-										except ParseError, e:
-											logging.error('Unable to parse data from %s: %s' % (fullUrl, e.message))
-										
-										if dataOk:
-											for x in xmlData.findall("Game"):
-												xname = x.find("GameTitle").text.encode('ascii', 'ignore')
-												xid = int(x.find("id").text)
-												logging.debug("UpdateDbThread.run: potential result: %s (%d)" % (xname, xid))
-
-												if xname.lower() == nameLower:
-													logging.debug("UpdateDbThread.run: exact match!")
-													gameApiId = xid
-													break
-
-												stringMatcher = StringMatcher(str(nameLower), xname.lower())
-												distance = stringMatcher.distance()
-												logging.debug("UpdateDbThread.run: string distance: %d" % distance)
-
-												if bestResultDistance == -1 or distance < bestResultDistance:
-													bestResultDistance = distance
-													bestName = xname
-													gameApiId = xid
-
-								if self.__stopCheck(con, cur):
-									return
-
-								if gameApiId != None:
-									self.status = "Match found: %s" % bestName
-									logging.debug("UpdateDbThread.run: best match was: \"%s\" with a match rating of %d" % (bestName, bestResultDistance))
-									urlLoaded = False
-									try:
-										request = urllib2.Request("%sGetGame.php" % url, urllib.urlencode({"id": gameApiId}), headers=headers)
-										logging.debug("UpdateDbThread.run: loading URL: %s?%s" % (request.get_full_url(), request.get_data()))
-										response = urllib2.urlopen(request)
-										urlLoaded = True
-									except urllib2.URLError, e:
-										logging.debug("UpdateDbThread.run: an error occurred whilst trying to open url: %s" % e.message)
-
-									if urlLoaded:
-										xmlData = ElementTree.parse(response)
-										overviewElement = xmlData.find("Game/Overview")
-										if overviewElement != None:
-											overview = overviewElement.text.encode('ascii', 'ignore')
-										releasedElement = xmlData.find("Game/ReleaseDate")
-										if releasedElement != None:
-											released = releasedElement.text.encode('ascii', 'ignore')
-											# convert to Unix time stamp
-											try:
-												released = int(time.mktime(datetime.strptime(released, "%m/%d/%Y").timetuple()))
-											except ValueError, e:
-												# thrown if date is not valid
-												logging.warning("UpdateDbThread.run: release date: %s is not in m/d/Y format!" % released)
-												released = -1
-												
-										if thumbPath == "0":
-											boxartElement = xmlData.find("Game/Images/boxart[@side='front']")
-											if boxartElement != None:
-												imageSaved = False
-												try:
-													imgUrl = "http://thegamesdb.net/banners/%s" % boxartElement.text
-													logging.debug("UpdateDbThread.run: downloading cover art: %s" % imgUrl)
-													self.status = "Downloading cover art for %s" % name
-													extension = imgUrl[imgUrl.rfind('.'):]
-													thumbPath =  c.getImgCacheDir() + os.sep + name.replace('/', '_') + extension
-													request = urllib2.Request(imgUrl, headers=headers)
-													response = urllib2.urlopen(request).read()
-													logging.debug("opening file: %s" % thumbPath)
-													output = open(thumbPath, 'wb')
-													output.write(response)
-													output.close()
-													imageSaved = True
-												except urllib2.URLError, e:
-													logging.error("UpdateDbThread.run: an error occurred whilst trying to open url: %s" % e.message)
-
-												if imageSaved:
-													# resize the image if it is too big
-													self.__scaleImage(thumbPath, name)
-										else:
-											logging.debug("UpdateDbThread.run: using cached cover art: %s" % thumbPath)
-											# does the provided image need to be scaled?
-											self.__scaleImage(thumbPath, name)
-														
-								else:
-									self.__progress = 'Could not find game data for %s' % name
-									logging.debug("could not find game info for %s " % name)
-									gameApiId = -1
-
-								if row == None:
-									self.status = "Adding %s to database..." % name
-									logging.debug("UpdateDbThread.run: inserting new game record into database...")
-									cur.execute("INSERT INTO `games`(`exists`, `console_id`, `name`, `game_path`, `api_id`, `cover_art`, `overview`, `released`, `favourite`, `last_played`, `play_count`, `size`) VALUES (1, %d, '%s', '%s', %d, '%s', '%s', %d, 0, -1, 0, %d);" % (consoleId, name.replace("'", "''"), f.replace("'", "''"), gameApiId, thumbPath.replace("'", "''"), overview.replace("'", "''"), released, fileSize))
-									self.added += 1
-								elif gameApiId != -1:
-									self.status = "Updating %s..." % name
-									logging.debug('updating game record in database...')
-									cur.execute("UPDATE `games` SET `api_id` = %d, `cover_art` = '%s', `overview` = '%s', `exists` = 1 WHERE `game_id` = %d;" % (gameApiId, thumbPath.replace("'", "''"), overview.replace("'", "''"), row['game_id']))
-									self.updated += 1
-								else:
-									self.status = "No need to update %s" % name
-									logging.debug("UpdateDbThread.run: no need to update - could not find %s in online database" % name)
-									cur.execute("UPDATE `games` SET `exists` = 1 WHERE `game_id` = %d;" % row["game_id"])
-									
-								con.commit()
-							else:
-								self.status = "No need to update %s" % name
-								logging.debug("UpdateDbThread.run: no need to update %s" % name)
-								cur.execute("UPDATE `games` SET `exists` = 1 WHERE `game_id` = %d;" % row["game_id"])
-								con.commit()
-
-						if self.__stopCheck(con, cur):
-							return
-								
-					scanned += 1
-					self.progress = (float(scanned) / float(fileTotal)) * 100
-				logging.debug("UpdateDbThread.run: purging missing games for: %s" % consoleName)
-				cur.execute("DELETE FROM `games` WHERE `exists` = 0 AND console_id = %d" % consoleId)
-				con.commit()
-								
-			except sqlite3.Error, e:
-				logging.error("UpdateDbThread.run:UpdateDbThread.run: could not update database: %s" % (e.args[0]))
-				if con:
-					con.rollback()
-				self.status = "An error occurred whilst updating the database"
-				self.progress = 100
-				self.finished = True
-				return
-
-		self.status = "Update complete"
-		self.done = True
-		self.progress = 100
-		logging.debug("UpdateDbThread.run: finished")
-		return
-
-	def __scaleImage(self, path, name):
-		img = Image.open(path)
-		width, height = img.size
-		ratio = min(float(400.0 / width), float(400.0 / height))
-		newWidth = width * ratio
-		newHeight = height * ratio
-		if width > newWidth or height > newHeight:
-			# scale image
-			self.status = "Scaling cover art for %s" % name
-			logging.debug("UpdateDbThread.__scaleImage: scaling image: %s" % path)
-			img.thumbnail((newWidth, newHeight), Image.ANTIALIAS)
-			img.save(path)
-	
-	def setConsoles(self, consoles):
-		self.__consoles = consoles
-
-	def __stopCheck(self, con=None, cur=None):
-		if self.stop:
-			if cur != None and con != None:
-				try:
-					# revert exists field
-					cur.execute('UPDATE `games` SET `exists` = 1 WHERE `exists` = 0')
-					con.commit()
-					con.close()
-				except sqlite3.Error, e:
-					logging.error("Error: %s" % e.args[0])
-				
-			self.status = 'Update interrupted!'
-			self.done = True
-			self.progress = 100
-			logging.debug('UpdateDbThread.run: finished (interrupted)')
-			return True
-		return False
 
 class ProgressBar(object):
 	
@@ -1052,14 +746,13 @@ class SettingsScreen(Screen):
 						currentY += self.app.bodyFontHeight
 						i += 1
 			elif self.__updateDbThread.started and not self.__updateDbThread.done:
-				(textWidth, textHeight) = renderLines(self.renderer, self.app.bodyFont, ["Scan now in progress... press BACK to abort", " ", "Console: %s" % self.__updateDbThread.currentConsole, " ", "Status: %s" % self.__updateDbThread.status, " ", "Progress for this console:"], self.app.textColour, currentX, currentY, self.wrap)
+				(textWidth, textHeight) = renderLines(self.renderer, self.app.bodyFont, ["Scanned %d out of %d roms... press BACK to abort" % (self.__updateDbThread.getProcessed(), self.__updateDbThread.romTotal), " ", "Status: %s" % self.__updateDbThread.status, " ", "Progress:"], self.app.textColour, currentX, currentY, self.wrap)
 				currentY += textHeight + 20
 				self.__scanProgressBar.setCoords(currentX, currentY)
-				self.__scanProgressBar.draw(self.__updateDbThread.progress)
+				self.__scanProgressBar.draw(self.__updateDbThread.getProgress())
 			elif self.__updateDbThread.done:
-				renderLines(self.renderer, self.app.bodyFont, ["Scan complete!", " ", "Added: %d" % self.__updateDbThread.added, " ", "Updated: %d" % self.__updateDbThread.updated, " ", "Press BACK to return to the previous screen."], self.app.textColour, currentX, currentY, self.wrap)
-				
-			
+				renderLines(self.renderer, self.app.bodyFont, ["Scan complete!", " ", "Press BACK to return to the previous screen."], self.app.textColour, currentX, currentY, self.wrap)
+
 		elif selected == "Joystick Set-Up":
 			pass
 		elif selected == "Reset Database":
@@ -1077,7 +770,7 @@ class SettingsScreen(Screen):
 		if event.type == sdl2.SDL_KEYDOWN and event.key.keysym.sym == sdl2.SDLK_BACKSPACE and selected == "Update Database" and self.__updateDbThread != None:
 			if self.__updateDbThread.started and not self.__updateDbThread.done:
 				self.setMenuActive(False)
-				self.__updateDbThread.stop = True
+				self.__updateDbThread.stop()
 				return
 			elif selected == "Update Database"  and self.__updateDbThread != None and self.__updateDbThread.done:
 				self.setMenuActive(False)
@@ -1139,7 +832,7 @@ class SettingsScreen(Screen):
 								self.__scanProgressBar = ProgressBar(self.renderer, self.screenRect[0] + self.screenMargin, 0, self.screenRect[2] - (self.screenMargin * 2), 40, self.app.lineColour, self.app.menuBackgroundColour)
 							else:
 								self.__scanProgressBar.setProgress(0)
-							self.__updateDbThread = UpdateDbThread(self.app)
+							self.__updateDbThread = UpdateDbThread(self.app.consoles)
 							self.__updateDbThread.start()
 						
 	def stop(self):
