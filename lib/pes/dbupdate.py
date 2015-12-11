@@ -59,7 +59,7 @@ class ConsoleTask(object):
 		row = None
 		with self.lock:
 			try:
-				con = sqlite3.connect(userPesDb, timeout=10)
+				con = sqlite3.connect(userPesDb)
 				con.row_factory = sqlite3.Row
 				cur = con.cursor()
 				cur.execute(query)
