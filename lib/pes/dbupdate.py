@@ -53,24 +53,25 @@ class ConsoleTask(object):
 	def __repr__(self):
 		return self.rom
 	
-	@staticmethod
-	def __execute(query, fetch=False):
+	def __execute(self, query, fetch=False):
+		row = None
 		con = None
 		row = None
-		try:
-			con = sqlite3.connect(userPesDb, timeout=10)
-			con.row_factory = sqlite3.Row
-			cur = con.cursor()
-			cur.execute(query)
-			if fetch:
-				row = cur.fetchone()
-			con.commit()
-			con.close()
-		except sqlite3.Error, e:
-			logging.exception(e)
-		finally:
-			if con:
+		with self.lock:
+			try:
+				con = sqlite3.connect(userPesDb, timeout=10)
+				con.row_factory = sqlite3.Row
+				cur = con.cursor()
+				cur.execute(query)
+				if fetch:
+					row = cur.fetchone()
+				con.commit()
 				con.close()
+			except sqlite3.Error, e:
+				logging.exception(e)
+			finally:
+				if con:
+					con.close()
 		return row
 		
 	def run(self):
@@ -229,10 +230,14 @@ class ConsoleTask(object):
 			img.thumbnail((newWidth, newHeight), Image.ANTIALIAS)
 			img.save(path)
 			
+	def setLock(self, lock):
+		self.lock = lock
+			
 class Consumer(multiprocessing.Process):
-	def __init__(self, taskQueue):
+	def __init__(self, taskQueue, lock):
 		multiprocessing.Process.__init__(self)
 		self.taskQueue = taskQueue
+		self.lock = lock
 		
 	def run(self):
 		while True:
@@ -241,6 +246,7 @@ class Consumer(multiprocessing.Process):
 				logging.debug("%s: exiting..." % self.name)
 				self.taskQueue.task_done()
 				return
+			task.setLock(self.lock)
 			task.run()
 			self.taskQueue.task_done()
 		return
@@ -265,11 +271,12 @@ class UpdateDbThread(Thread):
 		return False
 	
 	def run(self):
+		lock = multiprocessing.Lock()
 		self.__tasks = multiprocessing.JoinableQueue()
 		self.started = True
 		self.num_consumers = multiprocessing.cpu_count() * 2
 		logging.debug("UpdateDbThread.run: creating %d consumers" % self.num_consumers)
-		consumers = [Consumer(self.__tasks) for i in xrange(self.num_consumers)]
+		consumers = [Consumer(self.__tasks, lock) for i in xrange(self.num_consumers)]
 		for w in consumers:
 			w.start()
 		
