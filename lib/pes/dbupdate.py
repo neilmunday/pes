@@ -85,6 +85,9 @@ class ConsoleTask(object):
 		cacheDir = console.getImgCacheDir()
 		consoleId = self.console.getId()
 		
+		added = 0
+		updated = 0
+		
 		filename = os.path.split(rom)[1]
 		if not console.ignoreRom(filename):
 			logging.debug("ConsoleTask: processing -> %s" % filename)
@@ -211,12 +214,16 @@ class ConsoleTask(object):
 
 				if row == None:
 					self.__execute("INSERT INTO `games`(`exists`, `console_id`, `name`, `game_path`, `api_id`, `cover_art`, `overview`, `released`, `favourite`, `last_played`, `play_count`, `size`) VALUES (1, %d, '%s', '%s', %d, '%s', '%s', %d, 0, -1, 0, %d);" % (consoleId, name.replace("'", "''"), rom.replace("'", "''"), gameApiId, thumbPath.replace("'", "''"), overview.replace("'", "''"), released, fileSize))
+					added += 1
 				elif gameApiId != -1:
 					self.__execute("UPDATE `games` SET `api_id` = %d, `cover_art` = '%s', `overview` = '%s', `exists` = 1 WHERE `game_id` = %d;" % (gameApiId, thumbPath.replace("'", "''"), overview.replace("'", "''"), row['game_id']))
+					updated += 1
 				else:
 					self.__execute("UPDATE `games` SET `exists` = 1 WHERE `game_id` = %d;" % row["game_id"])
 			else:
 				self.__execute("UPDATE `games` SET `exists` = 1 WHERE `game_id` = %d;" % row["game_id"])
+				
+		return (added, updated)
 				
 	@staticmethod
 	def __scaleImage(path, name):
@@ -234,9 +241,11 @@ class ConsoleTask(object):
 		self.lock = lock
 			
 class Consumer(multiprocessing.Process):
-	def __init__(self, taskQueue, lock):
+	def __init__(self, taskQueue, resultQueue, lock):
+	#def __init__(self, taskQueue, lock):
 		multiprocessing.Process.__init__(self)
 		self.taskQueue = taskQueue
+		self.resultQueue = resultQueue
 		self.lock = lock
 		
 	def run(self):
@@ -245,10 +254,13 @@ class Consumer(multiprocessing.Process):
 			if task is None:
 				logging.debug("%s: exiting..." % self.name)
 				self.taskQueue.task_done()
+				self.resultQueue.close()
 				return
 			task.setLock(self.lock)
-			task.run()
+			#task.run()
+			result = task.run()
 			self.taskQueue.task_done()
+			self.resultQueue.put(result)
 		return
 	
 class UpdateDbThread(Thread):
@@ -262,6 +274,10 @@ class UpdateDbThread(Thread):
 		self.progress = 0
 		self.status = ""
 		self.romTotal = 0
+		self.added = 0
+		self.updated = 0
+		self.deleted = 0
+		self.__queueSetUp = False
 		
 	@staticmethod
 	def __extensionOk(extensions, filename):
@@ -270,13 +286,57 @@ class UpdateDbThread(Thread):
 				return True
 		return False
 	
+	@staticmethod
+	def formatTime(time):
+		if time < 60:
+			return "%ds" % time
+		m, s = divmod(time, 60)
+		h, m = divmod(m, 60)
+		if h == 0:
+			return "%dm %ds" % (m, s)
+		return "%dh %dm %ds" % (h, m, s)
+	
+	def getElapsed(self):
+		if not self.started:
+			return self.formatTime(0)
+		if self.started and not self.done:
+			return self.formatTime(time.time() - self.__startTime)
+		if self.done:
+			return self.formatTime(self.__endTime - self.__startTime)
+	
+	def getProcessed(self):
+		return self.romTotal - self.__tasks.qsize()
+		
+	def getProgress(self):
+		if self.romTotal == 0:
+			return 0
+		if self.done:
+			return 100
+		if not self.started or not self.__queueSetUp:
+			return 0
+		qsize = self.__tasks.qsize()
+		if qsize < 0:
+			return 0
+		return int((float(self.romTotal - qsize) / float(self.romTotal)) * 100.0)
+	
+	def getUnprocessed(self):
+		if not self.__queueSetUp:
+			return self.romTotal
+		return self.__tasks.qsize()
+	
 	def run(self):
+		self.__startTime = time.time()
+		self.added = 0
+		self.updated = 0
+		self.deleted = 0
 		lock = multiprocessing.Lock()
 		self.__tasks = multiprocessing.JoinableQueue()
+		results = multiprocessing.Queue()
 		self.started = True
-		self.num_consumers = multiprocessing.cpu_count() * 2
-		logging.debug("UpdateDbThread.run: creating %d consumers" % self.num_consumers)
-		consumers = [Consumer(self.__tasks, lock) for i in xrange(self.num_consumers)]
+		self.consumerTotal = multiprocessing.cpu_count() * 2
+		logging.debug("UpdateDbThread.run: creating %d consumers" % self.consumerTotal)
+		consumers = [Consumer(self.__tasks, results, lock) for i in xrange(self.consumerTotal)]
+		#consumers = [Consumer(self.__tasks, lock) for i in xrange(self.consumerTotal)]
 		for w in consumers:
 			w.start()
 		
@@ -329,12 +389,21 @@ class UpdateDbThread(Thread):
 					self.__tasks.put(ConsoleTask(f, consoleApiName, c))
 					self.romTotal += 1
 					
+		self.__queueSetUp = True
 		logging.debug("UpdateDbThread.run: added %d roms to the queue" % self.romTotal)
 		
-		for i in xrange(self.num_consumers):
+		for i in xrange(self.consumerTotal):
 			self.__tasks.put(None)
 			
+		logging.debug("UpdateDbThread.run: added poison pills")
+			
 		self.__tasks.join()
+		
+		logging.debug("UpdateDbThread.run: processing results...")
+		while not results.empty():
+			(added, updated) = results.get()
+			self.added += added
+			self.updated += updated
 		
 		logging.debug("UpdateDbThread.run: processes finished")
 		
@@ -343,6 +412,7 @@ class UpdateDbThread(Thread):
 			con.row_factory = sqlite3.Row
 			cur = con.cursor()
 			cur.execute("DELETE FROM `games` WHERE `exists` = 0")
+			self.deleted = con.total_changes
 			con.commit()
 		except sqlite3.Error, e:
 			print e
@@ -355,32 +425,18 @@ class UpdateDbThread(Thread):
 		self.done = True
 		self.progress = 100
 		
+		self.__endTime = time.time()
 		logging.debug("UpdateDbThread.run: exiting")
 		
-	def getProcessed(self):
-		return self.romTotal - self.__tasks.qsize()
-		
-	def getProgress(self):
-		if self.romTotal == 0:
-			return 0
-		if self.done:
-			return 100
-		if not self.started:
-			return 0
-		return int((float(self.romTotal - self.__tasks.qsize()) / float(self.romTotal)) * 100.0)
-		
 	def stop(self):
-		if self.started:
+		if self.started and not self.done:
 			logging.debug("UpdateDbThread.stop: stoppping processes...")
 			while not self.__tasks.empty():
 				self.__tasks.get()
 				self.__tasks.task_done()
-			for i in xrange(self.num_consumers):
+			for i in xrange(self.consumerTotal):
 				self.__tasks.put(None)
 			logging.debug("UpdateDbThread.stop: poison pills in place")
 		self.progress = 100
 		self.done = True
 		self.started = False
-		
-	def getUnprocessed(self):
-		return self.__tasks.qsize()

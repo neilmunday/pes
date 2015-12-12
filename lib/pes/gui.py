@@ -242,7 +242,7 @@ class PESApp(object):
 								self.screens[self.screenStack[-1]].setMenuActive(True)
 							else:
 								# pop the screen
-								screenStackLen = len(self.__screenStack)
+								screenStackLen = len(self.screenStack)
 								logging.debug("PESApp.run: popping screen stack, current length: %d" % screenStackLen)
 								if screenStackLen > 1:
 									self.screenStack.pop()
@@ -482,6 +482,19 @@ class Menu(object):
 	
 	def getCount(self):
 		return len(self.__items)
+	
+	def getToggled(self):
+		toggled = []
+		for i in self.__items:
+			if i.isToggled():
+				toggled.append(i)
+		return toggled
+	
+	def insertItem(self, i, m):
+		self.__items.insert(i, m)
+	
+	def removeItem(self, m):
+		self.__items.remove(m)
 		
 	def setSelected(self, i):
 		if i >= 0 and i < len(self.__items):
@@ -515,9 +528,6 @@ class MenuItem(object):
 	
 	def isToggled(self):
 		return self.__toggled
-	
-	def toggle(self, t):
-		self.__toggled = t
 		
 	def isToggable(self):
 		return self.__toggable
@@ -525,8 +535,11 @@ class MenuItem(object):
 	def setSelected(self, selected):
 		self.__selected = selected
 	
-	def setText(text):
+	def setText(self, text):
 		self.__text = text
+		
+	def toggle(self, t):
+		self.__toggled = t
 		
 	def trigger(self):
 		if self.__callback:
@@ -543,9 +556,12 @@ class MenuItem(object):
 		
 class ConsoleMenuItem(MenuItem):
 	
-	def __init__(self, console):
-		super(ConsoleMenuItem, self).__init__(console.getName())
+	def __init__(self, console, selected = False, toggable = False, callback = None, *callbackArgs):
+		super(ConsoleMenuItem, self).__init__(console.getName(), selected, toggable, callback, *callbackArgs)
 		self.__console = console
+		
+	def getConsole(self):
+		return self.__console
 		
 class Screen(object):
 	
@@ -661,6 +677,7 @@ class HomeScreen(Screen):
 	def __init__(self, app, renderer, menuRect, screenRect):
 		super(HomeScreen, self).__init__(app, renderer, "Home", Menu([MenuItem("Home")]), menuRect, screenRect)
 		for c in self.app.consoles:
+			#if c.getGameTotal() > 0:
 			self.menu.addItem(ConsoleMenuItem(c))
 		self.menu.addItem(MenuItem("Settings", False, False, self.app.setScreen, "Settings"))
 		self.menu.addItem(MenuItem("Reboot"))
@@ -673,6 +690,14 @@ class HomeScreen(Screen):
 		#logging.debug("HomeScreen.draw: drawing screen at (%d, %d) dimensions (%d, %d)" % (self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
 		(textWidth, textHeight) = renderText(self.renderer, self.app.titleFont, "Welcome to PES!", self.app.textColour, self.screenRect[0] + self.screenMargin, self.screenRect[1])
 		(textWidth, textHeight) = renderText(self.renderer, self.app.bodyFont, "The home screen provides you with quick access to your favourite, new additions and most recently played games.", self.app.textColour, self.screenRect[0] + self.screenMargin, self.screenRect[1] + (textHeight * 2), self.wrap)
+		
+	def refreshMenu(self):
+		for m in self.menu.getItems():
+			if isinstance(m, ConsoleMenuItem):
+				self.menu.removeItem(m)
+		for c in self.app.consoles:
+			if c.getGameTotal() > 0:
+				self.menu.insertItem(len(self.menu.getItems()) - 4, ConsoleMenuItem(c))
 		
 class SettingsScreen(Screen):
 	
@@ -688,7 +713,7 @@ class SettingsScreen(Screen):
 		self.__init = True
 		self.__updateDatabaseMenu = Menu([MenuItem("Begin Scan", True)])
 		for c in self.app.consoles:
-			self.__updateDatabaseMenu.addItem(MenuItem(c.getName(), False, True))
+			self.__updateDatabaseMenu.addItem(ConsoleMenuItem(c, False, True))
 		self.__toggleMargin = 20
 		self.__updateDbThread = None
 		self.__scanProgressBar = None
@@ -746,12 +771,13 @@ class SettingsScreen(Screen):
 						currentY += self.app.bodyFontHeight
 						i += 1
 			elif self.__updateDbThread.started and not self.__updateDbThread.done:
-				(textWidth, textHeight) = renderLines(self.renderer, self.app.bodyFont, ["Scanned %d out of %d roms... press BACK to abort" % (self.__updateDbThread.getProcessed(), self.__updateDbThread.romTotal), " ", "Status: %s" % self.__updateDbThread.status, " ", "Progress:"], self.app.textColour, currentX, currentY, self.wrap)
+				(textWidth, textHeight) = renderLines(self.renderer, self.app.bodyFont, ["Scanned %d out of %d roms... press BACK to abort" % (self.__updateDbThread.getProcessed(), self.__updateDbThread.romTotal), " ", "Elapsed: %s" % self.__updateDbThread.getElapsed(), " ", "Progress:"], self.app.textColour, currentX, currentY, self.wrap)
 				currentY += textHeight + 20
 				self.__scanProgressBar.setCoords(currentX, currentY)
 				self.__scanProgressBar.draw(self.__updateDbThread.getProgress())
 			elif self.__updateDbThread.done:
-				renderLines(self.renderer, self.app.bodyFont, ["Scan complete!", " ", "Press BACK to return to the previous screen."], self.app.textColour, currentX, currentY, self.wrap)
+				renderLines(self.renderer, self.app.bodyFont, ["Scan completed in %s" % self.__updateDbThread.getElapsed(), " ", "Added: %d" % self.__updateDbThread.added, " ", "Updated: %d" % self.__updateDbThread.updated, " " , "Deleted: %d" % self.__updateDbThread.deleted, " ", "Press BACK to return to the previous screen."], self.app.textColour, currentX, currentY, self.wrap)
+				#self.app.screens["Home"].refreshMenu()
 
 		elif selected == "Joystick Set-Up":
 			pass
@@ -832,10 +858,15 @@ class SettingsScreen(Screen):
 								self.__scanProgressBar = ProgressBar(self.renderer, self.screenRect[0] + self.screenMargin, 0, self.screenRect[2] - (self.screenMargin * 2), 40, self.app.lineColour, self.app.menuBackgroundColour)
 							else:
 								self.__scanProgressBar.setProgress(0)
-							self.__updateDbThread = UpdateDbThread(self.app.consoles)
+							
+							consoles = []
+							for c in self.__updateDatabaseMenu.getToggled():
+								consoles.append(c.getConsole())
+								
+							self.__updateDbThread = UpdateDbThread(consoles)
 							self.__updateDbThread.start()
 						
 	def stop(self):
 		if self.__updateDbThread:
-			logging.debug("settings.stop: stopping update thread")
-			self.__updateDbThread.stop = True
+			self.__updateDbThread.stop()
+			del self.__updateDbThread
