@@ -36,12 +36,11 @@ source $setupDir/functions.sh
 run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
 	gcc git cmake make patch pkg-config scons swig vim wget \
 	libusb-compat linuxconsole libplatform \
-	python2 python2-pygame python2-levenshtein python2-pip python2-imaging \
+	python2 python2-levenshtein python2-pip python2-imaging \
 	ntp \
 	parted \
 	rsync \
 	samba \
-	sdl sdl_mixer sdl_ttf sdl_image \
 	fbset mesa mesa-libgl alsa-utils \
 	crda iw  wpa_supplicant \
 	p7zip zip unzip
