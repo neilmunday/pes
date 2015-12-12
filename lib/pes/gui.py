@@ -30,11 +30,12 @@
 # - joystick integration and settings etc.
 #
 
-from ctypes import c_int, c_uint32, byref
+from ctypes import c_int, c_char_p, c_uint32, c_void_p, byref, cast
 from datetime import datetime
 from pes import *
 from pes.data import *
 from pes.dbupdate import *
+import pes.event
 from pes.util import *
 from PIL import Image
 from collections import OrderedDict
@@ -44,6 +45,7 @@ import glob
 import logging
 import math
 import ConfigParser
+import pes.event
 import sdl2
 import sdl2.video
 import sdl2.render
@@ -107,14 +109,12 @@ class PESApp(object):
 			sdl2.video.SDL_DestroyWindow(self.__window)
 			self.__window = None
 
-	#def __init__(self, dimensions, fontFile, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, consoles):
 	def __init__(self, dimensions, fontFile, romsDir, coverartDir, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour):
 		super(PESApp, self).__init__()
 		self.__dimensions = dimensions
 		self.fontFile = fontFile
 		self.romsDir = romsDir
 		self.coverartDir = coverartDir
-		#self.consoles = consoles
 		self.consoles = []
 		
 		self.lineColour = sdl2.SDL_Color(lineColour[0], lineColour[1], lineColour[2])
@@ -170,6 +170,13 @@ class PESApp(object):
 			pesExit("PESApp.run: unable to get current video mode!")
 			
 		logging.debug("PESApp.run: video mode (%d, %d), refresh rate: %dHz" % (videoMode.w, videoMode.h, videoMode.refresh_rate))
+		
+		# register PES event type
+		if pes.event.registerPesEventType():
+			logging.debug("PESApp.run: PES event type registered in SDL2: %s" % pes.event.EVENT_TYPE)
+		else:
+			logging.error("PESApp.run: could not register PES event type in SDL2!")
+			self.exit(1)
 		
 		if self.__dimensions[0] == 0 or self.__dimensions == 0:
 			# assume full screen
@@ -247,6 +254,11 @@ class PESApp(object):
 								if screenStackLen > 1:
 									self.screenStack.pop()
 									self.setScreen(self.screenStack[-1])
+					elif event.type == pes.event.EVENT_TYPE:
+						(t, d1, d2) = pes.event.decodePesEvent(event)
+						logging.debug("PESApp.run: trapping PES Event")
+						if t == pes.event.EVENT_DB_UPDATE:
+							self.screens["Home"].refreshMenu()
 					self.screens[self.screenStack[-1]].processEvent(event)
 								
 				if event.type == sdl2.SDL_KEYDOWN and event.key.keysym.sym == sdl2.SDLK_ESCAPE:
@@ -472,7 +484,7 @@ class Menu(object):
 		return self.__items[i]
 		
 	def getItems(self):
-		return self.__items
+		return list(self.__items)
 	
 	def getSelectedIndex(self):
 		return self.__selected
@@ -496,9 +508,13 @@ class Menu(object):
 	def removeItem(self, m):
 		self.__items.remove(m)
 		
-	def setSelected(self, i):
+	def setSelected(self, i, deselectAll=False):
 		if i >= 0 and i < len(self.__items):
-			self.__items[self.__selected].setSelected(False)
+			if deselectAll:
+				for m in self.__items:
+					m.setSelected(False)
+			else:
+				self.__items[self.__selected].setSelected(False)
 			self.__selected = i
 			self.__items[self.__selected].setSelected(True)
 			return
@@ -677,8 +693,8 @@ class HomeScreen(Screen):
 	def __init__(self, app, renderer, menuRect, screenRect):
 		super(HomeScreen, self).__init__(app, renderer, "Home", Menu([MenuItem("Home")]), menuRect, screenRect)
 		for c in self.app.consoles:
-			#if c.getGameTotal() > 0:
-			self.menu.addItem(ConsoleMenuItem(c))
+			if c.getGameTotal() > 0:
+				self.menu.addItem(ConsoleMenuItem(c))
 		self.menu.addItem(MenuItem("Settings", False, False, self.app.setScreen, "Settings"))
 		self.menu.addItem(MenuItem("Reboot"))
 		self.menu.addItem(MenuItem("Power Off"))
@@ -692,12 +708,19 @@ class HomeScreen(Screen):
 		(textWidth, textHeight) = renderText(self.renderer, self.app.bodyFont, "The home screen provides you with quick access to your favourite, new additions and most recently played games.", self.app.textColour, self.screenRect[0] + self.screenMargin, self.screenRect[1] + (textHeight * 2), self.wrap)
 		
 	def refreshMenu(self):
-		for m in self.menu.getItems():
+		logging.debug("HomeScreen.refreshMenu: refreshing menu contents...")
+		items = self.menu.getItems()
+		for m in items:
 			if isinstance(m, ConsoleMenuItem):
+				logging.debug("HomeScreen.refreshMenu: removing %s" % m.getText())
 				self.menu.removeItem(m)
+			else:
+				logging.debug("HomeScreen.refreshMenu: not removing %s" % m.getText())
 		for c in self.app.consoles:
 			if c.getGameTotal() > 0:
+				logging.debug("HomeScreen.refreshMenu: adding %s" % c.getName())
 				self.menu.insertItem(len(self.menu.getItems()) - 4, ConsoleMenuItem(c))
+		self.menu.setSelected(0, True)
 		
 class SettingsScreen(Screen):
 	

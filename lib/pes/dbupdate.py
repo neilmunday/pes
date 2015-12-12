@@ -30,18 +30,13 @@ from xml.etree import ElementTree
 from xml.etree.ElementTree import Element, SubElement
 import glob
 import logging
+import pes.event
 import sqlite3
 import sys
 import urllib
 import urllib2
 import time
 import multiprocessing
-
-#
-# TO DO:
-#
-# Report number of ROMs added / updated - add another queue to receive results?
-#
 	
 class ConsoleTask(object):
 	
@@ -421,7 +416,10 @@ class UpdateDbThread(Thread):
 		finally:
 			if con:
 				con.close()
-				
+		
+		logging.debug("UpdateDbThread.run: pushing PES event...")
+		pes.event.pushPesEvent(pes.event.EVENT_DB_UPDATE)
+		
 		self.done = True
 		self.progress = 100
 		
