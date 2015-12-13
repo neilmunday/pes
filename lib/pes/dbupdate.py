@@ -267,7 +267,6 @@ class UpdateDbThread(Thread):
 		self.__tasks = None
 		self.consoles = consoles
 		self.progress = 0
-		self.status = ""
 		self.romTotal = 0
 		self.added = 0
 		self.updated = 0
@@ -313,6 +312,12 @@ class UpdateDbThread(Thread):
 		if qsize < 0:
 			return 0
 		return int((float(self.romTotal - qsize) / float(self.romTotal)) * 100.0)
+	
+	def getRemaining(self):
+		if not self.started or self.done or self.__tasks.qsize() == 0:
+			return self.formatTime(0)
+		# now work out average time taken per ROM
+		return self.formatTime(((time.time() - self.__startTime) / self.getProcessed()) * self.__tasks.qsize())
 	
 	def getUnprocessed(self):
 		if not self.__queueSetUp:

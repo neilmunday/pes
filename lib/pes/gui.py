@@ -794,7 +794,7 @@ class SettingsScreen(Screen):
 						currentY += self.app.bodyFontHeight
 						i += 1
 			elif self.__updateDbThread.started and not self.__updateDbThread.done:
-				(textWidth, textHeight) = renderLines(self.renderer, self.app.bodyFont, ["Scanned %d out of %d roms... press BACK to abort" % (self.__updateDbThread.getProcessed(), self.__updateDbThread.romTotal), " ", "Elapsed: %s" % self.__updateDbThread.getElapsed(), " ", "Progress:"], self.app.textColour, currentX, currentY, self.wrap)
+				(textWidth, textHeight) = renderLines(self.renderer, self.app.bodyFont, ["Scanned %d out of %d roms... press BACK to abort" % (self.__updateDbThread.getProcessed(), self.__updateDbThread.romTotal), " ", "Elapsed: %s" % self.__updateDbThread.getElapsed(), " ", "Remaining: %s" % self.__updateDbThread.getRemaining(), " ", "Progress:"], self.app.textColour, currentX, currentY, self.wrap)
 				currentY += textHeight + 20
 				self.__scanProgressBar.setCoords(currentX, currentY)
 				self.__scanProgressBar.draw(self.__updateDbThread.getProgress())
