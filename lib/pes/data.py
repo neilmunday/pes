@@ -22,6 +22,8 @@
 
 import logging
 import sqlite3
+import os
+import sys
 
 class Record(object):
 
@@ -207,8 +209,9 @@ class Console(Record):
 		self.__games = []
 		self.__command = command
 		self.__imgCacheDir = imgCacheDir
-		self.__gameTotal = 0
+		self.__gameTotal = None
 		self.__ignoreRoms = []
+		self.__recentlyAdded = None
 		
 	def addIgnoreRom(self, rom):
 		if rom not in self.__ignoreRoms:
@@ -246,11 +249,13 @@ class Console(Record):
 		return self.__games
 
 	def getGameTotal(self):
-		self.connect()
-		cur = self.doQuery('SELECT COUNT(`game_id`) AS `total` FROM `games` WHERE `console_id` = %d;' % self.getId())
-		row = cur.fetchone()
-		self.disconnect()
-		return row['total']	
+		if self.__gameTotal == None:
+			self.connect()
+			cur = self.doQuery('SELECT COUNT(`game_id`) AS `total` FROM `games` WHERE `console_id` = %d;' % self.getId())
+			row = cur.fetchone()
+			self.disconnect()
+			self.__gameTotal = row['total']	
+		return self.__gameTotal
 
 	def getExtensions(self):
 		return self.__extensions
@@ -273,12 +278,30 @@ class Console(Record):
 
 	def getNoCoverArtImg(self):
 		return self.__noCoverArtImg
+	
+	def getRecentlyAddedGames(self, limit=10):
+		if self.__recentlyAdded == None:
+			self.connect()
+			self.__recentlyAdded = []
+			cur = self.doQuery('SELECT `game_id` FROM `games` WHERE `console_id` = %d ORDER BY `added` DESC LIMIT 0,%d;' % (self.getId(), limit))
+			while True:
+				row = cur.fetchone()
+				if row == None:
+					break
+				self.__recentlyAdded.append(Game(row['game_id'], self.getDb(), self))
+			self.disconnect()
+		return self.__recentlyAdded
 
 	def getRomDir(self):
 		return self.__romDir
 		
 	def ignoreRom(self, rom):
 		return rom in self.__ignoreRoms
+	
+	def refresh(self):
+		super(Console, self).refresh()
+		self.__recentlyAdded = None
+		self.__gameTotal = None
 
 class Game(Record):
 

@@ -28,6 +28,7 @@ EVENT_TYPE = None
 
 # PES Events
 EVENT_DB_UPDATE = 1
+EVENT_RESOURCES_LOADED = 2
 
 def decodePesEvent(event):
 	data1 = cast(event.user.data1, c_char_p)
@@ -44,7 +45,7 @@ def pushPesEvent(eventType, data1="", data2=""):
 	pesEvent.user.code = eventType
 	pesEvent.user.data1 = cast(c_char_p(data1), c_void_p)
 	pesEvent.user.data2 = cast(c_char_p(data2), c_void_p)
-	#logging.debug("pushPesEvent: pushing event (%d, %s, %s)" % (eventType, data, ""))
+	logging.debug("pushPesEvent: pushing event (%d, %s, %s)" % (eventType, data1, data2))
 	sdl2.SDL_PushEvent(pesEvent)
 	return True
 

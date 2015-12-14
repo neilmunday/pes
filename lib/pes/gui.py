@@ -24,9 +24,6 @@
 # TO DO:
 #
 # - games screens
-# - console selection for database scan
-# - show time elapsed for database scan
-# - added added/updated totals for database scan
 # - joystick integration and settings etc.
 #
 
@@ -47,12 +44,13 @@ import math
 import ConfigParser
 import pes.event
 import sdl2
+import sdl2.ext
+import sdl2.sdlimage
+import sdl2.joystick
 import sdl2.video
 import sdl2.render
-import sdl2.ext
 import sdl2.sdlgfx
 import sdl2.sdlttf
-import sdl2.joystick
 import sdl2.timer
 import sqlite3
 import sys
@@ -76,6 +74,14 @@ def getFontHeight(font):
 	sdl2.SDL_FreeSurface(s)
 	return h
 
+def getTextureDimensions(texture):
+	flags = c_uint32()
+	access = c_int()
+	w = c_int()
+	h = c_int()
+	ret = sdl2.SDL_QueryTexture(texture, byref(flags), byref(access), byref(w), byref(h))
+	return (w.value, h.value)
+
 def renderLines(renderer, font, lines, colour, x, y, wrap):
 	w = 0
 	totalHeight = 0
@@ -91,14 +97,35 @@ def renderText(renderer, font, txt, colour, x, y, wrap=0):
 	sdl2.SDL_RenderCopy(renderer, texture, None, sdl2.SDL_Rect(x, y, w, h))
 	sdl2.SDL_DestroyTexture(texture)
 	return (w, h)
-	
-def getTextureDimensions(texture):
-	flags = c_uint32()
-	access = c_int()
-	w = c_int()
-	h = c_int()
-	ret = sdl2.SDL_QueryTexture(texture, byref(flags), byref(access), byref(w), byref(h))
-	return (w.value, h.value)
+
+def getScaleImageDimensions(texture, bx, by):
+	"""
+	Original author: Frank Raiser (crashchaos@gmx.net)
+	URL: http://www.pygame.org/pcr/transform_scale
+	Modified by Neil Munday
+	"""
+	ix, iy = getTextureDimensions(texture)
+	if ix > iy:
+		# fit to width
+		scale_factor = bx/float(ix)
+		sy = scale_factor * iy
+		if sy > by:
+			scale_factor = by/float(iy)
+			sx = scale_factor * ix
+			sy = by
+		else:
+			sx = bx
+	else:
+		# fit to height
+		scale_factor = by/float(iy)
+        	sx = scale_factor * ix
+		if sx > bx:
+			scale_factor = bx/float(ix)
+			sx = bx
+			sy = scale_factor * iy
+		else:
+			sy = by
+	return (int(sx),int(sy))
 
 class PESApp(object):
 	
@@ -116,6 +143,7 @@ class PESApp(object):
 		self.romsDir = romsDir
 		self.coverartDir = coverartDir
 		self.consoles = []
+		self.consoleTextures = None
 		
 		self.lineColour = sdl2.SDL_Color(lineColour[0], lineColour[1], lineColour[2])
 		self.backgroundColour = sdl2.SDL_Color(backgroundColour[0], backgroundColour[1], backgroundColour[2])
@@ -141,9 +169,26 @@ class PESApp(object):
 		#   print SDLJoystick.SDL_JoystickNameForIndex(i)
 		
 	def initScreens(self):
+		logging.debug("PESApp.initScreens: initialising screens...")
 		self.screens["Home"] = HomeScreen(self, self.renderer, self.menuRect, self.screenRect)
 		self.screens["Settings"] = SettingsScreen(self, self.renderer, self.menuRect, self.screenRect)
 		self.screenStack = ["Home"]
+		
+	def initTextures(self):
+		# must call this function from the main thread
+		if self.consoleTextures != None:
+			return
+		self.consoleTextures = {}
+		logging.debug("PESApp.initTextures: loading console textures...")
+		for c in self.consoles:
+			texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, c.getImg())
+			if texture == None:
+				logging.error("PESApp.initTextures: failed to load texture: %s" % c.getImg())
+				self.exit(1)
+			sdl2.SDL_SetTextureBlendMode(texture, sdl2.SDL_BLENDMODE_BLEND)
+			sdl2.SDL_SetTextureAlphaMod(texture, 100)
+			self.consoleTextures[c.getName()] = texture
+			logging.debug("PESApp.initTextures: loaded %s texture from %s" % (c.getName(), c.getImg()))
 		
 	def exit(self, rtn=0):
 		# tidy up
@@ -157,6 +202,7 @@ class PESApp(object):
 		sdl2.sdlttf.TTF_CloseFont(self.titleFont)
 		sdl2.sdlttf.TTF_CloseFont(self.splashFont)
 		sdl2.sdlttf.TTF_Quit()
+		sdl2.sdlimage.IMG_Quit()
 		sdl2.SDL_Quit()
 		logging.info("exiting...")
 		sys.exit(rtn)
@@ -165,6 +211,11 @@ class PESApp(object):
 		sdl2.SDL_Init(sdl2.SDL_INIT_EVERYTHING)
 		sdl2.SDL_ShowCursor(0)
 		sdl2.sdlttf.TTF_Init()
+		imgFlags = sdl2.sdlimage.IMG_INIT_JPG | sdl2.sdlimage.IMG_INIT_PNG
+		initted = sdl2.sdlimage.IMG_Init(imgFlags)
+		if initted != imgFlags:
+			logging.error("PESApp.run: failed to initialise SDL_Image")
+			self.exit(1)
 		videoMode = sdl2.video.SDL_DisplayMode()
 		if sdl2.video.SDL_GetDesktopDisplayMode(0, videoMode) != 0:
 			pesExit("PESApp.run: unable to get current video mode!")
@@ -240,6 +291,16 @@ class PESApp(object):
 		while running:
 			events = sdl2.ext.get_events()
 			for event in events:
+				if event.type == pes.event.EVENT_TYPE:
+					(t, d1, d2) = pes.event.decodePesEvent(event)
+					logging.debug("PESApp.run: trapping PES Event")
+					if not loading and t == pes.event.EVENT_DB_UPDATE:
+						for c in self.consoles:
+							c.refresh()
+						self.screens["Home"].refreshMenu()
+					elif t == pes.event.EVENT_RESOURCES_LOADED:
+						self.initTextures()
+				
 				if not loading:
 					# keyboard events
 					if event.type == sdl2.SDL_KEYDOWN:
@@ -254,11 +315,6 @@ class PESApp(object):
 								if screenStackLen > 1:
 									self.screenStack.pop()
 									self.setScreen(self.screenStack[-1])
-					elif event.type == pes.event.EVENT_TYPE:
-						(t, d1, d2) = pes.event.decodePesEvent(event)
-						logging.debug("PESApp.run: trapping PES Event")
-						if t == pes.event.EVENT_DB_UPDATE:
-							self.screens["Home"].refreshMenu()
 					self.screens[self.screenStack[-1]].processEvent(event)
 								
 				if event.type == sdl2.SDL_KEYDOWN and event.key.keysym.sym == sdl2.SDLK_ESCAPE:
@@ -291,6 +347,7 @@ class PESApp(object):
 				else:
 					progressBar.draw(loadingThread.progress)
 			else:
+				#self.initTextures()
 				sdl2.sdlgfx.boxRGBA(self.renderer, 0, 0, self.__dimensions[0], self.__headerHeight, self.headerBackgroundColour.r, self.headerBackgroundColour.g, self.headerBackgroundColour.b, 255) # header bg
 				sdl2.sdlgfx.rectangleRGBA(self.renderer, 0, self.__headerHeight, self.__dimensions[0], self.__dimensions[1], self.lineColour.r, self.lineColour.g, self.lineColour.b, 255) # header line
 				sdl2.SDL_RenderCopy(self.renderer, headerTexture, None, sdl2.SDL_Rect(5, 0, headerTextureWidth, headerTextureHeight)) # header text
@@ -308,6 +365,9 @@ class PESApp(object):
 		
 		sdl2.SDL_DestroyTexture(headerTexture)
 		sdl2.SDL_DestroyTexture(dateTexture)
+		if self.consoleTextures:
+			for key, value in self.consoleTextures.iteritems():
+				sdl2.SDL_DestroyTexture(value)
 		self.exit()
 		
 	def setScreen(self, screen):
@@ -337,7 +397,7 @@ class PESLoadingThread(threading.Thread):
 			con = sqlite3.connect(userPesDb)
 			con.row_factory = sqlite3.Row
 			cur = con.cursor()
-			cur.execute('CREATE TABLE IF NOT EXISTS `games`(`game_id` INTEGER PRIMARY KEY, `api_id` INT, `exists` INT, `console_id` INT, `name` TEXT, `cover_art` TEXT, `game_path` TEXT, `overview` TEXT, `released` INT, `last_played` INT, `favourite` INT(1), `play_count` INT, `size` INT )')
+			cur.execute('CREATE TABLE IF NOT EXISTS `games`(`game_id` INTEGER PRIMARY KEY, `api_id` INT, `exists` INT, `console_id` INT, `name` TEXT, `cover_art` TEXT, `game_path` TEXT, `overview` TEXT, `released` INT, `last_played` INT, `added` INT, `favourite` INT(1), `play_count` INT, `size` INT )')
 			cur.execute('CREATE INDEX IF NOT EXISTS "games_index" on games (game_id ASC)')
 			cur.execute('CREATE TABLE IF NOT EXISTS `consoles`(`console_id` INTEGER PRIMARY KEY, `api_id` INT, `name` TEXT)')
 			cur.execute('CREATE INDEX IF NOT EXISTS "console_index" on consoles (console_id ASC)')
@@ -345,7 +405,6 @@ class PESLoadingThread(threading.Thread):
 			cur.execute('CREATE INDEX IF NOT EXISTS "games_catalogue_index" on games_catalogue (short_name ASC)')
 			
 			self.progress = 25
-			time.sleep(0.1)
 			
 			# is the games catalogue populated?
 			cur.execute('SELECT COUNT(*) AS `total` FROM `games_catalogue`')
@@ -371,7 +430,6 @@ class PESLoadingThread(threading.Thread):
 				con.close()
 				
 		self.progress = 50
-		time.sleep(0.1)
 		
 		# load consoles
 		configParser = ConfigParser.ConfigParser()
@@ -423,13 +481,10 @@ class PESLoadingThread(threading.Thread):
 				return
 			
 		self.progress = 75
-		time.sleep(0.1)
-			
 		self.app.initScreens()
-		
 		self.progress = 100
 		time.sleep(0.1)
-		
+		pes.event.pushPesEvent(pes.event.EVENT_RESOURCES_LOADED)
 		logging.debug("PESLoadingThread.run: %d complete" % self.progress)
 		self.done = True
 		return
@@ -699,13 +754,62 @@ class HomeScreen(Screen):
 		self.menu.addItem(MenuItem("Reboot"))
 		self.menu.addItem(MenuItem("Power Off"))
 		self.menu.addItem(MenuItem("Exit", False, False, self.app.exit))
+		self.__thumbCache = {}
+		self.__thumbGap = 10
 		logging.debug("HomeScreen.init: initialised")
 			
 	def drawScreen(self):
 		super(HomeScreen, self).drawScreen()
 		#logging.debug("HomeScreen.draw: drawing screen at (%d, %d) dimensions (%d, %d)" % (self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
-		(textWidth, textHeight) = renderText(self.renderer, self.app.titleFont, "Welcome to PES!", self.app.textColour, self.screenRect[0] + self.screenMargin, self.screenRect[1])
-		(textWidth, textHeight) = renderText(self.renderer, self.app.bodyFont, "The home screen provides you with quick access to your favourite, new additions and most recently played games.", self.app.textColour, self.screenRect[0] + self.screenMargin, self.screenRect[1] + (textHeight * 2), self.wrap)
+		selected = self.menu.getSelectedItem()
+		
+		currentX = self.screenRect[0] + self.screenMargin
+		currentY = self.screenRect[1]
+		
+		if selected.getText() == "Home":
+			(textWidth, textHeight) = renderText(self.renderer, self.app.titleFont, "Welcome to PES!", self.app.textColour, currentX, currentY)
+			currentY += (textHeight * 2)
+			(textWidth, textHeight) = renderText(self.renderer, self.app.bodyFont, "The home screen provides you with quick access to your favourite, new additions and most recently played games.", self.app.textColour, currentX, currentY, self.wrap)
+		elif selected.getText() == "Reboot":
+			(textWidth, textHeight) = renderText(self.renderer, self.app.titleFont, "Reboot", self.app.textColour, currentX, self.screenRect[1])
+			currentY += (textHeight * 2)
+			(textWidth, textHeight) = renderText(self.renderer, self.app.bodyFont, "Select this menu item to reboot your system.", self.app.textColour, self.screenRect[0] + self.screenMargin, currentY, self.wrap)
+		elif selected.getText() == "Exit":
+			(textWidth, textHeight) = renderText(self.renderer, self.app.titleFont, "Exit", self.app.textColour, currentX, self.screenRect[1])
+			currentY += (textHeight * 2)
+			(textWidth, textHeight) = renderText(self.renderer, self.app.bodyFont, "Select this menu item to exit the PES GUI and return to the command line.", self.app.textColour, currentX, currentY, self.wrap)
+		elif selected.getText() == "Settings":
+			(textWidth, textHeight) = renderText(self.renderer, self.app.titleFont, "Settings", self.app.textColour, currentX, self.screenRect[1])
+			currentY += (textHeight * 2)
+			(textWidth, textHeight) = renderText(self.renderer, self.app.bodyFont, "Select this menu item to customise PES and to add ROMs to PES' database.", self.app.textColour, currentX, currentY, self.wrap)
+		elif selected.getText() == "Power Off":
+			(textWidth, textHeight) = renderText(self.renderer, self.app.titleFont, "Power Off", self.app.textColour, currentX, self.screenRect[1])
+			currentY += (textHeight * 2)
+			(textWidth, textHeight) = renderText(self.renderer, self.app.bodyFont, "Select this menu item to turn your system off.", self.app.textColour, currentX, currentY, self.wrap)
+		elif isinstance(selected, ConsoleMenuItem):
+			consoleName = selected.getText()
+			if consoleName not in self.__thumbCache:
+				self.__thumbCache[consoleName] = {}
+			sdl2.SDL_RenderCopy(self.renderer, self.app.consoleTextures[consoleName], None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
+			(textWidth, textHeight) = renderText(self.renderer, self.app.titleFont, consoleName, self.app.textColour, currentX, self.screenRect[1])
+			currentY += (textHeight * 2)
+			(textWidth, textHeight) = renderText(self.renderer, self.app.bodyFont, "Recenly Added:", self.app.textColour,currentX, currentY, self.wrap)
+			currentY += textHeight
+			thumbX = currentX
+			for g in selected.getConsole().getRecentlyAddedGames(10):
+				art = g.getCoverArt()
+				if art != None:
+					texture = None
+					if g.getId() not in self.__thumbCache[consoleName]:
+						texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, art)
+					else:
+						texture = self.__thumbCache[consoleName][g.getId()]
+					(w, h) = getScaleImageDimensions(texture, 200, 200)
+					if thumbX + w + self.__thumbGap < self.screenRect[0] + self.screenRect[2]:
+						sdl2.SDL_RenderCopy(self.renderer, texture, None, sdl2.SDL_Rect(thumbX, currentY, w, h))
+						thumbX += w + self.__thumbGap
+			
+			#(textWidth, textHeight) = renderText(self.renderer, self.app.bodyFont, "Recenly Played:", self.app.textColour, currentX, currentY, self.wrap)
 		
 	def refreshMenu(self):
 		logging.debug("HomeScreen.refreshMenu: refreshing menu contents...")
@@ -721,6 +825,12 @@ class HomeScreen(Screen):
 				logging.debug("HomeScreen.refreshMenu: adding %s" % c.getName())
 				self.menu.insertItem(len(self.menu.getItems()) - 4, ConsoleMenuItem(c))
 		self.menu.setSelected(0, True)
+		
+	def stop(self):
+		logging.debug("HomeScreen.stop: deleting textures...")
+		for value in self.__thumbCache.itervalues():
+			for texture in value.itervalues():
+				sdl2.SDL_DestroyTexture(texture)
 		
 class SettingsScreen(Screen):
 	
