@@ -91,11 +91,19 @@ def renderLines(renderer, font, lines, colour, x, y, wrap):
 		totalHeight += h
 	return (w, totalHeight)
 
-def renderText(renderer, font, txt, colour, x, y, wrap=0):
+def renderText(renderer, font, txt, colour, x, y, wrap=0, width=0):
 	texture = createText(renderer, font, txt, colour, wrap)
 	(w, h) = getTextureDimensions(texture)
-	sdl2.SDL_RenderCopy(renderer, texture, None, sdl2.SDL_Rect(x, y, w, h))
-	sdl2.SDL_DestroyTexture(texture)
+	if width > 0 and w > width:
+		dotTexture = createText(renderer, font, '...', colour)
+		(tw, th) = getTextureDimensions(dotTexture)
+		sdl2.SDL_RenderCopy(renderer, texture, sdl2.SDL_Rect(0, 0, width - tw, h), sdl2.SDL_Rect(x, y, width - tw, h))
+		sdl2.SDL_RenderCopy(renderer, dotTexture, None, sdl2.SDL_Rect(x + (width - tw), y, tw, th))
+		sdl2.SDL_DestroyTexture(texture)
+		sdl2.SDL_DestroyTexture(dotTexture)
+	else:
+		sdl2.SDL_RenderCopy(renderer, texture, None, sdl2.SDL_Rect(x, y, w, h))
+		sdl2.SDL_DestroyTexture(texture)
 	return (w, h)
 
 def getScaleImageDimensions(texture, bx, by):
@@ -172,6 +180,8 @@ class PESApp(object):
 		logging.debug("PESApp.initScreens: initialising screens...")
 		self.screens["Home"] = HomeScreen(self, self.renderer, self.menuRect, self.screenRect)
 		self.screens["Settings"] = SettingsScreen(self, self.renderer, self.menuRect, self.screenRect)
+		for c in self.consoles:
+			self.screens["Console %s" % c.getName()] = ConsoleScreen(self, self.renderer, self.menuRect, self.screenRect, c)
 		self.screenStack = ["Home"]
 		
 	def initTextures(self):
@@ -743,19 +753,99 @@ class Screen(object):
 	def stop(self):
 		pass
 	
+class ConsoleScreen(Screen):
+	
+	def __init__(self, app, renderer, menuRect, screenRect, console):
+		super(ConsoleScreen, self).__init__(app, renderer, console.getName(), Menu([
+			MenuItem("Recently Played"),
+			MenuItem("Recently Added"),
+			MenuItem("Favourites"),
+			MenuItem("A-Z")]),
+		menuRect, screenRect)
+		self.__console = console
+		self.menu.setSelected(0)
+		self.__thumbCache = {}
+		self.__thumbGap = 10
+		self.__recentGameTotal = 10
+		self.__thumbWidth = 150
+		self.__thumbHeight = self.__thumbWidth
+		
+	def drawScreen(self):
+		currentX = self.screenRect[0] + self.screenMargin
+		currentY = self.screenRect[1]
+		consoleName = self.__console.getName()
+		selectedItem = self.menu.getSelectedItem()
+		selectedText = selectedItem.getText()
+		sdl2.SDL_RenderCopy(self.renderer, self.app.consoleTextures[consoleName], None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
+		(textWidth, textHeight) = renderText(self.renderer, self.app.titleFont, "%s: %s" % (consoleName, selectedText), self.app.textColour, currentX, self.screenRect[1])
+		currentY += textHeight * 2
+		
+		if selectedText == "Recently Added":
+			thumbX = currentX
+			recentGames = self.__console.getRecentlyAddedGames(self.__recentGameTotal)
+			for g in recentGames:
+				art = g.getCoverArt()
+				if art != None:
+					texture = None
+					if g.getId() not in self.__thumbCache.keys():
+						texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, art)
+						self.__thumbCache[g.getId()] = texture
+					else:
+						texture = self.__thumbCache[g.getId()]
+					
+					if thumbX + self.__thumbWidth < self.screenRect[0] + self.screenRect[2]:
+						sdl2.SDL_RenderCopy(self.renderer, texture, None, sdl2.SDL_Rect(thumbX, currentY, self.__thumbWidth, self.__thumbHeight))
+						# render text underneath
+						renderText(self.renderer, self.app.bodyFont, g.getName(), self.app.textColour, thumbX, currentY + self.__thumbHeight + 1, 0, self.__thumbWidth)
+						thumbX += self.__thumbWidth + self.__thumbGap
+		elif selectedText == "Recently Played":
+			thumbX = currentX
+			recentGames = self.__console.getRecentlyPlayedGames(self.__recentGameTotal)
+			for g in recentGames:
+				art = g.getCoverArt()
+				if art != None:
+					texture = None
+					if g.getId() not in self.__thumbCache.keys():
+						texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, art)
+						self.__thumbCache[g.getId()] = texture
+					else:
+						texture = self.__thumbCache[g.getId()]
+					
+					if thumbX + self.__thumbWidth < self.screenRect[0] + self.screenRect[2]:
+						sdl2.SDL_RenderCopy(self.renderer, texture, None, sdl2.SDL_Rect(thumbX, currentY, self.__thumbWidth, self.__thumbHeight))
+						# render text underneath
+						renderText(self.renderer, self.app.bodyFont, g.getName(), self.app.textColour, thumbX, currentY + self.__thumbHeight + 1, 0, self.__thumbWidth)
+						thumbX += self.__thumbWidth + self.__thumbGap
+					
+	def stop(self):
+		logging.debug("ConsoleScreen.stop: deleting %d textures for %s..." % (len(self.__thumbCache), self.__console.getName()))
+		for value in self.__thumbCache.itervalues():
+			sdl2.SDL_DestroyTexture(value)
+	
 class HomeScreen(Screen):
 	
 	def __init__(self, app, renderer, menuRect, screenRect):
 		super(HomeScreen, self).__init__(app, renderer, "Home", Menu([MenuItem("Home")]), menuRect, screenRect)
 		for c in self.app.consoles:
 			if c.getGameTotal() > 0:
-				self.menu.addItem(ConsoleMenuItem(c))
+				self.menu.addItem(ConsoleMenuItem(c, False, False, self.app.setScreen, "Console %s" % c.getName()))
 		self.menu.addItem(MenuItem("Settings", False, False, self.app.setScreen, "Settings"))
 		self.menu.addItem(MenuItem("Reboot"))
 		self.menu.addItem(MenuItem("Power Off"))
 		self.menu.addItem(MenuItem("Exit", False, False, self.app.exit))
 		self.__thumbCache = {}
-		self.__thumbGap = 10
+		self.__gamesCache = {}
+		self.__thumbGap = 20
+		self.__recentGameTotal = 10
+		#self.__thumbWidth = int((0.0 + screenRect[2] - self.screenMargin - (self.__thumbGap * self.__recentGameTotal - 1)) / float(self.__recentGameTotal))
+		self.__thumbWidth = 150
+		self.__thumbHeight = self.__thumbWidth
+		
+		self.__gamesPerPage = int((screenRect[2] / (self.__thumbWidth + self.__thumbGap)) * (screenRect[3] / (self.__thumbHeight + self.__thumbGap)))
+		self.__gamesPage = 1
+		self.__lastTick = None
+		
+		#logging.debug("HomeScreen.init: thumbWidth %d" % self.__thumbWidth)
 		logging.debug("HomeScreen.init: initialised")
 			
 	def drawScreen(self):
@@ -787,29 +877,60 @@ class HomeScreen(Screen):
 			currentY += (textHeight * 2)
 			(textWidth, textHeight) = renderText(self.renderer, self.app.bodyFont, "Select this menu item to turn your system off.", self.app.textColour, currentX, currentY, self.wrap)
 		elif isinstance(selected, ConsoleMenuItem):
+			
+			pageChange = False
+			
+			if self.__lastTick == None:
+				self.__lastTick = sdl2.timer.SDL_GetTicks()
+			else:
+				gameTotal = selected.getConsole().getGameTotal()
+				pageTotal = int(gameTotal / self.__gamesPerPage)
+				tick = sdl2.timer.SDL_GetTicks()
+				if tick - self.__lastTick > 2000:
+					self.__gamesPage += 1
+					if self.__gamesPage > pageTotal:
+						self.__gamesPage = 1
+					pageChange = True
+					self.__lastTick = tick
+			
 			consoleName = selected.getText()
 			if consoleName not in self.__thumbCache:
 				self.__thumbCache[consoleName] = {}
 			sdl2.SDL_RenderCopy(self.renderer, self.app.consoleTextures[consoleName], None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
 			(textWidth, textHeight) = renderText(self.renderer, self.app.titleFont, consoleName, self.app.textColour, currentX, self.screenRect[1])
 			currentY += (textHeight * 2)
-			(textWidth, textHeight) = renderText(self.renderer, self.app.bodyFont, "Recenly Added:", self.app.textColour,currentX, currentY, self.wrap)
-			currentY += textHeight
 			thumbX = currentX
-			for g in selected.getConsole().getRecentlyAddedGames(10):
+			thumbY = currentY
+			games = selected.getConsole().getGames((self.__gamesPage - 1) * self.__gamesPerPage, self.__gamesPerPage, pageChange)
+			noCoverArt = selected.getConsole().getNoCoverArtImg()
+			for g in games:
+				if not g.getId() in self.__gamesCache.keys():
+					g.refresh()
+					self.__gamesCache[g.getId()] = g
+				else:
+					g = self.__gamesCache[g.getId()]
 				art = g.getCoverArt()
-				if art != None:
-					texture = None
-					if g.getId() not in self.__thumbCache[consoleName]:
-						texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, art)
-					else:
-						texture = self.__thumbCache[consoleName][g.getId()]
-					(w, h) = getScaleImageDimensions(texture, 200, 200)
-					if thumbX + w + self.__thumbGap < self.screenRect[0] + self.screenRect[2]:
-						sdl2.SDL_RenderCopy(self.renderer, texture, None, sdl2.SDL_Rect(thumbX, currentY, w, h))
-						thumbX += w + self.__thumbGap
-			
-			#(textWidth, textHeight) = renderText(self.renderer, self.app.bodyFont, "Recenly Played:", self.app.textColour, currentX, currentY, self.wrap)
+				if art == None:
+					art = noCoverArt
+				texture = None
+				if g.getId() not in self.__thumbCache[consoleName]:
+					texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, art)
+					self.__thumbCache[consoleName][g.getId()] = texture
+				else:
+					texture = self.__thumbCache[consoleName][g.getId()]
+					
+				if thumbX + self.__thumbWidth > self.screenRect[0] + self.screenRect[2]:
+					thumbX = currentX
+					thumbY += self.__thumbHeight + self.__thumbGap
+				
+				sdl2.SDL_RenderCopy(self.renderer, texture, None, sdl2.SDL_Rect(thumbX, thumbY, self.__thumbWidth, self.__thumbHeight))
+				thumbX += self.__thumbWidth + self.__thumbGap
+				
+	def processEvent(self, event):
+		if self.menuActive and event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_UP or event.key.keysym.sym == sdl2.SDLK_DOWN):
+			self.__gamesPage = 1
+		
+		super(HomeScreen, self).processEvent(event)
 		
 	def refreshMenu(self):
 		logging.debug("HomeScreen.refreshMenu: refreshing menu contents...")
