@@ -760,7 +760,10 @@ class ConsoleScreen(Screen):
 			MenuItem("Recently Played"),
 			MenuItem("Recently Added"),
 			MenuItem("Favourites"),
-			MenuItem("A-Z")]),
+			MenuItem("Most Played"),
+			MenuItem("All"),
+			MenuItem("Search"),
+		]),
 		menuRect, screenRect)
 		self.__console = console
 		self.menu.setSelected(0)
@@ -837,11 +840,9 @@ class HomeScreen(Screen):
 		self.__gamesCache = {}
 		self.__thumbGap = 20
 		self.__recentGameTotal = 10
-		#self.__thumbWidth = int((0.0 + screenRect[2] - self.screenMargin - (self.__thumbGap * self.__recentGameTotal - 1)) / float(self.__recentGameTotal))
-		self.__thumbWidth = 150
-		self.__thumbHeight = self.__thumbWidth
-		
-		self.__gamesPerPage = int((screenRect[2] / (self.__thumbWidth + self.__thumbGap)) * (screenRect[3] / (self.__thumbHeight + self.__thumbGap)))
+		self.__thumbWidth = -1
+		self.__thumbHeight = -1
+		self.__gamesPerPage = 1
 		self.__gamesPage = 1
 		self.__lastTick = None
 		
@@ -878,13 +879,18 @@ class HomeScreen(Screen):
 			(textWidth, textHeight) = renderText(self.renderer, self.app.bodyFont, "Select this menu item to turn your system off.", self.app.textColour, currentX, currentY, self.wrap)
 		elif isinstance(selected, ConsoleMenuItem):
 			
+			console = selected.getConsole()
+			
 			pageChange = False
+			pageTotal = 1
 			
 			if self.__lastTick == None:
 				self.__lastTick = sdl2.timer.SDL_GetTicks()
 			else:
-				gameTotal = selected.getConsole().getGameTotal()
-				pageTotal = int(gameTotal / self.__gamesPerPage)
+				gameTotal = console.getGameTotal()
+				pageTotal = int(round((float(gameTotal) / float(self.__gamesPerPage)) + 0.5))
+				#if pageTotal == 0:
+				#	pageTotal = 1
 				tick = sdl2.timer.SDL_GetTicks()
 				if tick - self.__lastTick > 2000:
 					self.__gamesPage += 1
@@ -893,7 +899,7 @@ class HomeScreen(Screen):
 					pageChange = True
 					self.__lastTick = tick
 			
-			consoleName = selected.getText()
+			consoleName = console.getName()
 			if consoleName not in self.__thumbCache:
 				self.__thumbCache[consoleName] = {}
 			sdl2.SDL_RenderCopy(self.renderer, self.app.consoleTextures[consoleName], None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
@@ -901,10 +907,11 @@ class HomeScreen(Screen):
 			currentY += (textHeight * 2)
 			thumbX = currentX
 			thumbY = currentY
-			games = selected.getConsole().getGames((self.__gamesPage - 1) * self.__gamesPerPage, self.__gamesPerPage, pageChange)
-			noCoverArt = selected.getConsole().getNoCoverArtImg()
+			games = console.getGames((self.__gamesPage - 1) * self.__gamesPerPage, self.__gamesPerPage, pageChange)
+			noCoverArt = console.getNoCoverArtImg()
+			
 			for g in games:
-				if not g.getId() in self.__gamesCache.keys():
+				if not g.getId() in self.__gamesCache:
 					g.refresh()
 					self.__gamesCache[g.getId()] = g
 				else:
@@ -926,11 +933,31 @@ class HomeScreen(Screen):
 				sdl2.SDL_RenderCopy(self.renderer, texture, None, sdl2.SDL_Rect(thumbX, thumbY, self.__thumbWidth, self.__thumbHeight))
 				thumbX += self.__thumbWidth + self.__thumbGap
 				
+			texture = createText(self.renderer, self.app.bodyFont, "%d/%d" % (self.__gamesPage, pageTotal), self.app.textColour)
+			txtWidth, txtHeight = getTextureDimensions(texture)
+			sdl2.SDL_RenderCopy(self.renderer, texture, None, sdl2.SDL_Rect(self.screenRect[0] + (self.screenRect[2] - txtWidth - 5), self.screenRect[1] + (self.screenRect[3] - txtHeight - 5), txtWidth, txtHeight))
+			sdl2.SDL_DestroyTexture(texture)
+				
 	def processEvent(self, event):
-		if self.menuActive and event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_UP or event.key.keysym.sym == sdl2.SDLK_DOWN):
-			self.__gamesPage = 1
-		
 		super(HomeScreen, self).processEvent(event)
+		if self.menuActive and event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_UP or event.key.keysym.sym == sdl2.SDLK_DOWN):
+			selected = self.menu.getSelectedItem()
+			if isinstance(selected, ConsoleMenuItem):
+				console = selected.getConsole()
+				img = Image.open(console.getNoCoverArtImg())
+				img.close()
+				width, height = img.size
+				ratio = 0.0
+				if width > height:
+					ratio = float(height) / float(width)
+					self.__thumbWidth = 150
+					self.__thumbHeight = int(ratio * self.__thumbWidth)
+				else:
+					ratio = float(width) / float(height)
+					self.__thumbHeight = 150
+					self.__thumbWidth = int(ratio * self.__thumbHeight)
+				self.__gamesPerPage = int((self.screenRect[2] / (self.__thumbWidth + self.__thumbGap)) * (self.screenRect[3] / (self.__thumbHeight + self.__thumbGap)))
+				self.__gamesPage = 1
 		
 	def refreshMenu(self):
 		logging.debug("HomeScreen.refreshMenu: refreshing menu contents...")
