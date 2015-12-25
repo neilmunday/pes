@@ -889,8 +889,6 @@ class HomeScreen(Screen):
 			else:
 				gameTotal = console.getGameTotal()
 				pageTotal = int(round((float(gameTotal) / float(self.__gamesPerPage)) + 0.5))
-				#if pageTotal == 0:
-				#	pageTotal = 1
 				tick = sdl2.timer.SDL_GetTicks()
 				if tick - self.__lastTick > 2000:
 					self.__gamesPage += 1
@@ -958,6 +956,7 @@ class HomeScreen(Screen):
 					self.__thumbWidth = int(ratio * self.__thumbHeight)
 				self.__gamesPerPage = int((self.screenRect[2] / (self.__thumbWidth + self.__thumbGap)) * (self.screenRect[3] / (self.__thumbHeight + self.__thumbGap)))
 				self.__gamesPage = 1
+				self.__lastTick = sdl2.timer.SDL_GetTicks()
 		
 	def refreshMenu(self):
 		logging.debug("HomeScreen.refreshMenu: refreshing menu contents...")
