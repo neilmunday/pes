@@ -151,7 +151,7 @@ class PESApp(object):
 		self.romsDir = romsDir
 		self.coverartDir = coverartDir
 		self.consoles = []
-		self.consoleTextures = None
+		self.consoleSurfaces = None
 		
 		self.lineColour = sdl2.SDL_Color(lineColour[0], lineColour[1], lineColour[2])
 		self.backgroundColour = sdl2.SDL_Color(backgroundColour[0], backgroundColour[1], backgroundColour[2])
@@ -166,11 +166,6 @@ class PESApp(object):
 		#self.__footerHeight = self.__headerHeight
 		self.__footerHeight = 0
 		
-		# redraw hints
-		#self.redrawMainMenu = True
-		#self.__screenChange = True
-		# call SDL2 directly to probe joysticks
-		#SDL_Init(SDL_INIT_JOYSTICK)
 		#self.joystickTotal = SDLJoystick.SDL_NumJoysticks()
 		#print "Joysticks: %d " % self.joystickTotal
 		#for i in range(0, self.joystickTotal):
@@ -183,28 +178,32 @@ class PESApp(object):
 		for c in self.consoles:
 			self.screens["Console %s" % c.getName()] = ConsoleScreen(self, self.renderer, self.menuRect, self.screenRect, c)
 		self.screenStack = ["Home"]
+	
+	def initSurfaces(self):
 		
-	def initTextures(self):
-		# must call this function from the main thread
-		if self.consoleTextures != None:
+		if self.consoleSurfaces != None:
 			return
-		self.consoleTextures = {}
-		logging.debug("PESApp.initTextures: loading console textures...")
+		
+		self.consoleSurfaces = {}
+		logging.debug("PESApp.initSurfaces: pre-loading console images...")
 		for c in self.consoles:
-			texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, c.getImg())
-			if texture == None:
-				logging.error("PESApp.initTextures: failed to load texture: %s" % c.getImg())
+			surface = sdl2.sdlimage.IMG_Load(c.getImg())
+			if surface == None:
+				logging.error("PESApp.initSurfaces: failed to load image: %s" % c.getImg())
 				self.exit(1)
-			sdl2.SDL_SetTextureBlendMode(texture, sdl2.SDL_BLENDMODE_BLEND)
-			sdl2.SDL_SetTextureAlphaMod(texture, 100)
-			self.consoleTextures[c.getName()] = texture
-			logging.debug("PESApp.initTextures: loaded %s texture from %s" % (c.getName(), c.getImg()))
+			self.consoleSurfaces[c.getName()] = surface
+			logging.debug("PESApp.initSurfaces: pre-loaded %s surface from %s" % (c.getName(), c.getImg()))
+			
 		
 	def exit(self, rtn=0):
 		# tidy up
 		logging.debug("stopping screens...")
 		for s in self.screens:
 			self.screens[s].stop()
+		logging.debug("purging cached surfaces...")
+		for console, surface in self.consoleSurfaces.iteritems():
+			logging.debug("unloading surface for %s..." % console)
+			sdl2.SDL_FreeSurface(surface)
 		logging.debug("tidying up...")
 		sdl2.sdlttf.TTF_CloseFont(self.headerFont)
 		sdl2.sdlttf.TTF_CloseFont(self.bodyFont)
@@ -308,8 +307,9 @@ class PESApp(object):
 						for c in self.consoles:
 							c.refresh()
 						self.screens["Home"].refreshMenu()
-					elif t == pes.event.EVENT_RESOURCES_LOADED:
-						self.initTextures()
+					#elif t == pes.event.EVENT_RESOURCES_LOADED:
+						#self.initTextures()
+					#	self.initSurfaces()
 				
 				if not loading:
 					# keyboard events
@@ -375,10 +375,10 @@ class PESApp(object):
 		
 		sdl2.SDL_DestroyTexture(headerTexture)
 		sdl2.SDL_DestroyTexture(dateTexture)
-		if self.consoleTextures:
-			for key, value in self.consoleTextures.iteritems():
-				sdl2.SDL_DestroyTexture(value)
-		self.exit()
+		#if self.consoleTextures:
+		#	for key, value in self.consoleTextures.iteritems():
+		#		sdl2.SDL_DestroyTexture(value)
+		self.exit(0)
 		
 	def setScreen(self, screen):
 		if not screen in self.screens:
@@ -414,7 +414,7 @@ class PESLoadingThread(threading.Thread):
 			cur.execute('CREATE TABLE IF NOT EXISTS `games_catalogue` (`short_name` TEXT, `full_name` TEXT)')
 			cur.execute('CREATE INDEX IF NOT EXISTS "games_catalogue_index" on games_catalogue (short_name ASC)')
 			
-			self.progress = 25
+			self.progress = 20
 			
 			# is the games catalogue populated?
 			cur.execute('SELECT COUNT(*) AS `total` FROM `games_catalogue`')
@@ -439,7 +439,7 @@ class PESLoadingThread(threading.Thread):
 			if con:
 				con.close()
 				
-		self.progress = 50
+		self.progress = 40
 		
 		# load consoles
 		configParser = ConfigParser.ConfigParser()
@@ -490,7 +490,9 @@ class PESLoadingThread(threading.Thread):
 				self.app.exit(1)
 				return
 			
-		self.progress = 75
+		self.progress = 60
+		self.app.initSurfaces()
+		self.progress = 80
 		self.app.initScreens()
 		self.progress = 100
 		time.sleep(0.1)
@@ -772,6 +774,7 @@ class ConsoleScreen(Screen):
 		self.__recentGameTotal = 10
 		self.__thumbWidth = 150
 		self.__thumbHeight = self.__thumbWidth
+		self.__consoleTexture = None
 		
 	def drawScreen(self):
 		currentX = self.screenRect[0] + self.screenMargin
@@ -779,7 +782,11 @@ class ConsoleScreen(Screen):
 		consoleName = self.__console.getName()
 		selectedItem = self.menu.getSelectedItem()
 		selectedText = selectedItem.getText()
-		sdl2.SDL_RenderCopy(self.renderer, self.app.consoleTextures[consoleName], None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
+		
+		if self.__consoleTexture == None:
+			self.__consoleTexture = sdl2.SDL_CreateTextureFromSurface(self.renderer, self.app.consoleSurfaces[consoleName])
+		
+		sdl2.SDL_RenderCopy(self.renderer, self.__consoleTexture, None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
 		(textWidth, textHeight) = renderText(self.renderer, self.app.titleFont, "%s: %s" % (consoleName, selectedText), self.app.textColour, currentX, self.screenRect[1])
 		currentY += textHeight * 2
 		
@@ -822,6 +829,8 @@ class ConsoleScreen(Screen):
 					
 	def stop(self):
 		logging.debug("ConsoleScreen.stop: deleting %d textures for %s..." % (len(self.__thumbCache), self.__console.getName()))
+		if self.__consoleTexture:
+			sdl2.SDL_DestroyTexture(self.__consoleTexture)
 		for value in self.__thumbCache.itervalues():
 			sdl2.SDL_DestroyTexture(value)
 	
@@ -845,6 +854,9 @@ class HomeScreen(Screen):
 		self.__gamesPerPage = 1
 		self.__gamesPage = 1
 		self.__lastTick = None
+		self.__desiredThumbWidth = 200
+		self.__consoleTexture = None
+		self.__pageTotalTexture = None
 		
 		#logging.debug("HomeScreen.init: thumbWidth %d" % self.__thumbWidth)
 		logging.debug("HomeScreen.init: initialised")
@@ -896,11 +908,16 @@ class HomeScreen(Screen):
 						self.__gamesPage = 1
 					pageChange = True
 					self.__lastTick = tick
+				self.__pageTotalTexture = createText(self.renderer, self.app.bodyFont, "%d/%d" % (self.__gamesPage, pageTotal), self.app.textColour)
+				
+			if self.__pageTotalTexture == None:
+				self.__pageTotalTexture = createText(self.renderer, self.app.bodyFont, "%d/%d" % (self.__gamesPage, pageTotal), self.app.textColour)
 			
 			consoleName = console.getName()
 			if consoleName not in self.__thumbCache:
 				self.__thumbCache[consoleName] = {}
-			sdl2.SDL_RenderCopy(self.renderer, self.app.consoleTextures[consoleName], None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
+			#sdl2.SDL_RenderCopy(self.renderer, self.app.consoleTextures[consoleName], None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
+			sdl2.SDL_RenderCopy(self.renderer, self.__consoleTexture, None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
 			(textWidth, textHeight) = renderText(self.renderer, self.app.titleFont, consoleName, self.app.textColour, currentX, self.screenRect[1])
 			currentY += (textHeight * 2)
 			thumbX = currentX
@@ -918,23 +935,28 @@ class HomeScreen(Screen):
 				if art == None:
 					art = noCoverArt
 				texture = None
+				surface = None
 				if g.getId() not in self.__thumbCache[consoleName]:
-					texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, art)
-					self.__thumbCache[consoleName][g.getId()] = texture
+					#texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, art)
+					#self.__thumbCache[consoleName][g.getId()] = texture
+					surface = sdl2.sdlimage.IMG_Load(art)
+					self.__thumbCache[consoleName][g.getId()] = surface
 				else:
-					texture = self.__thumbCache[consoleName][g.getId()]
+					#texture = self.__thumbCache[consoleName][g.getId()]
+					surface = self.__thumbCache[consoleName][g.getId()]
+				#texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, art)
+				texture = sdl2.SDL_CreateTextureFromSurface(self.renderer, surface)
 					
 				if thumbX + self.__thumbWidth > self.screenRect[0] + self.screenRect[2]:
 					thumbX = currentX
 					thumbY += self.__thumbHeight + self.__thumbGap
 				
 				sdl2.SDL_RenderCopy(self.renderer, texture, None, sdl2.SDL_Rect(thumbX, thumbY, self.__thumbWidth, self.__thumbHeight))
+				sdl2.SDL_DestroyTexture(texture)
 				thumbX += self.__thumbWidth + self.__thumbGap
 				
-			texture = createText(self.renderer, self.app.bodyFont, "%d/%d" % (self.__gamesPage, pageTotal), self.app.textColour)
-			txtWidth, txtHeight = getTextureDimensions(texture)
-			sdl2.SDL_RenderCopy(self.renderer, texture, None, sdl2.SDL_Rect(self.screenRect[0] + (self.screenRect[2] - txtWidth - 5), self.screenRect[1] + (self.screenRect[3] - txtHeight - 5), txtWidth, txtHeight))
-			sdl2.SDL_DestroyTexture(texture)
+			txtWidth, txtHeight = getTextureDimensions(self.__pageTotalTexture)
+			sdl2.SDL_RenderCopy(self.renderer, self.__pageTotalTexture, None, sdl2.SDL_Rect(self.screenRect[0] + (self.screenRect[2] - txtWidth - 5), self.screenRect[1] + (self.screenRect[3] - txtHeight - 5), txtWidth, txtHeight))
 				
 	def processEvent(self, event):
 		super(HomeScreen, self).processEvent(event)
@@ -942,17 +964,18 @@ class HomeScreen(Screen):
 			selected = self.menu.getSelectedItem()
 			if isinstance(selected, ConsoleMenuItem):
 				console = selected.getConsole()
+				self.__consoleTexture = sdl2.SDL_CreateTextureFromSurface(self.renderer, self.app.consoleSurfaces[console.getName()])
 				img = Image.open(console.getNoCoverArtImg())
 				img.close()
 				width, height = img.size
 				ratio = 0.0
 				if width > height:
 					ratio = float(height) / float(width)
-					self.__thumbWidth = 150
+					self.__thumbWidth = self.__desiredThumbWidth
 					self.__thumbHeight = int(ratio * self.__thumbWidth)
 				else:
 					ratio = float(width) / float(height)
-					self.__thumbHeight = 150
+					self.__thumbHeight = self.__desiredThumbWidth
 					self.__thumbWidth = int(ratio * self.__thumbHeight)
 				self.__gamesPerPage = int((self.screenRect[2] / (self.__thumbWidth + self.__thumbGap)) * (self.screenRect[3] / (self.__thumbHeight + self.__thumbGap)))
 				self.__gamesPage = 1
@@ -974,10 +997,14 @@ class HomeScreen(Screen):
 		self.menu.setSelected(0, True)
 		
 	def stop(self):
+		logging.debug("HomeScreen.stop: deleting surfaces...")
+		for key, value in self.__thumbCache.iteritems():
+			logging.debug("HomeScreen.stop: deleting %d surfaces for %s..." % (len(value), key))
+			for surface in value.itervalues():
+				sdl2.SDL_FreeSurface(surface)
 		logging.debug("HomeScreen.stop: deleting textures...")
-		for value in self.__thumbCache.itervalues():
-			for texture in value.itervalues():
-				sdl2.SDL_DestroyTexture(texture)
+		sdl2.SDL_DestroyTexture(self.__consoleTexture)
+		sdl2.SDL_DestroyTexture(self.__pageTotalTexture)
 		
 class SettingsScreen(Screen):
 	
