@@ -31,6 +31,7 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 pesInstallDir="$DIR/../"
+sdlInstallDir="/opt/sdl2/default/lib"
 script="$DIR/commands.sh"
 
 # remove previous script file
@@ -56,6 +57,14 @@ if [ -z $PYTHONPATH ]; then
 	export PYTHONPATH="$pythonPath"
 else
 	export PYTHONPATH="$PYTHONPATH:$pythonPath"
+fi
+
+if [ -d $sdlInstallDir ]; then
+	if [ -z $LD_LIBRARY_PATH ]; then
+		export LD_LIBRARY_PATH=$sdlInstallDir
+	else
+		export LD_LIBRARY_PATH=$sdlInstallDir:$LD_LIBRARY_PATH
+	fi
 fi
 
 $pesInstallDir/lib/pes/main.py $@
