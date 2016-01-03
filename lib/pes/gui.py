@@ -4,7 +4,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2016 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -269,7 +269,6 @@ class PESApp(object):
 		self.bodyFontHeight = getFontHeight(self.bodyFont)
 		
 		self.renderer = sdl2.SDL_CreateRenderer(self.__window, -1, sdl2.render.SDL_RENDERER_ACCELERATED)
-		#sdl2.SDL_RenderSetLogicalSize(renderer, 1024, 576)
 		
 		# pre-initialise screens
 		self.screens = {}
@@ -307,9 +306,8 @@ class PESApp(object):
 						for c in self.consoles:
 							c.refresh()
 						self.screens["Home"].refreshMenu()
-					#elif t == pes.event.EVENT_RESOURCES_LOADED:
-						#self.initTextures()
-					#	self.initSurfaces()
+					elif t == pes.event.EVENT_RESOURCES_LOADED:
+						pass
 				
 				if not loading:
 					# keyboard events
@@ -854,9 +852,12 @@ class HomeScreen(Screen):
 		self.__gamesPerPage = 1
 		self.__gamesPage = 1
 		self.__lastTick = None
-		self.__desiredThumbWidth = 200
+		self.__desiredThumbWidth = int(screenRect[2] / 5)
 		self.__consoleTexture = None
-		self.__pageTotalTexture = None
+		self.__gamesPageTotalTexture = None
+		self.__gamesPageTotal = 1
+		self.__gameTextures = None
+		self.__consoleChanged = False
 		
 		#logging.debug("HomeScreen.init: thumbWidth %d" % self.__thumbWidth)
 		logging.debug("HomeScreen.init: initialised")
@@ -893,67 +894,66 @@ class HomeScreen(Screen):
 			
 			console = selected.getConsole()
 			
-			pageChange = False
-			pageTotal = 1
-			
-			if self.__lastTick == None:
-				self.__lastTick = sdl2.timer.SDL_GetTicks()
+			if self.__consoleChanged:
+				pageChange = True
+				self.__consoleChanged = False
 			else:
-				gameTotal = console.getGameTotal()
-				pageTotal = int(round((float(gameTotal) / float(self.__gamesPerPage)) + 0.5))
-				tick = sdl2.timer.SDL_GetTicks()
-				if tick - self.__lastTick > 2000:
-					self.__gamesPage += 1
-					if self.__gamesPage > pageTotal:
-						self.__gamesPage = 1
-					pageChange = True
-					self.__lastTick = tick
-				self.__pageTotalTexture = createText(self.renderer, self.app.bodyFont, "%d/%d" % (self.__gamesPage, pageTotal), self.app.textColour)
-				
-			if self.__pageTotalTexture == None:
-				self.__pageTotalTexture = createText(self.renderer, self.app.bodyFont, "%d/%d" % (self.__gamesPage, pageTotal), self.app.textColour)
+				pageChange = False
+			
+			if self.__gamesPageTotal > 1:
+				if self.__lastTick == None:
+					self.__lastTick = sdl2.timer.SDL_GetTicks()
+				else:
+					tick = sdl2.timer.SDL_GetTicks()
+					if tick - self.__lastTick > 2000:
+						self.__gamesPage += 1
+						if self.__gamesPage > self.__gamesPageTotal:
+							self.__gamesPage = 1
+						pageChange = True
+						self.__lastTick = tick
+					self.__pageTotalTexture = createText(self.renderer, self.app.bodyFont, "%d/%d" % (self.__gamesPage, self.__gamesPageTotal), self.app.textColour)
+					
+				if self.__pageTotalTexture == None:
+					self.__pageTotalTexture = createText(self.renderer, self.app.bodyFont, "%d/%d" % (self.__gamesPage, self.__gamesPageTotal), self.app.textColour)
+			elif pageChange:
+				self.__pageTotalTexture = createText(self.renderer, self.app.bodyFont, "%d/%d" % (self.__gamesPage, self.__gamesPageTotal), self.app.textColour)
 			
 			consoleName = console.getName()
-			if consoleName not in self.__thumbCache:
-				self.__thumbCache[consoleName] = {}
-			#sdl2.SDL_RenderCopy(self.renderer, self.app.consoleTextures[consoleName], None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
 			sdl2.SDL_RenderCopy(self.renderer, self.__consoleTexture, None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
 			(textWidth, textHeight) = renderText(self.renderer, self.app.titleFont, consoleName, self.app.textColour, currentX, self.screenRect[1])
-			currentY += (textHeight * 2)
-			thumbX = currentX
-			thumbY = currentY
-			games = console.getGames((self.__gamesPage - 1) * self.__gamesPerPage, self.__gamesPerPage, pageChange)
-			noCoverArt = console.getNoCoverArtImg()
 			
-			for g in games:
-				if not g.getId() in self.__gamesCache:
-					g.refresh()
-					self.__gamesCache[g.getId()] = g
-				else:
-					g = self.__gamesCache[g.getId()]
-				art = g.getCoverArt()
-				if art == None:
-					art = noCoverArt
-				texture = None
-				surface = None
-				if g.getId() not in self.__thumbCache[consoleName]:
-					#texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, art)
-					#self.__thumbCache[consoleName][g.getId()] = texture
-					surface = sdl2.sdlimage.IMG_Load(art)
-					self.__thumbCache[consoleName][g.getId()] = surface
-				else:
-					#texture = self.__thumbCache[consoleName][g.getId()]
-					surface = self.__thumbCache[consoleName][g.getId()]
-				#texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, art)
-				texture = sdl2.SDL_CreateTextureFromSurface(self.renderer, surface)
+			currentY += (textHeight * 2)
+			
+			if pageChange:
+				if self.__gameTextures:
+					for texture, x, y in self.__gameTextures:
+						sdl2.SDL_DestroyTexture(texture)
+				self.__gameTextures = []
+				games = console.getGames((self.__gamesPage - 1) * self.__gamesPerPage, self.__gamesPerPage, True)
+				noCoverArt = console.getNoCoverArtImg()
+				thumbX = currentX
+				thumbY = currentY
+				for game in games:
+					if not game.getId() in self.__gamesCache:
+						game.refresh()
+						self.__gamesCache[game.getId()] = game
+						g = game
+					else:
+						g = self.__gamesCache[game.getId()]
 					
-				if thumbX + self.__thumbWidth > self.screenRect[0] + self.screenRect[2]:
-					thumbX = currentX
-					thumbY += self.__thumbHeight + self.__thumbGap
-				
-				sdl2.SDL_RenderCopy(self.renderer, texture, None, sdl2.SDL_Rect(thumbX, thumbY, self.__thumbWidth, self.__thumbHeight))
-				sdl2.SDL_DestroyTexture(texture)
-				thumbX += self.__thumbWidth + self.__thumbGap
+					art = g.getCoverArt()
+					if art == None:
+						art = noCoverArt
+					texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, art)
+					if thumbX + self.__thumbWidth > self.screenRect[0] + self.screenRect[2]:
+						thumbX = currentX
+						thumbY += self.__thumbHeight + self.__thumbGap
+					
+					self.__gameTextures.append((texture, thumbX, thumbY))
+					thumbX += self.__thumbWidth + self.__thumbGap
+			
+			for texture, x, y in self.__gameTextures:
+				sdl2.SDL_RenderCopy(self.renderer, texture, None, sdl2.SDL_Rect(x, y, self.__thumbWidth, self.__thumbHeight))
 				
 			txtWidth, txtHeight = getTextureDimensions(self.__pageTotalTexture)
 			sdl2.SDL_RenderCopy(self.renderer, self.__pageTotalTexture, None, sdl2.SDL_Rect(self.screenRect[0] + (self.screenRect[2] - txtWidth - 5), self.screenRect[1] + (self.screenRect[3] - txtHeight - 5), txtWidth, txtHeight))
@@ -979,6 +979,9 @@ class HomeScreen(Screen):
 					self.__thumbWidth = int(ratio * self.__thumbHeight)
 				self.__gamesPerPage = int((self.screenRect[2] / (self.__thumbWidth + self.__thumbGap)) * (self.screenRect[3] / (self.__thumbHeight + self.__thumbGap)))
 				self.__gamesPage = 1
+				self.__gameTotal = console.getGameTotal()
+				self.__gamesPageTotal = int(round((float(self.__gameTotal) / float(self.__gamesPerPage)) + 0.5))
+				self.__consoleChanged = True
 				self.__lastTick = sdl2.timer.SDL_GetTicks()
 		
 	def refreshMenu(self):
@@ -998,10 +1001,9 @@ class HomeScreen(Screen):
 		
 	def stop(self):
 		logging.debug("HomeScreen.stop: deleting surfaces...")
-		for key, value in self.__thumbCache.iteritems():
-			logging.debug("HomeScreen.stop: deleting %d surfaces for %s..." % (len(value), key))
-			for surface in value.itervalues():
-				sdl2.SDL_FreeSurface(surface)
+		if self.__gameTextures:
+			for texture, x, y in self.__gameTextures:
+				sdl2.SDL_DestroyTexture(texture)
 		logging.debug("HomeScreen.stop: deleting textures...")
 		sdl2.SDL_DestroyTexture(self.__consoleTexture)
 		sdl2.SDL_DestroyTexture(self.__pageTotalTexture)
