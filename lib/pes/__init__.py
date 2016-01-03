@@ -4,7 +4,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2016 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ import sys
 import logging
 
 VERSION_NUMBER = '2.0 (ALPHA)'
-VERSION_DATE = '2015-12'
+VERSION_DATE = '2016-01'
 VERSION_AUTHOR = 'Neil Munday'
 
 baseDir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + os.sep + '../../')
