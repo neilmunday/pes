@@ -22,6 +22,7 @@
 
 from PIL import Image
 from datetime import datetime
+from time import sleep
 from pes import *
 from pes.data import *
 from pes.util import *
@@ -236,12 +237,13 @@ class ConsoleTask(object):
 		self.lock = lock
 			
 class Consumer(multiprocessing.Process):
-	def __init__(self, taskQueue, resultQueue, lock):
+	def __init__(self, taskQueue, resultQueue, exitEvent, lock):
 	#def __init__(self, taskQueue, lock):
 		multiprocessing.Process.__init__(self)
 		self.taskQueue = taskQueue
 		self.resultQueue = resultQueue
 		self.lock = lock
+		self.exitEvent = exitEvent
 		
 	def run(self):
 		while True:
@@ -251,11 +253,13 @@ class Consumer(multiprocessing.Process):
 				self.taskQueue.task_done()
 				self.resultQueue.close()
 				return
-			task.setLock(self.lock)
-			#task.run()
-			result = task.run()
-			self.taskQueue.task_done()
-			self.resultQueue.put(result)
+			if self.exitEvent.is_set():
+				self.taskQueue.task_done()
+			else:
+				task.setLock(self.lock)
+				result = task.run()
+				self.taskQueue.task_done()
+				self.resultQueue.put(result)
 		return
 	
 class UpdateDbThread(Thread):
@@ -265,12 +269,14 @@ class UpdateDbThread(Thread):
 		self.done =  False
 		self.started = False
 		self.__tasks = None
+		self.__exitEvent = None
 		self.consoles = consoles
 		self.progress = 0
 		self.romTotal = 0
 		self.added = 0
 		self.updated = 0
 		self.deleted = 0
+		self.interrupted = False
 		self.__queueSetUp = False
 		
 	@staticmethod
@@ -314,10 +320,11 @@ class UpdateDbThread(Thread):
 		return int((float(self.romTotal - qsize) / float(self.romTotal)) * 100.0)
 	
 	def getRemaining(self):
-		if not self.started or self.done or self.__tasks.qsize() == 0:
+		processed = self.getProcessed()
+		if processed == 0 or not self.started or self.done or self.__tasks.qsize() == 0:
 			return self.formatTime(0)
 		# now work out average time taken per ROM
-		return self.formatTime(((time.time() - self.__startTime) / self.getProcessed()) * self.__tasks.qsize())
+		return self.formatTime(((time.time() - self.__startTime) / processed) * self.__tasks.qsize())
 	
 	def getUnprocessed(self):
 		if not self.__queueSetUp:
@@ -329,14 +336,16 @@ class UpdateDbThread(Thread):
 		self.added = 0
 		self.updated = 0
 		self.deleted = 0
+		self.interrupted = False
+		self.__queueSetUp = False
 		lock = multiprocessing.Lock()
 		self.__tasks = multiprocessing.JoinableQueue()
+		self.__exitEvent = multiprocessing.Event()
 		results = multiprocessing.Queue()
 		self.started = True
 		self.consumerTotal = multiprocessing.cpu_count() * 2
 		logging.debug("UpdateDbThread.run: creating %d consumers" % self.consumerTotal)
-		consumers = [Consumer(self.__tasks, results, lock) for i in xrange(self.consumerTotal)]
-		#consumers = [Consumer(self.__tasks, lock) for i in xrange(self.consumerTotal)]
+		consumers = [Consumer(self.__tasks, results, self.__exitEvent, lock) for i in xrange(self.consumerTotal)]
 		for w in consumers:
 			w.start()
 		
@@ -389,14 +398,14 @@ class UpdateDbThread(Thread):
 					self.__tasks.put(ConsoleTask(f, consoleApiName, c))
 					self.romTotal += 1
 					
-		self.__queueSetUp = True
 		logging.debug("UpdateDbThread.run: added %d roms to the queue" % self.romTotal)
 		
 		for i in xrange(self.consumerTotal):
 			self.__tasks.put(None)
 			
 		logging.debug("UpdateDbThread.run: added poison pills")
-			
+		self.__queueSetUp = True
+		
 		self.__tasks.join()
 		
 		logging.debug("UpdateDbThread.run: processing results...")
@@ -411,8 +420,12 @@ class UpdateDbThread(Thread):
 			con = sqlite3.connect(userPesDb)
 			con.row_factory = sqlite3.Row
 			cur = con.cursor()
-			cur.execute("DELETE FROM `games` WHERE `exists` = 0")
-			self.deleted = con.total_changes
+			
+			if self.interrupted:
+				cur.execute("UPDATE `games` SET `exists` = 1 WHERE `exists` = 0")
+			else:
+				cur.execute("DELETE FROM `games` WHERE `exists` = 0")
+				self.deleted = con.total_changes
 			con.commit()
 		except sqlite3.Error, e:
 			print e
@@ -433,13 +446,9 @@ class UpdateDbThread(Thread):
 		
 	def stop(self):
 		if self.started and not self.done:
-			logging.debug("UpdateDbThread.stop: stoppping processes...")
-			while not self.__tasks.empty():
-				self.__tasks.get()
-				self.__tasks.task_done()
-			for i in xrange(self.consumerTotal):
-				self.__tasks.put(None)
-			logging.debug("UpdateDbThread.stop: poison pills in place")
-		self.progress = 100
-		self.done = True
-		self.started = False
+			self.interrupted = True
+			logging.debug("UpdateDbThread.stop: stopping processes...")
+			self.__exitEvent.set()
+		else:
+			self.progress = 100
+			self.done = True
