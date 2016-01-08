@@ -59,6 +59,8 @@ import time
 import urllib
 import urllib2
 
+CONSOLE_TEXTURE_ALPHA = 50
+
 def createText(renderer, font, txt, colour, wrap=0):
 	if wrap > 0:
 		surface = sdl2.sdlttf.TTF_RenderText_Blended_Wrapped(font, txt, colour, wrap)
@@ -197,14 +199,15 @@ class PESApp(object):
 		
 	def exit(self, rtn=0):
 		# tidy up
-		logging.debug("stopping screens...")
+		logging.debug("PESApp.exit: stopping screens...")
 		for s in self.screens:
 			self.screens[s].stop()
-		logging.debug("purging cached surfaces...")
+		logging.debug("PESApp.exit: purging cached surfaces...")
 		for console, surface in self.consoleSurfaces.iteritems():
-			logging.debug("unloading surface for %s..." % console)
+			logging.debug("PESApp.exit: unloading surface for %s..." % console)
 			sdl2.SDL_FreeSurface(surface)
-		logging.debug("tidying up...")
+		logging.debug("PESApp.exit: tidying up...")
+		Thumbnail.destroyTextures()
 		sdl2.sdlttf.TTF_CloseFont(self.headerFont)
 		sdl2.sdlttf.TTF_CloseFont(self.bodyFont)
 		sdl2.sdlttf.TTF_CloseFont(self.menuFont)
@@ -213,7 +216,7 @@ class PESApp(object):
 		sdl2.sdlttf.TTF_Quit()
 		sdl2.sdlimage.IMG_Quit()
 		sdl2.SDL_Quit()
-		logging.info("exiting...")
+		logging.info("PESApp.exit: exiting...")
 		sys.exit(rtn)
         
 	def run(self):
@@ -353,7 +356,8 @@ class PESApp(object):
 					loading = False
 					sdl2.SDL_DestroyTexture(splashTexture)
 				else:
-					progressBar.draw(loadingThread.progress)
+					progressBar.setProgress(loadingThread.progress)
+					progressBar.draw()
 			else:
 				#self.initTextures()
 				sdl2.sdlgfx.boxRGBA(self.renderer, 0, 0, self.__dimensions[0], self.__headerHeight, self.headerBackgroundColour.r, self.headerBackgroundColour.g, self.headerBackgroundColour.b, 255) # header bg
@@ -498,30 +502,44 @@ class PESLoadingThread(threading.Thread):
 		logging.debug("PESLoadingThread.run: %d complete" % self.progress)
 		self.done = True
 		return
+	
+class UIObject(object):
+	
+	def __init__(self, renderer, x, y, width, height):
+		self.renderer = renderer
+		self.x = x
+		self.y = y
+		self.width = width
+		self.height = height
+	
+	def destroy(self):
+		pass
+	
+	def draw(self):
+		pass
+	
+	def setCoords(self, x, y):
+		self.x = x
+		self.y = y
+		
+	def setSize(self, w, h):
+		self.w = w
+		self.h = h
 
-class ProgressBar(object):
+class ProgressBar(UIObject):
 	
 	def __init__(self, renderer, x, y, width, height, colour, backgroundColour):
+		super(ProgressBar, self).__init__(renderer, x, y, width, height)
 		self.__progress = 0.0 # percent complete
-		self.__renderer = renderer
-		self.__x = x
-		self.__y = y
-		self.__width = width
-		self.__height = height
 		self.__colour = colour
 		self.__backgroundColour = backgroundColour
 		logging.debug("ProgressBar.init: initialised")
 	
-	def draw(self, progress=0):
-		self.setProgress(progress)
+	def draw(self):
 		margin = 3
-		w = int(self.__width * (self.__progress / 100.0))
-		sdl2.sdlgfx.boxRGBA(self.__renderer, self.__x, self.__y, self.__x + self.__width, self.__y + self.__height, self.__backgroundColour.r, self.__backgroundColour.g, self.__backgroundColour.b, 255)
-		sdl2.sdlgfx.boxRGBA(self.__renderer, self.__x + margin, self.__y + margin, self.__x + w - margin, self.__y + self.__height - margin, self.__colour.r, self.__colour.g, self.__colour.b, 255)
-	
-	def setCoords(self, x, y):
-		self.__x = x
-		self.__y = y
+		w = int(self.width * (self.__progress / 100.0))
+		sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__backgroundColour.r, self.__backgroundColour.g, self.__backgroundColour.b, 255)
+		sdl2.sdlgfx.boxRGBA(self.renderer, self.x + margin, self.y + margin, self.x + w - margin, self.y + self.height - margin, self.__colour.r, self.__colour.g, self.__colour.b, 255)
 	
 	def setProgress(self, p):
 		if p > 100:
@@ -530,9 +548,47 @@ class ProgressBar(object):
 			raise ValueError("%d is less than 0" % p)
 		self.__progress = p
 		
-	def setSize(self, w, h):
-		self.__w = w
-		self.__h = h
+class Thumbnail(UIObject):
+	
+	__cache = {} # shared texture cache
+	
+	def __init__(self, renderer, x, y, width, height, game, font, txtColour):
+		self.__font = font
+		self.__fontHeight = sdl2.sdlttf.TTF_FontHeight(self.__font)
+		self.__thumbWidth = width
+		self.__thumbHeight = height
+		height += 1 + self.__fontHeight # allow space for label
+		super(Thumbnail, self).__init__(renderer, x, y, width, height)
+		self.__txtColour = txtColour
+		self.__game = game
+		self.__coverart = game.getCoverArt()
+		if self.__coverart == None:
+			self.__coverart = game.getConsole().getNoCoverArtImg()
+		self.__coverartTexture = None
+		logging.debug("Thumbnail.init: initialised for %s" % game.getName())
+		
+	def draw(self):
+		if self.__coverartTexture == None:
+			gameId = self.__game.getId()
+			if gameId in self.__cache:
+				self.__coverartTexture = self.__cache[gameId]
+			else:
+				logging.debug("Thumbnail.draw: loading texture for %s" % self.__game.getName())
+				self.__coverartTexture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, self.__coverart)
+				self.__cache[gameId] = self.__coverartTexture
+		sdl2.SDL_RenderCopy(self.renderer, self.__coverartTexture, None, sdl2.SDL_Rect(self.x, self.y, self.__thumbWidth, self.__thumbHeight))
+		# render text underneath
+		renderText(self.renderer, self.__font, self.__game.getName(), self.__txtColour, self.x, self.y + self.__thumbHeight + 1, 0, self.width)
+		
+	@staticmethod
+	def destroyTextures():
+		logging.debug("Thumbnail.destroyTextures: purging %d textures..." % len(Thumbnail.__cache))
+		keys = []
+		for key, value in Thumbnail.__cache.iteritems():
+			sdl2.SDL_DestroyTexture(value)
+			keys.append(key)
+		for k in keys:
+			del Thumbnail.__cache[k]
 
 class Menu(object):
 	
@@ -783,6 +839,7 @@ class ConsoleScreen(Screen):
 		
 		if self.__consoleTexture == None:
 			self.__consoleTexture = sdl2.SDL_CreateTextureFromSurface(self.renderer, self.app.consoleSurfaces[consoleName])
+			sdl2.SDL_SetTextureAlphaMod(self.__consoleTexture, CONSOLE_TEXTURE_ALPHA)
 		
 		sdl2.SDL_RenderCopy(self.renderer, self.__consoleTexture, None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
 		(textWidth, textHeight) = renderText(self.renderer, self.app.titleFont, "%s: %s" % (consoleName, selectedText), self.app.textColour, currentX, self.screenRect[1])
@@ -843,20 +900,14 @@ class HomeScreen(Screen):
 		self.menu.addItem(MenuItem("Reboot"))
 		self.menu.addItem(MenuItem("Power Off"))
 		self.menu.addItem(MenuItem("Exit", False, False, self.app.exit))
-		self.__thumbCache = {}
-		self.__gamesCache = {}
 		self.__thumbGap = 20
-		self.__recentGameTotal = 10
+		self.__showThumbs = 10
 		self.__thumbWidth = -1
 		self.__thumbHeight = -1
-		self.__gamesPerPage = 1
-		self.__gamesPage = 1
-		self.__lastTick = None
-		self.__desiredThumbWidth = int(screenRect[2] / 5)
+		self.__recentlyAddedThumbCache = []
+		self.__recentlyPlayedThumbCache = []
+		self.__desiredThumbWidth = int((screenRect[2] - (self.__showThumbs * self.__thumbGap)) / self.__showThumbs)
 		self.__consoleTexture = None
-		self.__gamesPageTotalTexture = None
-		self.__gamesPageTotal = 1
-		self.__gameTextures = None
 		self.__consoleChanged = False
 		
 		#logging.debug("HomeScreen.init: thumbWidth %d" % self.__thumbWidth)
@@ -893,71 +944,56 @@ class HomeScreen(Screen):
 		elif isinstance(selected, ConsoleMenuItem):
 			
 			console = selected.getConsole()
-			
-			if self.__consoleChanged:
-				pageChange = True
-				self.__consoleChanged = False
-			else:
-				pageChange = False
-			
-			if self.__gamesPageTotal > 1:
-				if self.__lastTick == None:
-					self.__lastTick = sdl2.timer.SDL_GetTicks()
-				else:
-					tick = sdl2.timer.SDL_GetTicks()
-					if tick - self.__lastTick > 2000:
-						self.__gamesPage += 1
-						if self.__gamesPage > self.__gamesPageTotal:
-							self.__gamesPage = 1
-						pageChange = True
-						self.__lastTick = tick
-					self.__pageTotalTexture = createText(self.renderer, self.app.bodyFont, "%d/%d" % (self.__gamesPage, self.__gamesPageTotal), self.app.textColour)
-					
-				if self.__pageTotalTexture == None:
-					self.__pageTotalTexture = createText(self.renderer, self.app.bodyFont, "%d/%d" % (self.__gamesPage, self.__gamesPageTotal), self.app.textColour)
-			elif pageChange:
-				self.__pageTotalTexture = createText(self.renderer, self.app.bodyFont, "%d/%d" % (self.__gamesPage, self.__gamesPageTotal), self.app.textColour)
-			
 			consoleName = console.getName()
 			sdl2.SDL_RenderCopy(self.renderer, self.__consoleTexture, None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
 			(textWidth, textHeight) = renderText(self.renderer, self.app.titleFont, consoleName, self.app.textColour, currentX, self.screenRect[1])
 			
 			currentY += (textHeight * 2)
 			
-			if pageChange:
-				if self.__gameTextures:
-					for texture, x, y in self.__gameTextures:
-						sdl2.SDL_DestroyTexture(texture)
-				self.__gameTextures = []
-				games = console.getGames((self.__gamesPage - 1) * self.__gamesPerPage, self.__gamesPerPage, True)
-				noCoverArt = console.getNoCoverArtImg()
-				thumbX = currentX
-				thumbY = currentY
-				for game in games:
-					if not game.getId() in self.__gamesCache:
-						game.refresh()
-						self.__gamesCache[game.getId()] = game
-						g = game
-					else:
-						g = self.__gamesCache[game.getId()]
-					
-					art = g.getCoverArt()
-					if art == None:
-						art = noCoverArt
-					texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, art)
-					if thumbX + self.__thumbWidth > self.screenRect[0] + self.screenRect[2]:
-						thumbX = currentX
-						thumbY += self.__thumbHeight + self.__thumbGap
-					
-					self.__gameTextures.append((texture, thumbX, thumbY))
-					thumbX += self.__thumbWidth + self.__thumbGap
+			(textWidth, textHeight) = renderText(self.renderer, self.app.bodyFont, "Recently Added:", self.app.textColour, currentX, currentY)
 			
-			for texture, x, y in self.__gameTextures:
-				sdl2.SDL_RenderCopy(self.renderer, texture, None, sdl2.SDL_Rect(x, y, self.__thumbWidth, self.__thumbHeight))
+			currentY += textHeight + 10
+			
+			if self.__consoleChanged:
+				logging.debug("HomeScreen.drawScreen: destorying recently added textures...")
+				for t in self.__recentlyAddedThumbCache:
+					t.destroy()
+				del self.__recentlyAddedThumbCache[:]
+				# get recently added
+				logging.debug("HomeScreen.drawScreen: getting recently added games for %s..." % consoleName)
+				games = console.getRecentlyAddedGames(self.__showThumbs)
+				thumbX = currentX
+				for g in games:
+					self.__recentlyAddedThumbCache.append(Thumbnail(self.renderer, thumbX, currentY, self.__thumbWidth, self.__thumbHeight, g, self.app.bodyFont, self.app.textColour))
+					thumbX += self.__thumbWidth + self.__thumbGap
 				
-			txtWidth, txtHeight = getTextureDimensions(self.__pageTotalTexture)
-			sdl2.SDL_RenderCopy(self.renderer, self.__pageTotalTexture, None, sdl2.SDL_Rect(self.screenRect[0] + (self.screenRect[2] - txtWidth - 5), self.screenRect[1] + (self.screenRect[3] - txtHeight - 5), txtWidth, txtHeight))
+			for t in self.__recentlyAddedThumbCache:
+				t.draw()
 				
+			currentY += self.__recentlyAddedThumbCache[0].height + 10
+			
+			if len(self.__recentlyPlayedThumbCache) > 0:
+				(textWidth, textHeight) = renderText(self.renderer, self.app.bodyFont, "Recently Played:", self.app.textColour, currentX, currentY)
+				
+				if self.__consoleChanged:
+					logging.debug("HomeScreen.drawScreen: destorying recently played textures...")
+					for t in self.__recentlyPlayedThumbCache:
+						t.destroy()
+					del self.__recentlyPlayedThumbCache[:]
+					# get recently added
+					logging.debug("HomeScreen.drawScreen: getting recently played games for %s..." % consoleName)
+					games = console.getRecentlyPlayedGames(self.__showThumbs)
+					thumbX = currentX
+					for g in games:
+						self.__recentlyPlayedThumbCache.append(Thumbnail(self.renderer, thumbX, currentY, self.__thumbWidth, self.__thumbHeight, g, self.app.bodyFont, self.app.textColour))
+						thumbX += self.__thumbWidth + self.__thumbGap
+					
+				for t in self.__recentlyPlayedThumbCache:
+					t.draw()
+			
+			if self.__consoleChanged:
+				self.__consoleChanged = False
+			
 	def processEvent(self, event):
 		super(HomeScreen, self).processEvent(event)
 		if self.menuActive and event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_UP or event.key.keysym.sym == sdl2.SDLK_DOWN):
@@ -965,24 +1001,14 @@ class HomeScreen(Screen):
 			if isinstance(selected, ConsoleMenuItem):
 				console = selected.getConsole()
 				self.__consoleTexture = sdl2.SDL_CreateTextureFromSurface(self.renderer, self.app.consoleSurfaces[console.getName()])
+				sdl2.SDL_SetTextureAlphaMod(self.__consoleTexture, CONSOLE_TEXTURE_ALPHA)
 				img = Image.open(console.getNoCoverArtImg())
 				img.close()
 				width, height = img.size
-				ratio = 0.0
-				if width > height:
-					ratio = float(height) / float(width)
-					self.__thumbWidth = self.__desiredThumbWidth
-					self.__thumbHeight = int(ratio * self.__thumbWidth)
-				else:
-					ratio = float(width) / float(height)
-					self.__thumbHeight = self.__desiredThumbWidth
-					self.__thumbWidth = int(ratio * self.__thumbHeight)
-				self.__gamesPerPage = int((self.screenRect[2] / (self.__thumbWidth + self.__thumbGap)) * (self.screenRect[3] / (self.__thumbHeight + self.__thumbGap)))
-				self.__gamesPage = 1
-				self.__gameTotal = console.getGameTotal()
-				self.__gamesPageTotal = int(round((float(self.__gameTotal) / float(self.__gamesPerPage)) + 0.5))
+				ratio = float(height) / float(width)
+				self.__thumbWidth = self.__desiredThumbWidth
+				self.__thumbHeight = int(ratio * self.__thumbWidth)
 				self.__consoleChanged = True
-				self.__lastTick = sdl2.timer.SDL_GetTicks()
 		
 	def refreshMenu(self):
 		logging.debug("HomeScreen.refreshMenu: refreshing menu contents...")
@@ -1000,13 +1026,8 @@ class HomeScreen(Screen):
 		self.menu.setSelected(0, True)
 		
 	def stop(self):
-		logging.debug("HomeScreen.stop: deleting surfaces...")
-		if self.__gameTextures:
-			for texture, x, y in self.__gameTextures:
-				sdl2.SDL_DestroyTexture(texture)
 		logging.debug("HomeScreen.stop: deleting textures...")
 		sdl2.SDL_DestroyTexture(self.__consoleTexture)
-		sdl2.SDL_DestroyTexture(self.__pageTotalTexture)
 		
 class SettingsScreen(Screen):
 	
@@ -1083,9 +1104,13 @@ class SettingsScreen(Screen):
 				(textWidth, textHeight) = renderLines(self.renderer, self.app.bodyFont, ["Scanned %d out of %d roms... press BACK to abort" % (self.__updateDbThread.getProcessed(), self.__updateDbThread.romTotal), " ", "Elapsed: %s" % self.__updateDbThread.getElapsed(), " ", "Remaining: %s" % self.__updateDbThread.getRemaining(), " ", "Progress:"], self.app.textColour, currentX, currentY, self.wrap)
 				currentY += textHeight + 20
 				self.__scanProgressBar.setCoords(currentX, currentY)
-				self.__scanProgressBar.draw(self.__updateDbThread.getProgress())
+				self.__scanProgressBar.setProgress(self.__updateDbThread.getProgress())
+				self.__scanProgressBar.draw()
 			elif self.__updateDbThread.done:
-				renderLines(self.renderer, self.app.bodyFont, ["Scan completed in %s" % self.__updateDbThread.getElapsed(), " ", "Added: %d" % self.__updateDbThread.added, " ", "Updated: %d" % self.__updateDbThread.updated, " " , "Deleted: %d" % self.__updateDbThread.deleted, " ", "Press BACK to return to the previous screen."], self.app.textColour, currentX, currentY, self.wrap)
+				interruptedStr = ""
+				if self.__updateDbThread.interrupted:
+					interruptedStr = "(scan interrupted)"
+				renderLines(self.renderer, self.app.bodyFont, ["Scan completed in %s %s" % (self.__updateDbThread.getElapsed(), interruptedStr), " ", "Added: %d" % self.__updateDbThread.added, " ", "Updated: %d" % self.__updateDbThread.updated, " " , "Deleted: %d" % self.__updateDbThread.deleted, " ", "Press BACK to return to the previous screen."], self.app.textColour, currentX, currentY, self.wrap)
 				#self.app.screens["Home"].refreshMenu()
 
 		elif selected == "Joystick Set-Up":
@@ -1102,17 +1127,25 @@ class SettingsScreen(Screen):
 		oldMenuActive = self.menuActive # store state before parent method changes it!
 		
 		# don't pass up the event if a db scan is in progress
-		if event.type == sdl2.SDL_KEYDOWN and event.key.keysym.sym == sdl2.SDLK_BACKSPACE and selected == "Update Database" and self.__updateDbThread != None:
-			if self.__updateDbThread.started and not self.__updateDbThread.done:
-				self.setMenuActive(False)
-				self.__updateDbThread.stop()
-				return
-			elif selected == "Update Database"  and self.__updateDbThread != None and self.__updateDbThread.done:
-				self.setMenuActive(False)
-				self.__updateDbThread = None
-				return
+		if event.type == sdl2.SDL_KEYDOWN and selected == "Update Database" and self.__updateDbThread != None:
+			if event.key.keysym.sym == sdl2.SDLK_BACKSPACE:
+				if self.__updateDbThread.started and not self.__updateDbThread.done:
+					self.setMenuActive(False)
+					self.__updateDbThread.stop()
+					return
+				elif selected == "Update Database"  and self.__updateDbThread != None and self.__updateDbThread.done:
+					self.setMenuActive(False)
+					self.__updateDbThread = None
+					return
+			return
 		
 		super(SettingsScreen, self).processEvent(event)
+		
+		#if event.type == pes.event.EVENT_TYPE:
+		#	(t, d1, d2) = pes.event.decodePesEvent(event)
+		#	logging.debug("SettingsScreen.processEvent: trapping PES Event")
+		#	if t == pes.event.EVENT_DB_UPDATE and self.__updateDbThread != None:
+		#		self.__updateDbThread = None
 		
 		if selected == "Update Database":
 			pass
@@ -1178,4 +1211,3 @@ class SettingsScreen(Screen):
 	def stop(self):
 		if self.__updateDbThread:
 			self.__updateDbThread.stop()
-			del self.__updateDbThread
