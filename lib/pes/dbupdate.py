@@ -225,7 +225,8 @@ class ConsoleTask(object):
 	def __scaleImage(path, name):
 		img = Image.open(path)
 		width, height = img.size
-		ratio = min(float(400.0 / width), float(400.0 / height))
+		scaleWidth = 200.0
+		ratio = min(float(scaleWidth / width), float(scaleWidth / height))
 		newWidth = width * ratio
 		newHeight = height * ratio
 		if width > newWidth or height > newHeight:

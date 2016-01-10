@@ -23,6 +23,7 @@
 #
 
 import argparse
+import ConfigParser
 import logging
 import os
 import shutil
@@ -30,7 +31,7 @@ import sqlite3
 import sys
 from pes import *
 from pes.data import Console
-from pes.gui import *
+from pes.app import PESApp
 from pes.util import *
 
 def processColour(colour):
