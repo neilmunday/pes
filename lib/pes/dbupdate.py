@@ -315,8 +315,9 @@ class UpdateDbThread(Thread):
 			return 100
 		if not self.started or not self.__queueSetUp:
 			return 0
-		qsize = self.__tasks.qsize()
-		if qsize < 0:
+		# subtract poison pills from queue size
+		qsize = self.__tasks.qsize() - self.consumerTotal
+		if qsize <= 0:
 			return 0
 		return int((float(self.romTotal - qsize) / float(self.romTotal)) * 100.0)
 	
@@ -356,21 +357,6 @@ class UpdateDbThread(Thread):
 		con = None
 		cur = None
 		
-		try:
-			con = sqlite3.connect(userPesDb)
-			con.row_factory = sqlite3.Row
-			cur = con.cursor()
-			cur.execute("UPDATE `games` SET `exists` = 0")
-			con.commit()
-		except sqlite3.Error, e:
-			print e
-			if con:
-				con.rollback()
-			sys.exit(1)
-		finally:
-			if con:
-				con.close()
-		
 		logging.debug("UpdateDbThread.run: getting console API names...")
 		for c in self.consoles:
 			consoleName = c.getName()
@@ -379,6 +365,21 @@ class UpdateDbThread(Thread):
 
 			urlLoaded = False
 			consoleApiName = None
+			
+			try:
+				con = sqlite3.connect(userPesDb)
+				con.row_factory = sqlite3.Row
+				cur = con.cursor()
+				cur.execute("UPDATE `games` SET `exists` = 0 WHERE `console_id` = %d" % consoleId)
+				con.commit()
+			except sqlite3.Error, e:
+				print e
+				if con:
+					con.rollback()
+				sys.exit(1)
+			finally:
+				if con:
+					con.close()
 
 			try:
 				# get API name for this console
