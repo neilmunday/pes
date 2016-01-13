@@ -110,6 +110,13 @@ class Menu(object):
 				toggled.append(i)
 		return toggled
 	
+	def getToggledCount(self):
+		toggled = 0
+		for i in self.__items:
+			if i.isToggled():
+				toggled += 1
+		return toggled
+	
 	def insertItem(self, i, m):
 		self.__items.insert(i, m)
 	
@@ -397,15 +404,6 @@ class List(UIObject):
 					sdl2.sdlgfx.filledCircleRGBA(self.renderer, l.x - 10, self.__toggleCenterY + l.y, self.__toggleRad, self.__colour.r, self.__colour.g, self.__colour.b, 255)
 				i += 1
 	
-	def setFocus(self, focus):
-		color = None
-		if focus:
-			colour = self.__selectedBgColour
-		else:
-			colour = self.__selectedBgColourNoFocus
-		self.__labels[self.__labelIndex].setBackgroundColour(colour)
-		super(List, self).setFocus(focus)
-	
 	def processEvent(self, event):
 		if self.visible and self.hasFocus():
 			if event.type == sdl2.SDL_KEYDOWN:
@@ -457,6 +455,28 @@ class List(UIObject):
 					m = self.__menu.getSelectedItem()
 					if m.isToggable():
 						m.toggle(not m.isToggled())
+				elif event.key.keysym.sym == sdl2.SDLK_PAGEDOWN:
+					self.__menu.toggleAll(False)
+				elif event.key.keysym.sym == sdl2.SDLK_PAGEUP:
+					self.__menu.toggleAll(True)
+						
+	def scrollTop(self):
+		self.__menu.setSelected(0)
+		self.__labels[self.__labelIndex].setBackgroundColour(None)
+		self.__labelIndex = 0
+		self.__firstMenuItem = 0
+		for i in xrange(self.__visibleMenuItems):
+			self.__labels[i].setText(self.__menu.getItem(i).getText())
+		self.__labels[self.__labelIndex].setBackgroundColour(self.__selectedBgColour)
+						
+	def setFocus(self, focus):
+		color = None
+		if focus:
+			colour = self.__selectedBgColour
+		else:
+			colour = self.__selectedBgColourNoFocus
+		self.__labels[self.__labelIndex].setBackgroundColour(colour)
+		super(List, self).setFocus(focus)
 
 class ProgressBar(UIObject):
 	

@@ -25,7 +25,6 @@
 #
 # - games screens
 # - joystick integration and settings etc.
-# - fix post scan drawing bug in SettingsScreen
 #
 
 from ctypes import c_int, c_char_p, c_uint32, c_void_p, byref, cast
@@ -128,8 +127,12 @@ class PESApp(object):
 		logging.debug("PESApp.initScreens: initialising screens...")
 		self.screens["Home"] = HomeScreen(self, self.renderer, self.menuRect, self.screenRect)
 		self.screens["Settings"] = SettingsScreen(self, self.renderer, self.menuRect, self.screenRect)
+		consoleScreens = 0
 		for c in self.consoles:
-			self.screens["Console %s" % c.getName()] = ConsoleScreen(self, self.renderer, self.menuRect, self.screenRect, c)
+			if c.getGameTotal() > 0:
+				self.screens["Console %s" % c.getName()] = ConsoleScreen(self, self.renderer, self.menuRect, self.screenRect, c)
+				consoleScreens += 1
+		logging.debug("PESApp.initScreens: initialised %d screens of which %d are console screens" % (len(self.screens), consoleScreens))
 		self.screenStack = ["Home"]
 	
 	def initSurfaces(self):
@@ -235,6 +238,11 @@ class PESApp(object):
 					if not loading and t == pes.event.EVENT_DB_UPDATE:
 						for c in self.consoles:
 							c.refresh()
+							screenName = "Console %s" % c.getName()
+							if c.getGameTotal() > 0 and screenName not in self.screens:
+								logging.debug("PESApp.run adding ConsoleScreen for %s following database update" % c.getName())
+								self.screens[screenName] = ConsoleScreen(self, self.renderer, self.menuRect, self.screenRect, c)
+								
 						self.screens["Home"].refreshMenu()
 						Thumbnail.destroyTextures()
 					elif t == pes.event.EVENT_RESOURCES_LOADED:
@@ -245,15 +253,16 @@ class PESApp(object):
 					if event.type == sdl2.SDL_KEYDOWN:
 						if event.key.keysym.sym == sdl2.SDLK_BACKSPACE:
 							logging.debug("PESApp.run: trapping backspace key event")
-							if not self.screens[self.screenStack[-1]].menuActive:
-								self.screens[self.screenStack[-1]].setMenuActive(True)
-							else:
+							if self.screens[self.screenStack[-1]].menuActive:
 								# pop the screen
 								screenStackLen = len(self.screenStack)
 								logging.debug("PESApp.run: popping screen stack, current length: %d" % screenStackLen)
 								if screenStackLen > 1:
 									self.screenStack.pop()
-									self.setScreen(self.screenStack[-1])
+									self.setScreen(self.screenStack[-1], False)
+							else:
+								self.screens[self.screenStack[-1]].setMenuActive(True)
+								
 					self.screens[self.screenStack[-1]].processEvent(event)
 								
 				if event.type == sdl2.SDL_KEYDOWN and event.key.keysym.sym == sdl2.SDLK_ESCAPE:
@@ -278,13 +287,10 @@ class PESApp(object):
 					if splashTextureAlpha > 255:
 						splashTextureAlpha = 255
 					lastTick = tick
-				#sdl2.SDL_SetTextureAlphaMod(splashTexture, splashTextureAlpha)
 				splashLabel.setAlpha(splashTextureAlpha)
-				#sdl2.SDL_RenderCopy(self.renderer, splashTexture, None, sdl2.SDL_Rect(splashTextureX, splashTextureY, splashTextureWidth, splashTextureHeight))
 				splashLabel.draw()
 				if loadingThread.done and splashTextureAlpha >= 255:
 					loading = False
-					#sdl2.SDL_DestroyTexture(splashTexture)
 					splashLabel.destroy()
 				else:
 					progressBar.setProgress(loadingThread.progress)
@@ -303,13 +309,14 @@ class PESApp(object):
 			sdl2.SDL_RenderPresent(self.renderer)
 		self.exit(0)
 		
-	def setScreen(self, screen):
+	def setScreen(self, screen, doAppend=True):
 		if not screen in self.screens:
 			logging.warning("PESApp.setScreen: invalid screen selection \"%s\"" % screen)
 		else:
 			logging.debug("PESApp.setScreen: setting current screen to \"%s\"" % screen)
 			logging.debug("PESApp.setScreen: adding screen \"%s\" to screen stack" % screen)
-			self.screenStack.append(screen)
+			if doAppend:
+				self.screenStack.append(screen)
 			self.screens[screen].setMenuActive(True)
 			
 class PESLoadingThread(threading.Thread):
@@ -562,6 +569,7 @@ class ConsoleScreen(Screen):
 		self.__thumbWidth = 150
 		self.__thumbHeight = self.__thumbWidth
 		self.__consoleTexture = None
+		logging.debug("ConsoleScreen.init: initialised for %s" % console.getName())
 		
 	def drawScreen(self):
 		currentX = self.screenRect[0] + self.screenMargin
@@ -656,9 +664,7 @@ class HomeScreen(Screen):
 		super(HomeScreen, self).drawScreen()
 		
 		self.__headerLabel.draw()
-		if not self.__consoleSelected:
-			self.__descriptionLabel.draw()
-		else:
+		if self.__consoleSelected:
 			sdl2.SDL_RenderCopy(self.renderer, self.__consoleTexture, None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
 			self.__recentlyAddedLabel.draw()
 			for t in self.__recentlyAddedThumbCache:
@@ -666,6 +672,8 @@ class HomeScreen(Screen):
 			self.__recentlyPlayedLabel.draw()
 			for t in self.__recentlyPlayedThumbCache:
 				t.draw()
+		else:
+			self.__descriptionLabel.draw()
 
 	def processEvent(self, event):
 		super(HomeScreen, self).processEvent(event)
@@ -747,7 +755,7 @@ class HomeScreen(Screen):
 		for c in self.app.consoles:
 			if c.getGameTotal() > 0:
 				logging.debug("HomeScreen.refreshMenu: adding %s" % c.getName())
-				self.menu.insertItem(len(self.menu.getItems()) - 4, ConsoleMenuItem(c))
+				self.menu.insertItem(len(self.menu.getItems()) - 4, ConsoleMenuItem(c, False, False, self.app.setScreen, "Console %s" % c.getName()))
 		self.menu.setSelected(0, True)
 		
 	def stop(self):
@@ -823,11 +831,15 @@ class SettingsScreen(Screen):
 				if self.__updateDbThread.started and not self.__updateDbThread.done:
 					self.setMenuActive(False)
 					self.__updateDbThread.stop()
-					return
-				elif selected == "Update Database"  and self.__updateDbThread != None and self.__updateDbThread.done:
+				elif selected == "Update Database" and self.__updateDbThread.done:
 					self.setMenuActive(False)
 					self.__updateDbThread = None
-					return
+					self.__descriptionLabel.setText(self.__scanText)
+					self.__scanButton.setFocus(False)
+					self.__consoleList.setFocus(True)
+					self.__updateDatabaseMenu.toggleAll(True)
+					self.__updateDatabaseMenu.setSelected(0)
+					self.__consoleList.scrollTop()
 			return
 		
 		super(SettingsScreen, self).processEvent(event)
@@ -871,9 +883,13 @@ class SettingsScreen(Screen):
 						elif event.key.keysym.sym == sdl2.SDLK_LEFT:
 							self.__consoleList.setFocus(True)
 							self.__scanButton.setFocus(False)
-							
-						self.__consoleList.processEvent(event)
-						self.__scanButton.processEvent(event)
+						else:
+							self.__consoleList.processEvent(event)
+							if self.__updateDatabaseMenu.getToggledCount() == 0:
+								self.__scanButton.setVisible(False)
+							else:
+								self.__scanButton.setVisible(True)
+								self.__scanButton.processEvent(event)
 
 		if self.menuActive: # this will be true if parent method trapped a backspace event
 			if event.type == sdl2.SDL_KEYDOWN:
@@ -882,54 +898,6 @@ class SettingsScreen(Screen):
 					self.__init = True
 					self.__headerLabel.setText(self.__defaultHeaderText)
 					self.__descriptionLabel.setText(self.__initText)
-		#else:
-			#if selected == "Update Database":
-			#	self.__consoleList.processEvent(event)
-			
-			#if selected == "Update Database":
-				#self.__headerLabel.setText(selected)
-				#if event.type == sdl2.SDL_KEYDOWN:
-					#if event.key.keysym.sym == sdl2.SDLK_DOWN:
-						#logging.debug("SettingsScreen.processEvent: (Update Database) key event: DOWN")
-						#i = self.__updateDatabaseMenu.getSelectedIndex()
-						#total = self.__updateDatabaseMenu.getCount()
-						#if i + 1 > total - 1:
-							#self.__updateDatabaseMenu.setSelected(0)
-						#else:
-							#self.__updateDatabaseMenu.setSelected(i + 1)
-					#elif event.key.keysym.sym == sdl2.SDLK_UP:
-						#logging.debug("SettingsScreen.processEvent: (Update Database) key event: UP")
-						#i = self.__updateDatabaseMenu.getSelectedIndex()
-						#total = self.__updateDatabaseMenu.getCount()
-						#if i - 1 < 0:
-							#self.__updateDatabaseMenu.setSelected(total - 1)
-						#else:
-							#self.__updateDatabaseMenu.setSelected(i - 1)
-					#elif self.menuActive == oldMenuActive and (event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER):
-						#logging.debug("SettingsScreen.processEvent: (Update Database) key event: RETURN")
-						#m = self.__updateDatabaseMenu.getSelectedItem()
-						#if m.isToggable():
-							#m.toggle(not m.isToggled())
-						#elif m.getText() == "Begin Scan":
-							#if self.__scanProgressBar == None:
-								#self.__scanProgressBar = ProgressBar(self.renderer, self.screenRect[0] + self.screenMargin, 0, self.screenRect[2] - (self.screenMargin * 2), 40, self.app.lineColour, self.app.menuBackgroundColour)
-							#else:
-								#self.__scanProgressBar.setProgress(0)
-							
-							#consoles = []
-							#for c in self.__updateDatabaseMenu.getToggled():
-								#consoles.append(c.getConsole())
-								
-							#self.__updateDbThread = UpdateDbThread(consoles)
-							#self.__updateDbThread.start()
-							
-				##self.__descriptionLabel.setText("Please use the menu below to select which consoles you wish to include in your search. By default all consoles are selected. When you are ready, please select the \"Begin Scan\" item from the menu below.")
-			#elif selected == "About":
-				#self.__headerLabel.setText(selected)
-				#self.__descriptionLabel.setText("Pi Entertainment System version %s\n\nReleased: %s\n\nLicense: Licensed under version 3 of the GNU Public License (GPL)\nAuthor: %s\n\nContributors: Eric Smith\n\nCover art: theGamesDB.net\n\nDocumentation: http://pes.mundayweb.com\n\nFacebook: https://www.facebook.com/pientertainmentsystem\n\nHelp: pes@mundayweb.com" % (VERSION_NUMBER, VERSION_DATE, VERSION_AUTHOR))
-			#elif selected == "Joystick Set-Up":
-				#self.__headerLabel.setText(selected)
-				#self.__descriptionLabel.setText("To be implemented.")
 
 	def startScan(self):
 		logging.debug("SettingsScreen.startScan: beginning scan...")
@@ -937,11 +905,6 @@ class SettingsScreen(Screen):
 			self.__scanProgressBar = ProgressBar(self.renderer, self.screenRect[0] + self.screenMargin, self.__descriptionLabel.y + self.__descriptionLabel.height + 10, self.screenRect[2] - (self.screenMargin * 2), 40, self.app.lineColour, self.app.menuBackgroundColour)
 		else:
 			self.__scanProgressBar.setProgress(0)
-		
-		#consoles = []
-		#for c in self.__updateDatabaseMenu.getToggled():
-		#	consoles.append(c.getConsole())
-			
 		self.__updateDbThread = UpdateDbThread([c.getConsole() for c in self.__updateDatabaseMenu.getToggled()])
 		self.__updateDbThread.start()
 									
