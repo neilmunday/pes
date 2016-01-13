@@ -25,7 +25,7 @@
 #
 # - games screens
 # - joystick integration and settings etc.
-# - bug in progress bar when only scanning one console?
+# - fix post scan drawing bug in SettingsScreen
 #
 
 from ctypes import c_int, c_char_p, c_uint32, c_void_p, byref, cast
@@ -423,116 +423,6 @@ class PESLoadingThread(threading.Thread):
 		logging.debug("PESLoadingThread.run: %d complete" % self.progress)
 		self.done = True
 		return
-
-class Menu(object):
-	
-	def __init__(self, items):
-		super(Menu, self).__init__()
-		self.__selected = 0
-		self.__items = items
-		logging.debug("Menu.init: Menu initialised")
-	
-	def addItem(self, item):
-		self.__items.append(item)
-		
-	def getItem(self, i):
-		return self.__items[i]
-		
-	def getItems(self):
-		return list(self.__items)
-	
-	def getSelectedIndex(self):
-		return self.__selected
-	
-	def getSelectedItem(self):
-		return self.__items[self.__selected]
-	
-	def getCount(self):
-		return len(self.__items)
-	
-	def getToggled(self):
-		toggled = []
-		for i in self.__items:
-			if i.isToggled():
-				toggled.append(i)
-		return toggled
-	
-	def insertItem(self, i, m):
-		self.__items.insert(i, m)
-	
-	def removeItem(self, m):
-		self.__items.remove(m)
-		
-	def setSelected(self, i, deselectAll=False):
-		if i >= 0 and i < len(self.__items):
-			if deselectAll:
-				for m in self.__items:
-					m.setSelected(False)
-			else:
-				self.__items[self.__selected].setSelected(False)
-			self.__selected = i
-			self.__items[self.__selected].setSelected(True)
-			return
-		raise ValueError("Menu.setSelected: invalid value for i: %s" % i)
-	
-	def toggleAll(self, toggle):
-		for i in self.__items:
-			if i.isToggable():
-				i.toggle(toggle)
-	
-class MenuItem(object):
-	
-	def __init__(self, text, selected = False, toggable = False, callback = None, *callbackArgs):
-		super(MenuItem, self).__init__()
-		self.__text = text
-		self.__selected = selected
-		self.__callback = callback
-		self.__toggled = False
-		self.__toggable = toggable
-		self.__callbackArgs = callbackArgs
-	
-	def getText(self):
-		return self.__text
-	
-	def isSelected(self):
-		return self.__selected
-	
-	def isToggled(self):
-		return self.__toggled
-		
-	def isToggable(self):
-		return self.__toggable
-	
-	def setSelected(self, selected):
-		self.__selected = selected
-	
-	def setText(self, text):
-		self.__text = text
-		
-	def toggle(self, t):
-		self.__toggled = t
-		
-	def trigger(self):
-		if self.__callback:
-			logging.debug("MenuItem.trigger: calling function for %s menu item" % self.__text)
-			if self.__callbackArgs:
-				self.__callback(*self.__callbackArgs)
-			else:
-				self.__callback()
-		else:
-			logging.debug("MenuItem.trigger: no callback defined for %s menu item" % self.__text)
-		
-	def __repr__(self):
-		return "<MenuItem: text: %s >" % self.__text
-		
-class ConsoleMenuItem(MenuItem):
-	
-	def __init__(self, console, selected = False, toggable = False, callback = None, *callbackArgs):
-		super(ConsoleMenuItem, self).__init__(console.getName(), selected, toggable, callback, *callbackArgs)
-		self.__console = console
-		
-	def getConsole(self):
-		return self.__console
 		
 class Screen(object):
 	
@@ -556,7 +446,8 @@ class Screen(object):
 		self.__uiObjects = []
 		
 	def addUiObject(self, o):
-		self.__uiObjects.append(o)
+		if o not in self.__uiObjects:
+			self.__uiObjects.append(o)
 		return o
 		
 	def draw(self):
@@ -572,7 +463,6 @@ class Screen(object):
 		self.drawScreen()
 		
 	def drawMenu(self):
-		
 		#logging.debug("Screen.draw: drawing menu at (%d, %d) dimensions (%d, %d)" % (self.menuRect[0], self.menuRect[1], self.menuRect[2], self.menuRect[3]))
 		x = self.menuRect[0]
 		y = self.menuRect[1]
@@ -754,10 +644,10 @@ class HomeScreen(Screen):
 		self.__consoleSelected = False
 		self.__headerLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], "Welcome to PES!", self.app.titleFont, self.app.textColour))
 		self.__welcomeText = "The home screen provides you with quick access to your favourite, new additions and most recently played games."
-		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__welcomeText, self.app.bodyFont, self.app.textColour, self.wrap))
+		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__welcomeText, self.app.bodyFont, self.app.textColour, wrap=self.wrap))
 		self.__recentlyAddedText = "Recently Added"
-		self.__recentlyAddedLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__recentlyAddedText, self.app.bodyFont, self.app.textColour, self.wrap))
-		self.__recentlyPlayedLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), "Recently Played", self.app.bodyFont, self.app.textColour, self.wrap))
+		self.__recentlyAddedLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__recentlyAddedText, self.app.bodyFont, self.app.textColour, wrap=self.wrap))
+		self.__recentlyPlayedLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), "Recently Played", self.app.bodyFont, self.app.textColour, wrap=self.wrap))
 		
 		#logging.debug("HomeScreen.init: thumbWidth %d" % self.__thumbWidth)
 		logging.debug("HomeScreen.init: initialised")
@@ -877,13 +767,20 @@ class SettingsScreen(Screen):
 		menuRect, screenRect)
 		
 		self.__init = True
-		self.__updateDatabaseMenu = Menu([MenuItem("Begin Scan", True)])
+		self.__updateDatabaseMenu = Menu([])
 		for c in self.app.consoles:
 			self.__updateDatabaseMenu.addItem(ConsoleMenuItem(c, False, True))
 		self.__toggleMargin = 20
 		self.__updateDbThread = None
 		self.__scanProgressBar = None
+		self.__defaultHeaderText = "Settings"
+		self.__headerLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], self.__defaultHeaderText, self.app.titleFont, self.app.textColour))
 		logging.debug("SettingsScreen.init: initialised")
+		self.__initText = "Here you can scan for new games, set-up your joysticks as well as being able to reset PES to its default settings\n\nPlease select an item from the menu on the left."
+		self.__scanText = "Please use the menu below to select which consoles you wish to include in your search. By default all consoles are selected.\n\nWhen you are ready, please select the \"Begin Scan\" button."
+		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__initText, self.app.bodyFont, self.app.textColour, wrap=self.screenRect[2] - self.screenMargin))
+		self.__consoleList = None
+		self.__scanButton = None
 
 	def drawScreen(self):
 		super(SettingsScreen, self).drawScreen()
@@ -892,71 +789,29 @@ class SettingsScreen(Screen):
 		currentX = self.screenRect[0] + self.screenMargin
 		currentY = self.screenRect[1]
 		
+		self.__headerLabel.draw()
+		self.__descriptionLabel.draw()
+		
 		if self.__init:
-			(textWidth, textHeight) = renderText(self.renderer, self.app.titleFont, "Settings", self.app.textColour, currentX, currentY)
-			renderLines(self.renderer, self.app.bodyFont, ["Here you can scan for new games, set-up your joysticks as well as being able to reset PES to its default settings.", " ", "Please select an item from the menu on the left."], self.app.textColour, currentX, currentY + textHeight + self.screenMargin, self.wrap)
 			return
 		
 		selected = self.menu.getSelectedItem().getText()
-		#logging.debug("SettingsScreen.drawScreen: selected \"%s\"" % selected)
-		
-		(textWidth, textHeight) = renderText(self.renderer, self.app.titleFont, selected, self.app.textColour, currentX, currentY)
-		
-		currentY += textHeight + self.screenMargin
 		
 		if selected == "Update Database":
-			if self.__updateDbThread == None:
-				(textWidth, textHeight) = renderText(self.renderer, self.app.bodyFont, "Please use the menu below to select which consoles you wish to include in your search. By default all consoles are selected. When you are ready, please select the \"Begin Scan\" item from the menu below.", self.app.textColour, currentX , currentY, self.wrap)
-				currentY += textHeight + 10
-				
-				visibleMenuItems = int((self.screenRect[3] - currentY) / self.app.bodyFontHeight)
-				menuItems = self.__updateDatabaseMenu.getItems()
-				menuItemTotal = len(menuItems)
-				
-				firstMenuItem = 0
-				
-				selectedIndex = self.__updateDatabaseMenu.getSelectedIndex()
-				if selectedIndex >= firstMenuItem + visibleMenuItems:
-					firstMenuItem = selectedIndex - visibleMenuItems + 1
-				elif selectedIndex < firstMenuItem:
-					firstMenuItem = selectedIndex
-				
-				toggleCenterY = self.app.bodyFontHeight / 2
-				toggleCenterX = int(currentX + (self.__toggleMargin / 2))
-				toggleRad = 3
-				
-				i = firstMenuItem
-				while i < menuItemTotal and i < firstMenuItem + visibleMenuItems:
-						m = self.__updateDatabaseMenu.getItem(i)
-						if m.isSelected():
-							sdl2.sdlgfx.boxRGBA(self.renderer, currentX, currentY, 500, currentY + self.app.bodyFontHeight + 2, self.app.menuSelectedBgColour.r, self.app.menuSelectedBgColour.g, self.app.menuSelectedBgColour.b, 255)
-						if m.isToggable():
-							if m.isToggled():
-								sdl2.sdlgfx.filledCircleRGBA(self.renderer, toggleCenterX, toggleCenterY + currentY, toggleRad, self.app.textColour.r, self.app.textColour.g, self.app.textColour.b, 255)
-						renderText(self.renderer, self.app.bodyFont, m.getText(), self.app.textColour, currentX + self.__toggleMargin, currentY)
-						currentY += self.app.bodyFontHeight
-						i += 1
-			elif self.__updateDbThread.started and not self.__updateDbThread.done:
-				(textWidth, textHeight) = renderLines(self.renderer, self.app.bodyFont, ["Scanned %d out of %d roms... press BACK to abort" % (self.__updateDbThread.getProcessed(), self.__updateDbThread.romTotal), " ", "Elapsed: %s" % self.__updateDbThread.getElapsed(), " ", "Remaining: %s" % self.__updateDbThread.getRemaining(), " ", "Progress:"], self.app.textColour, currentX, currentY, self.wrap)
-				currentY += textHeight + 20
-				self.__scanProgressBar.setCoords(currentX, currentY)
-				self.__scanProgressBar.setProgress(self.__updateDbThread.getProgress())
-				self.__scanProgressBar.draw()
-			elif self.__updateDbThread.done:
-				interruptedStr = ""
-				if self.__updateDbThread.interrupted:
-					interruptedStr = "(scan interrupted)"
-				renderLines(self.renderer, self.app.bodyFont, ["Scan completed in %s %s" % (self.__updateDbThread.getElapsed(), interruptedStr), " ", "Added: %d" % self.__updateDbThread.added, " ", "Updated: %d" % self.__updateDbThread.updated, " " , "Deleted: %d" % self.__updateDbThread.deleted, " ", "Press BACK to return to the previous screen."], self.app.textColour, currentX, currentY, self.wrap)
-				#self.app.screens["Home"].refreshMenu()
-
-		elif selected == "Joystick Set-Up":
-			pass
-		elif selected == "Reset Database":
-			pass
-		elif selected == "Reset Config":
-			pass
-		elif selected == "About":
-			renderLines(self.renderer, self.app.bodyFont, ['Pi Entertainment System version %s' % VERSION_NUMBER, ' ', 'Released: %s' % VERSION_DATE, ' ', 'License: Licensed under version 3 of the GNU Public License (GPL)', ' ', 'Author: %s' % VERSION_AUTHOR, ' ', 'Contributors: Eric Smith', ' ', 'Cover art: theGamesDB.net', ' ', 'Documentation: http://pes.mundayweb.com', ' ', 'Facebook: https://www.facebook.com/pientertainmentsystem', ' ', 'Help: pes@mundayweb.com'], self.app.textColour, currentX, currentY, self.wrap)
+			if self.__updateDbThread != None:
+				if self.__updateDbThread.started and not self.__updateDbThread.done:
+					self.__descriptionLabel.setText("Scanned %d out of %d roms... press BACK to abort\n\nElapsed: %s\n\nRemaining: %s\n\nProgress:" % (self.__updateDbThread.getProcessed(), self.__updateDbThread.romTotal, self.__updateDbThread.getElapsed(), self.__updateDbThread.getRemaining()))
+					self.__scanProgressBar.y = self.__descriptionLabel.y + self.__descriptionLabel.height + 10
+					self.__scanProgressBar.setProgress(self.__updateDbThread.getProgress())
+					self.__scanProgressBar.draw()
+				elif self.__updateDbThread.done:
+					interruptedStr = ""
+					if self.__updateDbThread.interrupted:
+						interruptedStr = "(scan interrupted)"
+					self.__descriptionLabel.setText("Scan completed in %s %s\n\nAdded: %d\n\nUpdated: %d\n\nDeleted: %d\n\nPress BACK to return to the previous screen." % (self.__updateDbThread.getElapsed(), interruptedStr, self.__updateDbThread.added, self.__updateDbThread.updated, self.__updateDbThread.deleted))
+			else:
+				self.__consoleList.draw()
+				self.__scanButton.draw()
 		
 	def processEvent(self, event):
 		selected = self.menu.getSelectedItem().getText()
@@ -983,68 +838,115 @@ class SettingsScreen(Screen):
 		#	if t == pes.event.EVENT_DB_UPDATE and self.__updateDbThread != None:
 		#		self.__updateDbThread = None
 		
-		if selected == "Update Database":
-			pass
-		elif selected == "Joystick Set-Up":
-			pass
-		elif selected == "Reset Database":
-			pass
-		elif selected == "Reset Config":
-			pass
-		elif selected == "About":
-			pass
-		
 		if oldMenuActive:
 			if event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER):
 				logging.debug("SettingsScreen.processEvent: return key trapped for %s" % selected)
 				if selected == "Update Database":
+					self.__headerLabel.setText(selected)
 					self.__updateDatabaseMenu.setSelected(0)
 					self.__updateDatabaseMenu.toggleAll(True)
+					self.__descriptionLabel.setText(self.__scanText)
+					if self.__consoleList != None:
+						self.__consoleList.destroy()
+					consoleListY = self.__descriptionLabel.y + self.__descriptionLabel.height + 10
+					self.__consoleList = self.addUiObject(List(self.renderer, self.__descriptionLabel.x + self.__toggleMargin, consoleListY, 300, self.screenRect[3] - consoleListY, self.__updateDatabaseMenu, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour))
+					self.__consoleList.setFocus(True)
+					if self.__scanButton == None:
+						self.__scanButton = self.addUiObject(Button(self.renderer, self.__consoleList.x + self.__consoleList.width + 200, self.__consoleList.y, 150, 50, "Begin Scan", self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.startScan))
+					self.__scanButton.setFocus(False)
+				elif selected == "About":
+					self.__headerLabel.setText(selected)
+					self.__descriptionLabel.setText("Pi Entertainment System version %s\n\nReleased: %s\n\nLicense: Licensed under version 3 of the GNU Public License (GPL)\nAuthor: %s\n\nContributors: Eric Smith\n\nCover art: theGamesDB.net\n\nDocumentation: http://pes.mundayweb.com\n\nFacebook: https://www.facebook.com/pientertainmentsystem\n\nHelp: pes@mundayweb.com" % (VERSION_NUMBER, VERSION_DATE, VERSION_AUTHOR))
+				elif selected == "Joystick Set-Up":
+					self.__headerLabel.setText(selected)
+					self.__descriptionLabel.setText("To be implemented.")
+					
 				self.__init = False
-		
+		else:
+				if selected == "Update Database":
+					if event.type == sdl2.SDL_KEYDOWN:
+						if event.key.keysym.sym == sdl2.SDLK_RIGHT:
+							self.__consoleList.setFocus(False)
+							self.__scanButton.setFocus(True)
+						elif event.key.keysym.sym == sdl2.SDLK_LEFT:
+							self.__consoleList.setFocus(True)
+							self.__scanButton.setFocus(False)
+							
+						self.__consoleList.processEvent(event)
+						self.__scanButton.processEvent(event)
+
 		if self.menuActive: # this will be true if parent method trapped a backspace event
 			if event.type == sdl2.SDL_KEYDOWN:
 				if event.key.keysym.sym == sdl2.SDLK_BACKSPACE:
 					logging.debug("SettingsScreen.processEvent: trapping backspace event")
 					self.__init = True
-		else:
-			if selected == "Update Database":
-				if event.type == sdl2.SDL_KEYDOWN:
-					if event.key.keysym.sym == sdl2.SDLK_DOWN:
-						logging.debug("SettingsScreen.processEvent: (Update Database) key event: DOWN")
-						i = self.__updateDatabaseMenu.getSelectedIndex()
-						total = self.__updateDatabaseMenu.getCount()
-						if i + 1 > total - 1:
-							self.__updateDatabaseMenu.setSelected(0)
-						else:
-							self.__updateDatabaseMenu.setSelected(i + 1)
-					elif event.key.keysym.sym == sdl2.SDLK_UP:
-						logging.debug("SettingsScreen.processEvent: (Update Database) key event: UP")
-						i = self.__updateDatabaseMenu.getSelectedIndex()
-						total = self.__updateDatabaseMenu.getCount()
-						if i - 1 < 0:
-							self.__updateDatabaseMenu.setSelected(total - 1)
-						else:
-							self.__updateDatabaseMenu.setSelected(i - 1)
-					elif self.menuActive == oldMenuActive and (event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER):
-						logging.debug("SettingsScreen.processEvent: (Update Database) key event: RETURN")
-						m = self.__updateDatabaseMenu.getSelectedItem()
-						if m.isToggable():
-							m.toggle(not m.isToggled())
-						elif m.getText() == "Begin Scan":
-							if self.__scanProgressBar == None:
-								self.__scanProgressBar = ProgressBar(self.renderer, self.screenRect[0] + self.screenMargin, 0, self.screenRect[2] - (self.screenMargin * 2), 40, self.app.lineColour, self.app.menuBackgroundColour)
-							else:
-								self.__scanProgressBar.setProgress(0)
+					self.__headerLabel.setText(self.__defaultHeaderText)
+					self.__descriptionLabel.setText(self.__initText)
+		#else:
+			#if selected == "Update Database":
+			#	self.__consoleList.processEvent(event)
+			
+			#if selected == "Update Database":
+				#self.__headerLabel.setText(selected)
+				#if event.type == sdl2.SDL_KEYDOWN:
+					#if event.key.keysym.sym == sdl2.SDLK_DOWN:
+						#logging.debug("SettingsScreen.processEvent: (Update Database) key event: DOWN")
+						#i = self.__updateDatabaseMenu.getSelectedIndex()
+						#total = self.__updateDatabaseMenu.getCount()
+						#if i + 1 > total - 1:
+							#self.__updateDatabaseMenu.setSelected(0)
+						#else:
+							#self.__updateDatabaseMenu.setSelected(i + 1)
+					#elif event.key.keysym.sym == sdl2.SDLK_UP:
+						#logging.debug("SettingsScreen.processEvent: (Update Database) key event: UP")
+						#i = self.__updateDatabaseMenu.getSelectedIndex()
+						#total = self.__updateDatabaseMenu.getCount()
+						#if i - 1 < 0:
+							#self.__updateDatabaseMenu.setSelected(total - 1)
+						#else:
+							#self.__updateDatabaseMenu.setSelected(i - 1)
+					#elif self.menuActive == oldMenuActive and (event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER):
+						#logging.debug("SettingsScreen.processEvent: (Update Database) key event: RETURN")
+						#m = self.__updateDatabaseMenu.getSelectedItem()
+						#if m.isToggable():
+							#m.toggle(not m.isToggled())
+						#elif m.getText() == "Begin Scan":
+							#if self.__scanProgressBar == None:
+								#self.__scanProgressBar = ProgressBar(self.renderer, self.screenRect[0] + self.screenMargin, 0, self.screenRect[2] - (self.screenMargin * 2), 40, self.app.lineColour, self.app.menuBackgroundColour)
+							#else:
+								#self.__scanProgressBar.setProgress(0)
 							
-							consoles = []
-							for c in self.__updateDatabaseMenu.getToggled():
-								consoles.append(c.getConsole())
+							#consoles = []
+							#for c in self.__updateDatabaseMenu.getToggled():
+								#consoles.append(c.getConsole())
 								
-							self.__updateDbThread = UpdateDbThread(consoles)
-							self.__updateDbThread.start()
-						
+							#self.__updateDbThread = UpdateDbThread(consoles)
+							#self.__updateDbThread.start()
+							
+				##self.__descriptionLabel.setText("Please use the menu below to select which consoles you wish to include in your search. By default all consoles are selected. When you are ready, please select the \"Begin Scan\" item from the menu below.")
+			#elif selected == "About":
+				#self.__headerLabel.setText(selected)
+				#self.__descriptionLabel.setText("Pi Entertainment System version %s\n\nReleased: %s\n\nLicense: Licensed under version 3 of the GNU Public License (GPL)\nAuthor: %s\n\nContributors: Eric Smith\n\nCover art: theGamesDB.net\n\nDocumentation: http://pes.mundayweb.com\n\nFacebook: https://www.facebook.com/pientertainmentsystem\n\nHelp: pes@mundayweb.com" % (VERSION_NUMBER, VERSION_DATE, VERSION_AUTHOR))
+			#elif selected == "Joystick Set-Up":
+				#self.__headerLabel.setText(selected)
+				#self.__descriptionLabel.setText("To be implemented.")
+
+	def startScan(self):
+		logging.debug("SettingsScreen.startScan: beginning scan...")
+		if self.__scanProgressBar == None:
+			self.__scanProgressBar = ProgressBar(self.renderer, self.screenRect[0] + self.screenMargin, self.__descriptionLabel.y + self.__descriptionLabel.height + 10, self.screenRect[2] - (self.screenMargin * 2), 40, self.app.lineColour, self.app.menuBackgroundColour)
+		else:
+			self.__scanProgressBar.setProgress(0)
+		
+		#consoles = []
+		#for c in self.__updateDatabaseMenu.getToggled():
+		#	consoles.append(c.getConsole())
+			
+		self.__updateDbThread = UpdateDbThread([c.getConsole() for c in self.__updateDatabaseMenu.getToggled()])
+		self.__updateDbThread.start()
+									
 	def stop(self):
+		logging.debug("SettingsScreen.stop: deleting UI objects...")
 		super(SettingsScreen, self).stop()
 		if self.__updateDbThread:
 			self.__updateDbThread.stop()

@@ -272,7 +272,6 @@ class UpdateDbThread(Thread):
 		self.__tasks = None
 		self.__exitEvent = None
 		self.consoles = consoles
-		self.progress = 0
 		self.romTotal = 0
 		self.added = 0
 		self.updated = 0
@@ -309,16 +308,16 @@ class UpdateDbThread(Thread):
 		return self.romTotal - self.__tasks.qsize()
 		
 	def getProgress(self):
-		if self.romTotal == 0:
-			return 0
 		if self.done:
 			return 100
+		if self.romTotal == 0:
+			return 0
 		if not self.started or not self.__queueSetUp:
 			return 0
 		# subtract poison pills from queue size
 		qsize = self.__tasks.qsize() - self.consumerTotal
 		if qsize <= 0:
-			return 0
+			return 100
 		return int((float(self.romTotal - qsize) / float(self.romTotal)) * 100.0)
 	
 	def getRemaining(self):
@@ -348,8 +347,8 @@ class UpdateDbThread(Thread):
 		self.consumerTotal = multiprocessing.cpu_count() * 2
 		logging.debug("UpdateDbThread.run: creating %d consumers" % self.consumerTotal)
 		consumers = [Consumer(self.__tasks, results, self.__exitEvent, lock) for i in xrange(self.consumerTotal)]
-		for w in consumers:
-			w.start()
+		#for w in consumers:
+		#	w.start()
 		
 		url = 'http://thegamesdb.net/api/'
 		headers = {'User-Agent': 'PES Scraper'}
@@ -408,6 +407,9 @@ class UpdateDbThread(Thread):
 		logging.debug("UpdateDbThread.run: added poison pills")
 		self.__queueSetUp = True
 		
+		for w in consumers:
+			w.start()
+		
 		self.__tasks.join()
 		
 		logging.debug("UpdateDbThread.run: processing results...")
@@ -441,8 +443,6 @@ class UpdateDbThread(Thread):
 		pes.event.pushPesEvent(pes.event.EVENT_DB_UPDATE)
 		
 		self.done = True
-		self.progress = 100
-		
 		self.__endTime = time.time()
 		logging.debug("UpdateDbThread.run: exiting")
 		
@@ -452,5 +452,4 @@ class UpdateDbThread(Thread):
 			logging.debug("UpdateDbThread.stop: stopping processes...")
 			self.__exitEvent.set()
 		else:
-			self.progress = 100
 			self.done = True
