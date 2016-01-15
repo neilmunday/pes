@@ -30,15 +30,6 @@ import sdl2.render
 import sdl2.sdlgfx
 import sdl2.sdlttf
 
-def createText(renderer, font, txt, colour, wrap=0):
-	if wrap > 0:
-		surface = sdl2.sdlttf.TTF_RenderText_Blended_Wrapped(font, txt, colour, wrap)
-	else:
-		surface = sdl2.sdlttf.TTF_RenderText_Blended(font, txt, colour)
-	texture = sdl2.SDL_CreateTextureFromSurface(renderer, surface)
-	sdl2.SDL_FreeSurface(surface)
-	return texture
-
 def getTextureDimensions(texture):
 	flags = c_uint32()
 	access = c_int()
@@ -46,30 +37,6 @@ def getTextureDimensions(texture):
 	h = c_int()
 	ret = sdl2.SDL_QueryTexture(texture, byref(flags), byref(access), byref(w), byref(h))
 	return (w.value, h.value)
-
-def renderLines(renderer, font, lines, colour, x, y, wrap):
-	w = 0
-	totalHeight = 0
-	for l in lines:
-		(w, h) = renderText(renderer, font, l, colour, x, y, wrap)
-		y += h
-		totalHeight += h
-	return (w, totalHeight)
-
-def renderText(renderer, font, txt, colour, x, y, wrap=0, width=0):
-	texture = createText(renderer, font, txt, colour, wrap)
-	(w, h) = getTextureDimensions(texture)
-	if width > 0 and w > width:
-		dotTexture = createText(renderer, font, '...', colour)
-		(tw, th) = getTextureDimensions(dotTexture)
-		sdl2.SDL_RenderCopy(renderer, texture, sdl2.SDL_Rect(0, 0, width - tw, h), sdl2.SDL_Rect(x, y, width - tw, h))
-		sdl2.SDL_RenderCopy(renderer, dotTexture, None, sdl2.SDL_Rect(x + (width - tw), y, tw, th))
-		sdl2.SDL_DestroyTexture(texture)
-		sdl2.SDL_DestroyTexture(dotTexture)
-	else:
-		sdl2.SDL_RenderCopy(renderer, texture, None, sdl2.SDL_Rect(x, y, w, h))
-		sdl2.SDL_DestroyTexture(texture)
-	return (w, h)
 
 class Menu(object):
 	
