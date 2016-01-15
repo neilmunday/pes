@@ -200,7 +200,6 @@ class PESApp(object):
 		self.headerFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, 22)
 		self.titleFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, 20)
 		self.bodyFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, 18)
-		self.bodyFontHeight = getFontHeight(self.bodyFont)
 		
 		self.renderer = sdl2.SDL_CreateRenderer(self.__window, -1, sdl2.render.SDL_RENDERER_ACCELERATED)
 		
@@ -239,9 +238,12 @@ class PESApp(object):
 						for c in self.consoles:
 							c.refresh()
 							screenName = "Console %s" % c.getName()
-							if c.getGameTotal() > 0 and screenName not in self.screens:
-								logging.debug("PESApp.run adding ConsoleScreen for %s following database update" % c.getName())
-								self.screens[screenName] = ConsoleScreen(self, self.renderer, self.menuRect, self.screenRect, c)
+							if c.getGameTotal() > 0:
+								if screenName in self.screens:
+									self.screens[screenName].refresh()
+								else:
+									logging.debug("PESApp.run adding ConsoleScreen for %s following database update" % c.getName())
+									self.screens[screenName] = ConsoleScreen(self, self.renderer, self.menuRect, self.screenRect, c)
 								
 						self.screens["Home"].refreshMenu()
 						Thumbnail.destroyTextures()
@@ -262,7 +264,6 @@ class PESApp(object):
 									self.setScreen(self.screenStack[-1], False)
 							else:
 								self.screens[self.screenStack[-1]].setMenuActive(True)
-								
 					self.screens[self.screenStack[-1]].processEvent(event)
 								
 				if event.type == sdl2.SDL_KEYDOWN and event.key.keysym.sym == sdl2.SDLK_ESCAPE:
@@ -353,14 +354,19 @@ class PESLoadingThread(threading.Thread):
 				logging.info("PESLoadingThread.run: populating games catalogue using file: %s" % userGamesCatalogueFile)
 				catalogueConfigParser = ConfigParser.ConfigParser()
 				catalogueConfigParser.read(userGamesCatalogueFile)
+				sections = catalogueConfigParser.sections()
+				sectionTotal = float(len(sections))
 				
-				for section in catalogueConfigParser.sections():
+				i = 0.0
+				for section in sections:
 					if catalogueConfigParser.has_option(section, 'full_name'):
 						fullName = catalogueConfigParser.get(section, 'full_name')
 						logging.debug("PESLoadingThread.run: inserting game into catalogue: %s -> %s" % (section, fullName))
 						cur.execute('INSERT INTO `games_catalogue` (`short_name`, `full_name`) VALUES ("%s", "%s");' % (section, fullName))
 					else:
 						logging.error("PESLoadingThread.run: games catalogue section \"%s\" has no \"full_name\" option!" % section)
+					i += 1.0
+					self.progress = 20 + (20 * (i / sectionTotal))
 						
 			con.commit()
 		except sqlite3.Error, e:
@@ -375,7 +381,9 @@ class PESLoadingThread(threading.Thread):
 		configParser = ConfigParser.ConfigParser()
 		configParser.read(userConsolesConfigFile)
 		supportedConsoles = configParser.sections()
+		supportedConsoleTotal = float(len(supportedConsoles))
 		supportedConsoles.sort()
+		i = 0
 		for c in supportedConsoles:
 			# check the console definition from the config file
 			try:
@@ -414,6 +422,8 @@ class PESLoadingThread(threading.Thread):
 				if console.isNew():
 					console.save()
 				self.app.consoles.append(console)
+				i += 1
+				self.progress = 40 + (20 * (i / supportedConsoleTotal))
 			except ConfigParser.NoOptionError, e:
 				logging.error('PESLoadingThread.run: error parsing config file %s: %s' % (userConsolesConfigFile, e.message))
 				self.done = True
@@ -444,13 +454,14 @@ class Screen(object):
 		self.menuActive = True
 		self.__menuMargin = 5
 		self.__menuTopMargin = 10
-		self.__menuFontHeight = getFontHeight(self.app.menuFont)
 		self.__menuItemChanged = False
 		self.__lastTick = sdl2.timer.SDL_GetTicks()
 		self.screenMargin = 10
 		self.wrap = self.screenRect[2] - (self.screenMargin * 2)
 		self.menu.setSelected(0)
 		self.__uiObjects = []
+		self.__menuList = self.addUiObject(List(self.renderer, self.__menuMargin + self.menuRect[0], self.menuRect[1] + self.__menuTopMargin, self.menuRect[2] - (self.__menuMargin * 2), self.menuRect[3] - (self.menuRect[1] + self.__menuTopMargin), self.menu, self.app.menuFont, self.app.menuTextColour, self.app.menuSelectedTextColour, self.app.menuSelectedBgColour, self.app.menuTextColour))
+		self.__menuList.setFocus(True)
 		
 	def addUiObject(self, o):
 		if o not in self.__uiObjects:
@@ -458,88 +469,28 @@ class Screen(object):
 		return o
 		
 	def draw(self):
-		#if self.menuActive:
-		#	tick = sdl2.timer.SDL_GetTicks()
-		#	if self.__menuItemChanged and tick - self.__lastTick >= 1000: # 3 seconds
-		#		self.__lastTick = tick
-		#		self.__menuItemChanged = False
-		#		logging.debug("MainMenuPanel.draw: menu hover tick triggered!")
-		#		self.drawScreen()
-		
 		self.drawMenu()
 		self.drawScreen()
 		
 	def drawMenu(self):
-		#logging.debug("Screen.draw: drawing menu at (%d, %d) dimensions (%d, %d)" % (self.menuRect[0], self.menuRect[1], self.menuRect[2], self.menuRect[3]))
-		x = self.menuRect[0]
-		y = self.menuRect[1]
-		w = self.menuRect[2]
-		h = self.menuRect[3]
-		menuTop = y + self.__menuTopMargin
-		sdl2.sdlgfx.boxRGBA(self.renderer, x, y, x + w, y + h, self.app.menuBackgroundColour.r, self.app.menuBackgroundColour.g, self.app.menuBackgroundColour.b, 255)
-		visibleMenuItems = int((h - self.__menuTopMargin) / self.__menuFontHeight)
-		menuItems = self.menu.getItems()
-		menuItemTotal = len(menuItems)
-		
-		#logging.debug("Screen.draw: visibleMenuItems = %d" % visibleMenuItems)
-		
-		currentY = menuTop
-		firstMenuItem = 0
-		
-		selectedIndex = self.menu.getSelectedIndex()
-		if selectedIndex >= firstMenuItem + visibleMenuItems:
-			firstMenuItem = selectedIndex - visibleMenuItems + 1
-		elif selectedIndex < firstMenuItem:
-			firstMenuItem = selectedIndex
-		
-		i = firstMenuItem
-		while i < menuItemTotal and i < firstMenuItem + visibleMenuItems:
-				m = self.menu.getItem(i)
-				if m.isSelected():
-					if self.menuActive:
-						sdl2.sdlgfx.boxRGBA(self.renderer, x + self.__menuMargin, currentY, x + self.__menuMargin + (w - (self.__menuMargin * 2)), currentY + self.__menuFontHeight, self.app.menuSelectedBgColour.r, self.app.menuSelectedBgColour.g, self.app.menuSelectedBgColour.b, 255)
-					else:
-						sdl2.sdlgfx.boxRGBA(self.renderer, x + self.__menuMargin, currentY, x + self.__menuMargin + (w - (self.__menuMargin * 2)), currentY + self.__menuFontHeight, self.app.menuTextColour.r, self.app.menuTextColour.g, self.app.menuTextColour.b, 255)
-					renderText(self.renderer, self.app.menuFont, m.getText(), self.app.menuSelectedTextColour, self.__menuMargin, currentY)
-				else:
-					renderText(self.renderer, self.app.menuFont, m.getText(), self.app.menuTextColour, self.__menuMargin, currentY)
-				currentY += self.__menuFontHeight
-				i += 1
+		sdl2.sdlgfx.boxRGBA(self.renderer, self.menuRect[0], self.menuRect[1], self.menuRect[0] + self.menuRect[2], self.menuRect[1] + self.menuRect[3], self.app.menuBackgroundColour.r, self.app.menuBackgroundColour.g, self.app.menuBackgroundColour.b, 255)
+		self.__menuList.draw()
 	
 	def drawScreen(self):
 		sdl2.sdlgfx.boxRGBA(self.renderer, self.screenRect[0], self.screenRect[1], self.screenRect[0] + self.screenRect[2], self.screenRect[1] + self.screenRect[3], self.app.backgroundColour.r, self.app.backgroundColour.g, self.app.backgroundColour.b, 255)
 	
 	def processEvent(self, event):
-		if self.menuActive:
-			if event.type == sdl2.SDL_KEYDOWN:
-				if event.key.keysym.sym == sdl2.SDLK_DOWN:
-					logging.debug("Screen.processEvent: (menu) key event: DOWN")
-					i = self.menu.getSelectedIndex()
-					total = self.menu.getCount()
-					if i + 1 > total - 1:
-						self.menu.setSelected(0)
-					else:
-						self.menu.setSelected(i + 1)
-					self.__lastTick = sdl2.timer.SDL_GetTicks()
-					self.__menuItemChanged = True
-				elif event.key.keysym.sym == sdl2.SDLK_UP:
-					logging.debug("Screen.processEvent: (menu) key event: UP")
-					i = self.menu.getSelectedIndex()
-					total = self.menu.getCount()
-					if i - 1 < 0:
-						self.menu.setSelected(total - 1)
-					else:
-						self.menu.setSelected(i - 1)
-					self.__lastTick = sdl2.timer.SDL_GetTicks()
-					self.__menuItemChanged = True
-				elif event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER:
-					logging.debug("Screen.processEvent: (menu) key event: RETURN")
-					self.__menuItemChanged = False
-					self.menu.getSelectedItem().trigger()
-					self.setMenuActive(False)
+		if self.menuActive and event.type == sdl2.SDL_KEYDOWN:
+			if event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER:
+				self.menu.getSelectedItem().trigger()
+				self.setMenuActive(False)
+				self.__menuList.setFocus(False)
+			else:
+				self.__menuList.processEvent(event)
 	
 	def setMenuActive(self, active):
 		self.menuActive = active
+		self.__menuList.setFocus(True)
 		logging.debug("Screen.setMenuActive: \"%s\" activate state is now: %s" % (self.title, self.menuActive))
 		
 	def stop(self):
@@ -562,74 +513,124 @@ class ConsoleScreen(Screen):
 		]),
 		menuRect, screenRect)
 		self.__console = console
+		self.__consoleName = console.getName()
 		self.menu.setSelected(0)
-		self.__thumbCache = {}
-		self.__thumbGap = 10
-		self.__recentGameTotal = 10
-		self.__thumbWidth = 150
-		self.__thumbHeight = self.__thumbWidth
+		self.__thumbXGap = 20
+		self.__thumbYGap = 10
+		self.__showThumbs = 10
+		self.__recentlyAddedThumbCache = []
+		self.__recentlyPlayedThumbCache = []
+		self.__mostPlayedThumbCache = []
+		self.__favourites = []
+		self.__desiredThumbWidth = int((screenRect[2] - (self.__showThumbs * self.__thumbXGap)) / self.__showThumbs)
+		img = Image.open(console.getNoCoverArtImg())
+		img.close()
+		width, height = img.size
+		ratio = float(height) / float(width)
+		self.__thumbWidth = self.__desiredThumbWidth
+		self.__thumbHeight = int(ratio * self.__thumbWidth)
 		self.__consoleTexture = None
-		logging.debug("ConsoleScreen.init: initialised for %s" % console.getName())
+		self.__titleLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], "%s: %s" % (self.__consoleName, self.menu.getSelectedItem().getText()),
+ self.app.titleFont, self.app.textColour))
+		self.__noGamesFoundLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + (self.__titleLabel.height * 2), "No games found.", self.app.bodyFont, self.app.textColour))
+		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + (self.__titleLabel.height * 2), " ", self.app.bodyFont, self.app.textColour))
+		self.refresh()
+		logging.debug("ConsoleScreen.init: initialised for %s" % self.__consoleName)
 		
 	def drawScreen(self):
-		currentX = self.screenRect[0] + self.screenMargin
-		currentY = self.screenRect[1]
-		consoleName = self.__console.getName()
-		selectedItem = self.menu.getSelectedItem()
-		selectedText = selectedItem.getText()
-		
 		if self.__consoleTexture == None:
-			self.__consoleTexture = sdl2.SDL_CreateTextureFromSurface(self.renderer, self.app.consoleSurfaces[consoleName])
+			self.__consoleTexture = sdl2.SDL_CreateTextureFromSurface(self.renderer, self.app.consoleSurfaces[self.__consoleName])
 			sdl2.SDL_SetTextureAlphaMod(self.__consoleTexture, CONSOLE_TEXTURE_ALPHA)
-		
 		sdl2.SDL_RenderCopy(self.renderer, self.__consoleTexture, None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
-		(textWidth, textHeight) = renderText(self.renderer, self.app.titleFont, "%s: %s" % (consoleName, selectedText), self.app.textColour, currentX, self.screenRect[1])
-		currentY += textHeight * 2
+		self.__titleLabel.draw()
 		
-		if selectedText == "Recently Added":
-			thumbX = currentX
-			recentGames = self.__console.getRecentlyAddedGames(self.__recentGameTotal)
-			for g in recentGames:
-				art = g.getCoverArt()
-				if art != None:
-					texture = None
-					if g.getId() not in self.__thumbCache.keys():
-						texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, art)
-						self.__thumbCache[g.getId()] = texture
-					else:
-						texture = self.__thumbCache[g.getId()]
-					
-					if thumbX + self.__thumbWidth < self.screenRect[0] + self.screenRect[2]:
-						sdl2.SDL_RenderCopy(self.renderer, texture, None, sdl2.SDL_Rect(thumbX, currentY, self.__thumbWidth, self.__thumbHeight))
-						# render text underneath
-						renderText(self.renderer, self.app.bodyFont, g.getName(), self.app.textColour, thumbX, currentY + self.__thumbHeight + 1, 0, self.__thumbWidth)
-						thumbX += self.__thumbWidth + self.__thumbGap
-		elif selectedText == "Recently Played":
-			thumbX = currentX
-			recentGames = self.__console.getRecentlyPlayedGames(self.__recentGameTotal)
-			for g in recentGames:
-				art = g.getCoverArt()
-				if art != None:
-					texture = None
-					if g.getId() not in self.__thumbCache.keys():
-						texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, art)
-						self.__thumbCache[g.getId()] = texture
-					else:
-						texture = self.__thumbCache[g.getId()]
-					
-					if thumbX + self.__thumbWidth < self.screenRect[0] + self.screenRect[2]:
-						sdl2.SDL_RenderCopy(self.renderer, texture, None, sdl2.SDL_Rect(thumbX, currentY, self.__thumbWidth, self.__thumbHeight))
-						# render text underneath
-						renderText(self.renderer, self.app.bodyFont, g.getName(), self.app.textColour, thumbX, currentY + self.__thumbHeight + 1, 0, self.__thumbWidth)
-						thumbX += self.__thumbWidth + self.__thumbGap
+		selectedText = self.menu.getSelectedItem().getText()
+		if self.menuActive:
+			if selectedText == "Recently Added":
+				for t in self.__recentlyAddedThumbCache:
+					t.draw()
+			elif selectedText == "Recently Played":
+				if len(self.__recentlyPlayedThumbCache) == 0:
+					self.__noGamesFoundLabel.draw()
+				else:
+					for t in self.__recentlyPlayedThumbCache:
+						t.draw()
+			elif selectedText == "Favourites":
+				if len(self.__favourites) == 0:
+					self.__noGamesFoundLabel.draw()
+				else:
+					pass
+			elif selectedText == "Most Played":
+				if len(self.__mostPlayedThumbCache) == 0:
+					self.__noGamesFoundLabel.draw()
+				else:
+					for t in self.__mostPlayedThumbCache:
+						t.draw()
+			elif selectedText == "All":
+				self.__descriptionLabel.draw()
+			elif selectedText == "Search":
+				self.__descriptionLabel.draw()
+		else:
+			if selectedText == "Recently Added":
+				for t in self.__recentlyAddedThumbCache:
+					t.draw()
+			elif selectedText == "Recently Played":
+				if len(self.__recentlyPlayedThumbCache) == 0:
+					self.__noGamesFoundLabel.draw()
+				else:
+					for t in self.__recentlyPlayedThumbCache:
+						t.draw()
+			elif selectedText == "Favourites":
+				if len(self.__favourites) == 0:
+					self.__noGamesFoundLabel.draw()
+				else:
+					pass
+			elif selectedText == "Most Played":
+				if len(self.__mostPlayedThumbCache) == 0:
+					self.__noGamesFoundLabel.draw()
+				else:
+					for t in self.__mostPlayedThumbCache:
+						t.draw()
+			elif selectedText == "All":
+				pass
+			elif selectedText == "Search":
+				pass
+						
+	def refresh(self):
+		logging.debug("ConsoleScreen.refresh: reloading content for %s..." % self.__consoleName)
+		for t in self.__recentlyPlayedThumbCache:
+			t.destroy()
+		for t in self.__recentlyAddedThumbCache:
+			t.destroy()
+		games = self.__console.getRecentlyAddedGames(self.__showThumbs)
+		thumbX = self.screenRect[0] + self.screenMargin
+		if len(games) > 0:
+			for g in games:
+				self.__recentlyAddedThumbCache.append(self.addUiObject(Thumbnail(self.renderer, thumbX, self.__titleLabel.y + self.__titleLabel.height + self.__thumbYGap, self.__thumbWidth, self.__thumbHeight, g, self.app.bodyFont, self.app.textColour)))
+				thumbX += self.__thumbWidth + self.__thumbXGap
+						
+	def processEvent(self, event):
+		super(ConsoleScreen, self).processEvent(event)
+		if self.menuActive:
+			if event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_UP or event.key.keysym.sym == sdl2.SDLK_DOWN):
+				self.__titleLabel.setText("%s: %s" % (self.__consoleName, self.menu.getSelectedItem().getText()))
+				selectedText = self.menu.getSelectedItem().getText()
+				if selectedText == "All":
+					self.__descriptionLabel.setText("Browse all %d games." % self.__console.getGameTotal())
+				elif selectedText == "Search":
+					self.__descriptionLabel.setText("Search for games here.")
 					
 	def stop(self):
 		super(ConsoleScreen, self).stop()
-		logging.debug("ConsoleScreen.stop: deleting %d textures for %s..." % (len(self.__thumbCache), self.__console.getName()))
+		logging.debug("ConsoleScreen.stop: deleting textures for %s..." % self.__consoleName)
 		if self.__consoleTexture:
 			sdl2.SDL_DestroyTexture(self.__consoleTexture)
-		for value in self.__thumbCache.itervalues():
-			sdl2.SDL_DestroyTexture(value)
+		logging.debug("ConsoleScreen.drawScreen: destorying recently played textures for %s..." % self.__consoleName)
+		for t in self.__recentlyPlayedThumbCache:
+			t.destroy()
+		logging.debug("ConsoleScreen.drawScreen: destorying recently added textures for %s..." % self.__consoleName)
+		for t in self.__recentlyAddedThumbCache:
+			t.destroy()
 	
 class HomeScreen(Screen):
 	
@@ -754,9 +755,9 @@ class HomeScreen(Screen):
 				logging.debug("HomeScreen.refreshMenu: not removing %s" % m.getText())
 		for c in self.app.consoles:
 			if c.getGameTotal() > 0:
-				logging.debug("HomeScreen.refreshMenu: adding %s" % c.getName())
+				logging.debug("HomeScreen.refreshMenu: inserting %s" % c.getName())
 				self.menu.insertItem(len(self.menu.getItems()) - 4, ConsoleMenuItem(c, False, False, self.app.setScreen, "Console %s" % c.getName()))
-		self.menu.setSelected(0, True)
+		self.menu.setSelected(0, deselectAll=True)
 		
 	def stop(self):
 		super(HomeScreen, self).stop()
@@ -839,7 +840,7 @@ class SettingsScreen(Screen):
 					self.__consoleList.setFocus(True)
 					self.__updateDatabaseMenu.toggleAll(True)
 					self.__updateDatabaseMenu.setSelected(0)
-					self.__consoleList.scrollTop()
+					#self.__consoleList.scrollTop()
 			return
 		
 		super(SettingsScreen, self).processEvent(event)
@@ -855,14 +856,14 @@ class SettingsScreen(Screen):
 				logging.debug("SettingsScreen.processEvent: return key trapped for %s" % selected)
 				if selected == "Update Database":
 					self.__headerLabel.setText(selected)
-					self.__updateDatabaseMenu.setSelected(0)
 					self.__updateDatabaseMenu.toggleAll(True)
 					self.__descriptionLabel.setText(self.__scanText)
 					if self.__consoleList != None:
 						self.__consoleList.destroy()
 					consoleListY = self.__descriptionLabel.y + self.__descriptionLabel.height + 10
-					self.__consoleList = self.addUiObject(List(self.renderer, self.__descriptionLabel.x + self.__toggleMargin, consoleListY, 300, self.screenRect[3] - consoleListY, self.__updateDatabaseMenu, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour))
+					self.__consoleList = self.addUiObject(List(self.renderer, self.__descriptionLabel.x + self.__toggleMargin, consoleListY, 300, self.screenRect[3] - consoleListY, self.__updateDatabaseMenu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour))
 					self.__consoleList.setFocus(True)
+					self.__updateDatabaseMenu.setSelected(0)
 					if self.__scanButton == None:
 						self.__scanButton = self.addUiObject(Button(self.renderer, self.__consoleList.x + self.__consoleList.width + 200, self.__consoleList.y, 150, 50, "Begin Scan", self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.startScan))
 					self.__scanButton.setFocus(False)
