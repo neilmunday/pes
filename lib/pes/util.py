@@ -78,6 +78,34 @@ def pesExit(msg = None, error = False):
 		logging.info("Exiting...")
 	sys.exit(0)
 	
+def scaleImage((ix, iy), (bx,by)):
+	"""
+	Original author: Frank Raiser (crashchaos@gmx.net)
+	URL: http://www.pygame.org/pcr/transform_scale
+	Modified by Neil Munday
+	"""
+	if ix > iy:
+		# fit to width
+		scale_factor = bx/float(ix)
+		sy = scale_factor * iy
+		if sy > by:
+			scale_factor = by/float(iy)
+			sx = scale_factor * ix
+			sy = by
+		else:
+			sx = bx
+	else:
+		# fit to height
+		scale_factor = by/float(iy)
+        	sx = scale_factor * ix
+		if sx > bx:
+			scale_factor = bx/float(ix)
+			sx = bx
+			sy = scale_factor * iy
+		else:
+			sy = by
+	return (int(sx),int(sy))
+	
 #
 #	StringMatcher class sourced from https://github.com/ztane/python-Levenshtein/blob/master/StringMatcher.py
 #	Author: Antti Haapala <antti@haapala.name>

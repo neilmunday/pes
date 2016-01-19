@@ -41,6 +41,8 @@ import multiprocessing
 	
 class ConsoleTask(object):
 	
+	SCALE_WIDTH = 200.0
+	
 	def __init__(self, rom, consoleApiName, console):
 		self.rom = rom
 		self.consoleApiName = consoleApiName
@@ -129,7 +131,7 @@ class ConsoleTask(object):
 						response = urllib2.urlopen(request)
 						urlLoaded = True
 					except urllib2.URLError, e:
-						print e
+						logging.error(e)
 
 					if urlLoaded:
 						bestResultDistance = -1
@@ -138,7 +140,8 @@ class ConsoleTask(object):
 							xmlData = ElementTree.parse(response)
 							dataOk = True
 						except ParseError, e:
-							print e
+							logging.error(e)
+							logging.error("Failed response for console %s was: %s" % (name, response))
 						
 						if dataOk:
 							for x in xmlData.findall("Game"):
@@ -159,52 +162,66 @@ class ConsoleTask(object):
 
 				if gameApiId != None:
 					urlLoaded = False
+					gameUrl = "%sGetGame.php" % url
 					try:
-						request = urllib2.Request("%sGetGame.php" % url, urllib.urlencode({"id": gameApiId}), headers=headers)
+						request = urllib2.Request(gameUrl, urllib.urlencode({"id": gameApiId}), headers=headers)
 						response = urllib2.urlopen(request)
 						urlLoaded = True
 					except urllib2.URLError, e:
-						print e
+						logging.error(e)
+						logging.error("Failed URL was: %s" % gameUrl)
 
 					if urlLoaded:
-						xmlData = ElementTree.parse(response)
-						overviewElement = xmlData.find("Game/Overview")
-						if overviewElement != None:
-							overview = overviewElement.text.encode('ascii', 'ignore')
-						releasedElement = xmlData.find("Game/ReleaseDate")
-						if releasedElement != None:
-							released = releasedElement.text.encode('ascii', 'ignore')
-							# convert to Unix time stamp
-							try:
-								released = int(time.mktime(datetime.strptime(released, "%m/%d/%Y").timetuple()))
-							except ValueError, e:
-								# thrown if date is not valid
-								released = -1
-								
-						if thumbPath == "0":
-							boxartElement = xmlData.find("Game/Images/boxart[@side='front']")
-							if boxartElement != None:
-								imageSaved = False
+						dataOk = False
+						try:
+							xmlData = ElementTree.parse(response)
+							dataOk = True
+						except ParseError, e:
+							logging.error(e)
+							logging.error("Failed URL was: %s" % gameUrl)
+							logginer.error("Failed content was: %s" % response)
+							
+						if dataOk:
+							overviewElement = xmlData.find("Game/Overview")
+							if overviewElement != None:
+								overview = overviewElement.text.encode('ascii', 'ignore')
+							releasedElement = xmlData.find("Game/ReleaseDate")
+							if releasedElement != None:
+								released = releasedElement.text.encode('ascii', 'ignore')
+								# convert to Unix time stamp
 								try:
-									imgUrl = "http://thegamesdb.net/banners/%s" % boxartElement.text
-									extension = imgUrl[imgUrl.rfind('.'):]
-									thumbPath =  console.getImgCacheDir() + os.sep + name.replace('/', '_') + extension
-									request = urllib2.Request(imgUrl, headers=headers)
-									response = urllib2.urlopen(request).read()
-									output = open(thumbPath, 'wb')
-									output.write(response)
-									output.close()
-									imageSaved = True
-								except urllib2.URLError, e:
-									print e
+									released = int(time.mktime(datetime.strptime(released, "%m/%d/%Y").timetuple()))
+								except ValueError, e:
+									# thrown if date is not valid
+									released = -1
+									
+							if thumbPath == "0":
+								boxartElement = xmlData.find("Game/Images/boxart[@side='front']")
+								if boxartElement != None:
+									imageSaved = False
+									try:
+										imgUrl = "http://thegamesdb.net/banners/%s" % boxartElement.text
+										extension = imgUrl[imgUrl.rfind('.'):]
+										thumbPath =  console.getImgCacheDir() + os.sep + name.replace('/', '_') + extension
+										request = urllib2.Request(imgUrl, headers=headers)
+										response = urllib2.urlopen(request).read()
+										output = open(thumbPath, 'wb')
+										output.write(response)
+										output.close()
+										imageSaved = True
+									except urllib2.URLError, e:
+										logging.error(e)
 
-								if imageSaved:
-									# resize the image if it is too big
-									self.__scaleImage(thumbPath, name)
+									if imageSaved:
+										# resize the image if it is too big
+										self.__scaleImage(thumbPath, name)
+							else:
+								# does the provided image need to be scaled?
+								self.__scaleImage(thumbPath, name)
 						else:
-							# does the provided image need to be scaled?
-							self.__scaleImage(thumbPath, name)
-										
+							if thumbPath != "0":
+								# does the provided image need to be scaled?
+								self.__scaleImage(thumbPath, name)
 				else:
 					gameApiId = -1
 
@@ -225,7 +242,7 @@ class ConsoleTask(object):
 	def __scaleImage(path, name):
 		img = Image.open(path)
 		width, height = img.size
-		scaleWidth = 200.0
+		scaleWidth = ConsoleTask.SCALE_WIDTH
 		ratio = min(float(scaleWidth / width), float(scaleWidth / height))
 		newWidth = width * ratio
 		newHeight = height * ratio
@@ -372,7 +389,7 @@ class UpdateDbThread(Thread):
 				cur.execute("UPDATE `games` SET `exists` = 0 WHERE `console_id` = %d" % consoleId)
 				con.commit()
 			except sqlite3.Error, e:
-				print e
+				logging.error(e)
 				if con:
 					con.rollback()
 				sys.exit(1)
@@ -388,7 +405,7 @@ class UpdateDbThread(Thread):
 				xmlData = ElementTree.parse(response)
 				consoleApiName = xmlData.find('Platform/Platform').text
 			except urllib2.URLError, e:
-				print e
+				logging.error(e)
 				
 			files = glob.glob("%s%s*" % (c.getRomDir(), os.sep))
 			fileTotal = len(files)
@@ -432,7 +449,7 @@ class UpdateDbThread(Thread):
 				self.deleted = con.total_changes
 			con.commit()
 		except sqlite3.Error, e:
-			print e
+			logging.error(e)
 			if con:
 				con.rollback()
 		finally:

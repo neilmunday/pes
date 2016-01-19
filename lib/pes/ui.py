@@ -21,6 +21,7 @@
 #
 
 from ctypes import c_int, c_uint32, byref
+from collections import deque
 import logging
 import sdl2
 import sdl2.sdlimage
@@ -590,7 +591,9 @@ class ProgressBar(UIObject):
 		
 class Thumbnail(UIObject):
 	
+	CACHE_LEN = 100
 	__cache = {} # shared texture cache
+	__queue = deque()
 	
 	def __init__(self, renderer, x, y, width, height, game, font, txtColour, drawLabel=True):
 		self.__font = font
@@ -602,6 +605,7 @@ class Thumbnail(UIObject):
 		super(Thumbnail, self).__init__(renderer, x, y, width, height)
 		self.__txtColour = txtColour
 		self.__game = game
+		self.__gameId = game.getId()
 		self.__coverart = game.getCoverArt()
 		if self.__coverart == None:
 			self.__coverart = game.getConsole().getNoCoverArtImg()
@@ -612,17 +616,24 @@ class Thumbnail(UIObject):
 			self.__label = None
 		logging.debug("Thumbnail.init: initialised for %s" % game.getName())
 		
+	@staticmethod
+	def __addToCache(gameId, texture):
+		Thumbnail.__cache[gameId] = texture
+		Thumbnail.__queue.append(gameId)
+		if len(Thumbnail.__queue) > Thumbnail.CACHE_LEN:
+			logging.debug("Thumbnail.__addToCache: cache length %d exceeded, removing item from cache to make room..." % Thumbnail.CACHE_LEN)
+			gameId = Thumbnail.__queue.popleft()
+			sdl2.SDL_DestroyTexture(Thumbnail.__cache[gameId])
+			del Thumbnail.__cache[gameId]
+		
 	def draw(self):
 		if self.visible:
-			if self.__coverartTexture == None:
-				gameId = self.__game.getId()
-				if gameId in self.__cache:
-					self.__coverartTexture = self.__cache[gameId]
-				else:
-					logging.debug("Thumbnail.draw: loading texture for %s" % self.__game.getName())
-					self.__coverartTexture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, self.__coverart)
-					self.__cache[gameId] = self.__coverartTexture
-					#logging.debug("Thumbnail.draw: drawing at (%d, %d) dimensions (%d, %d)" % (self.x, self.y, self.__thumbWidth, self.__thumbHeight))
+			if self.__gameId not in Thumbnail.__cache:
+				logging.debug("Thumbnail.draw: loading texture for %s" % self.__game.getName())
+				self.__coverartTexture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, self.__coverart)
+				self.__addToCache(self.__gameId, self.__coverartTexture)
+			else:
+				self.__coverartTexture = Thumbnail.__cache[self.__gameId]
 			sdl2.SDL_RenderCopy(self.renderer, self.__coverartTexture, None, sdl2.SDL_Rect(self.x, self.y, self.__thumbWidth, self.__thumbHeight))
 			# render text underneath
 			if self.__label:
@@ -643,11 +654,12 @@ class Thumbnail(UIObject):
 			del Thumbnail.__cache[k]
 			
 	def setGame(self, game):
-		if self.__game == game:
+		if self.__gameId == game.getId():
 			return
 		if self.__label:
 			self.__label.setText(game.getName())
 		self.__game = game
+		self.__gameId = game.getId()
 		self.__coverart = game.getCoverArt()
 		if self.__coverart == None:
 			self.__coverart = game.getConsole().getNoCoverArtImg()

@@ -71,12 +71,17 @@ class PESApp(object):
 			sdl2.video.SDL_DestroyWindow(self.__window)
 			self.__window = None
 
-	def __init__(self, dimensions, fontFile, romsDir, coverartDir, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour):
+	def __init__(self, dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour):
 		super(PESApp, self).__init__()
 		self.__dimensions = dimensions
 		self.fontFile = fontFile
 		self.romsDir = romsDir
 		self.coverartDir = coverartDir
+		
+		ConsoleTask.SCALE_WIDTH = coverartSize
+		Thumbnail.CACHE_LEN = coverartCacheLen
+		
+		self.coverartCacheLen = coverartCacheLen
 		self.consoles = []
 		self.consoleSurfaces = None
 		self.__uiObjects = [] # list of UI objects created so we can destroy them upon exit
@@ -525,8 +530,8 @@ class ConsoleScreen(Screen):
 		self.__desiredThumbWidth = int((screenRect[2] - (self.__showThumbs * self.__thumbXGap)) / self.__showThumbs)
 		img = Image.open(console.getNoCoverArtImg())
 		img.close()
-		width, height = img.size
-		self.__thumbRatio = float(height) / float(width)
+		self.__noCoverArtWidth, self.__noCoverArtHeight = img.size
+		self.__thumbRatio = float(self.__noCoverArtHeight) / float(self.__noCoverArtWidth)
 		self.__thumbWidth = self.__desiredThumbWidth
 		self.__thumbHeight = int(self.__thumbRatio * self.__thumbWidth)
 		self.__consoleTexture = None
@@ -623,10 +628,13 @@ class ConsoleScreen(Screen):
 								menu.addItem(GameMenuItem(g))
 							self.__gamesList = self.addUiObject(List(self.renderer, self.screenRect[0] + self.screenMargin, y, int(self.screenRect[2] / 2), self.screenRect[3] - y, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour))
 							self.__gamesList.setFocus(True)
-							previewThumbnailX = self.__gamesList.x + self.__gamesList.width + 10
-							previewThumbnailW = self.screenRect[0] + self.screenRect[2] - previewThumbnailX - 10
-							# FIX WIDTH / HEIGHT OF THUMBNAIL
-							self.__previewThumbnail = self.addUiObject(Thumbnail(self.renderer, previewThumbnailX, self.__gamesList.y, previewThumbnailW, int(self.__thumbRatio * previewThumbnailW), games[0], self.app.bodyFont, self.app.textColour, False))
+							previewThumbnailX = self.__gamesList.x + self.__gamesList.width
+							previewThumbnailW, previewThumbnailH = scaleImage((self.__noCoverArtWidth, self.__noCoverArtHeight), (self.screenRect[0] + self.screenRect[2] - previewThumbnailX - 50,
+ int((self.screenRect[3] - self.screenRect[1]) / 2)))
+							#print self.screenRect[2]
+							#print previewThumbnailX
+							previewThumbnailX += int((((self.screenRect[0] + self.screenRect[2]) - previewThumbnailX) / 2) - (previewThumbnailW / 2))
+							self.__previewThumbnail = self.addUiObject(Thumbnail(self.renderer, previewThumbnailX, self.__gamesList.y, previewThumbnailW, previewThumbnailH, games[0], self.app.bodyFont, self.app.textColour, False))
 							self.__gamesList.addListener(self)
 				else:
 					if selectedText == "All":
@@ -839,7 +847,7 @@ class SettingsScreen(Screen):
 		if selected == "Update Database":
 			if self.__updateDbThread != None:
 				if self.__updateDbThread.started and not self.__updateDbThread.done:
-					self.__descriptionLabel.setText("Scanned %d out of %d roms... press BACK to abort\n\nElapsed: %s\n\nRemaining: %s\n\nProgress:" % (self.__updateDbThread.getProcessed(), self.__updateDbThread.romTotal, self.__updateDbThread.getElapsed(), self.__updateDbThread.getRemaining()))
+					self.__descriptionLabel.setText("Scanned %d out of %d roms... press BACK to abort\n\nElapsed: %s\n\nRemaining: %s\n\nProgress:" % (self.__updateDbThread.getProcessed(), self.__updateDbThread.romTotal, self.__updateDbThread.getElapsed(), self.__updateDbThread.getRemaining()), True)
 					self.__scanProgressBar.y = self.__descriptionLabel.y + self.__descriptionLabel.height + 10
 					self.__scanProgressBar.setProgress(self.__updateDbThread.getProgress())
 					self.__scanProgressBar.draw()
@@ -847,7 +855,7 @@ class SettingsScreen(Screen):
 					interruptedStr = ""
 					if self.__updateDbThread.interrupted:
 						interruptedStr = "(scan interrupted)"
-					self.__descriptionLabel.setText("Scan completed in %s %s\n\nAdded: %d\n\nUpdated: %d\n\nDeleted: %d\n\nPress BACK to return to the previous screen." % (self.__updateDbThread.getElapsed(), interruptedStr, self.__updateDbThread.added, self.__updateDbThread.updated, self.__updateDbThread.deleted))
+					self.__descriptionLabel.setText("Scan completed in %s %s\n\nAdded: %d\n\nUpdated: %d\n\nDeleted: %d\n\nPress BACK to return to the previous screen." % (self.__updateDbThread.getElapsed(), interruptedStr, self.__updateDbThread.added, self.__updateDbThread.updated, self.__updateDbThread.deleted), True)
 			else:
 				self.__consoleList.draw()
 				self.__scanButton.draw()
@@ -865,7 +873,7 @@ class SettingsScreen(Screen):
 				elif selected == "Update Database" and self.__updateDbThread.done:
 					self.setMenuActive(False)
 					self.__updateDbThread = None
-					self.__descriptionLabel.setText(self.__scanText)
+					self.__descriptionLabel.setText(self.__scanText, True)
 					self.__scanButton.setFocus(False)
 					self.__consoleList.setFocus(True)
 					self.__updateDatabaseMenu.toggleAll(True)

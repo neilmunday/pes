@@ -119,6 +119,15 @@ if __name__ == '__main__':
 			menuTextColour = processColour(configParser.get("colours", "menuText").split(','))
 			menuSelectedTextColour = processColour(configParser.get("colours", "menuSelectedText").split(','))
 			textColour = processColour(configParser.get("colours", "text").split(','))
+			# coverart settings
+			try:
+				coverartSize = float(configParser.get('settings', 'coverartSize'))
+			except ValueError:
+				pesExit("Error parsing config file %s: float expected for \"coverartSize\" parameter")
+			try:
+				coverartCacheLen = int(configParser.get('settings', 'coverartCacheLen'))
+			except ValueError:
+				pesExit("Error parsing config file %s: integer expected for \"coverartCacheLen\" parameter")
 		except ConfigParser.NoOptionError, e:
 			pesExit("Error parsing config file %s: %s" % (userPesConfigFile, e.message), True)
 			
@@ -126,7 +135,7 @@ if __name__ == '__main__':
 		mkdir(coverartDir)
 		
 		logging.info("loading GUI...")
-		app = PESApp(dimensions, fontFile, romsDir, coverartDir, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour)
+		app = PESApp(dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour)
 		app.run()
 	except Exception, e:
 		logging.exception(e)
