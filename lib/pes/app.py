@@ -526,14 +526,16 @@ class ConsoleScreen(Screen):
 		img = Image.open(console.getNoCoverArtImg())
 		img.close()
 		width, height = img.size
-		ratio = float(height) / float(width)
+		self.__thumbRatio = float(height) / float(width)
 		self.__thumbWidth = self.__desiredThumbWidth
-		self.__thumbHeight = int(ratio * self.__thumbWidth)
+		self.__thumbHeight = int(self.__thumbRatio * self.__thumbWidth)
 		self.__consoleTexture = None
 		self.__titleLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], "%s: %s" % (self.__consoleName, self.menu.getSelectedItem().getText()),
- self.app.titleFont, self.app.textColour))
+ self.app.titleFont, self.app.textColour, fixedWidth=self.wrap))
 		self.__noGamesFoundLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + (self.__titleLabel.height * 2), "No games found.", self.app.bodyFont, self.app.textColour))
-		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + (self.__titleLabel.height * 2), " ", self.app.bodyFont, self.app.textColour))
+		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + (self.__titleLabel.height * 2), " ", self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
+		self.__gamesList = None
+		self.__previewThumbnail = None
 		self.refresh()
 		logging.debug("ConsoleScreen.init: initialised for %s" % self.__consoleName)
 		
@@ -592,9 +594,48 @@ class ConsoleScreen(Screen):
 					for t in self.__mostPlayedThumbCache:
 						t.draw()
 			elif selectedText == "All":
-				pass
+				self.__gamesList.draw()
+				self.__previewThumbnail.draw()
 			elif selectedText == "Search":
 				pass
+						
+	def processEvent(self, event):
+		super(ConsoleScreen, self).processEvent(event)
+		if self.menuActive:
+			if event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_UP or event.key.keysym.sym == sdl2.SDLK_DOWN):
+				self.__titleLabel.setText("%s: %s" % (self.__consoleName, self.menu.getSelectedItem().getText()))
+				selectedText = self.menu.getSelectedItem().getText()
+				if selectedText == "All":
+					self.__descriptionLabel.setText("Browse all %d games." % self.__console.getGameTotal())
+				elif selectedText == "Search":
+					self.__descriptionLabel.setText("Search for games here.")
+		else:
+			if event.type == sdl2.SDL_KEYDOWN:
+				selectedText = self.menu.getSelectedItem().getText()
+				if event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER:
+					if selectedText == "All":
+						if self.__gamesList == None:
+							y = self.__titleLabel.y + (self.__titleLabel.height * 2)
+							menu = Menu([])
+							games = self.__console.getGames()
+							for g in games:
+								g.refresh()
+								menu.addItem(GameMenuItem(g))
+							self.__gamesList = self.addUiObject(List(self.renderer, self.screenRect[0] + self.screenMargin, y, int(self.screenRect[2] / 2), self.screenRect[3] - y, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour))
+							self.__gamesList.setFocus(True)
+							previewThumbnailX = self.__gamesList.x + self.__gamesList.width + 10
+							previewThumbnailW = self.screenRect[0] + self.screenRect[2] - previewThumbnailX - 10
+							# FIX WIDTH / HEIGHT OF THUMBNAIL
+							self.__previewThumbnail = self.addUiObject(Thumbnail(self.renderer, previewThumbnailX, self.__gamesList.y, previewThumbnailW, int(self.__thumbRatio * previewThumbnailW), games[0], self.app.bodyFont, self.app.textColour, False))
+							self.__gamesList.addListener(self)
+				else:
+					if selectedText == "All":
+						self.__gamesList.processEvent(event)
+						
+	def processListEvent(self, eventType, item):
+		if eventType == List.LISTEN_ITEM_SELECTED:
+			if self.__previewThumbnail:
+				self.__previewThumbnail.setGame(item.getGame())
 						
 	def refresh(self):
 		logging.debug("ConsoleScreen.refresh: reloading content for %s..." % self.__consoleName)
@@ -608,17 +649,6 @@ class ConsoleScreen(Screen):
 			for g in games:
 				self.__recentlyAddedThumbCache.append(self.addUiObject(Thumbnail(self.renderer, thumbX, self.__titleLabel.y + self.__titleLabel.height + self.__thumbYGap, self.__thumbWidth, self.__thumbHeight, g, self.app.bodyFont, self.app.textColour)))
 				thumbX += self.__thumbWidth + self.__thumbXGap
-						
-	def processEvent(self, event):
-		super(ConsoleScreen, self).processEvent(event)
-		if self.menuActive:
-			if event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_UP or event.key.keysym.sym == sdl2.SDLK_DOWN):
-				self.__titleLabel.setText("%s: %s" % (self.__consoleName, self.menu.getSelectedItem().getText()))
-				selectedText = self.menu.getSelectedItem().getText()
-				if selectedText == "All":
-					self.__descriptionLabel.setText("Browse all %d games." % self.__console.getGameTotal())
-				elif selectedText == "Search":
-					self.__descriptionLabel.setText("Search for games here.")
 					
 	def stop(self):
 		super(ConsoleScreen, self).stop()
@@ -653,10 +683,10 @@ class HomeScreen(Screen):
 		self.__consoleSelected = False
 		self.__headerLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], "Welcome to PES!", self.app.titleFont, self.app.textColour))
 		self.__welcomeText = "The home screen provides you with quick access to your favourite, new additions and most recently played games."
-		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__welcomeText, self.app.bodyFont, self.app.textColour, wrap=self.wrap))
+		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__welcomeText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
 		self.__recentlyAddedText = "Recently Added"
-		self.__recentlyAddedLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__recentlyAddedText, self.app.bodyFont, self.app.textColour, wrap=self.wrap))
-		self.__recentlyPlayedLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), "Recently Played", self.app.bodyFont, self.app.textColour, wrap=self.wrap))
+		self.__recentlyAddedLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__recentlyAddedText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
+		self.__recentlyPlayedLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), "Recently Played", self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
 		
 		#logging.debug("HomeScreen.init: thumbWidth %d" % self.__thumbWidth)
 		logging.debug("HomeScreen.init: initialised")
@@ -787,7 +817,7 @@ class SettingsScreen(Screen):
 		logging.debug("SettingsScreen.init: initialised")
 		self.__initText = "Here you can scan for new games, set-up your joysticks as well as being able to reset PES to its default settings\n\nPlease select an item from the menu on the left."
 		self.__scanText = "Please use the menu below to select which consoles you wish to include in your search. By default all consoles are selected.\n\nWhen you are ready, please select the \"Begin Scan\" button."
-		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__initText, self.app.bodyFont, self.app.textColour, wrap=self.screenRect[2] - self.screenMargin))
+		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__initText, self.app.bodyFont, self.app.textColour, fixedWidth=self.screenRect[2] - self.screenMargin))
 		self.__consoleList = None
 		self.__scanButton = None
 
@@ -857,7 +887,7 @@ class SettingsScreen(Screen):
 				if selected == "Update Database":
 					self.__headerLabel.setText(selected)
 					self.__updateDatabaseMenu.toggleAll(True)
-					self.__descriptionLabel.setText(self.__scanText)
+					self.__descriptionLabel.setText(self.__scanText, True)
 					if self.__consoleList != None:
 						self.__consoleList.destroy()
 					consoleListY = self.__descriptionLabel.y + self.__descriptionLabel.height + 10
@@ -869,10 +899,10 @@ class SettingsScreen(Screen):
 					self.__scanButton.setFocus(False)
 				elif selected == "About":
 					self.__headerLabel.setText(selected)
-					self.__descriptionLabel.setText("Pi Entertainment System version %s\n\nReleased: %s\n\nLicense: Licensed under version 3 of the GNU Public License (GPL)\nAuthor: %s\n\nContributors: Eric Smith\n\nCover art: theGamesDB.net\n\nDocumentation: http://pes.mundayweb.com\n\nFacebook: https://www.facebook.com/pientertainmentsystem\n\nHelp: pes@mundayweb.com" % (VERSION_NUMBER, VERSION_DATE, VERSION_AUTHOR))
+					self.__descriptionLabel.setText("Pi Entertainment System version %s\n\nReleased: %s\n\nLicense: Licensed under version 3 of the GNU Public License (GPL)\n\nAuthor: %s\n\nContributors: Eric Smith\n\nCover art: theGamesDB.net\n\nDocumentation: http://pes.mundayweb.com\n\nFacebook: https://www.facebook.com/pientertainmentsystem\n\nHelp: pes@mundayweb.com" % (VERSION_NUMBER, VERSION_DATE, VERSION_AUTHOR), True)
 				elif selected == "Joystick Set-Up":
 					self.__headerLabel.setText(selected)
-					self.__descriptionLabel.setText("To be implemented.")
+					self.__descriptionLabel.setText("To be implemented.", True)
 					
 				self.__init = False
 		else:
@@ -898,7 +928,7 @@ class SettingsScreen(Screen):
 					logging.debug("SettingsScreen.processEvent: trapping backspace event")
 					self.__init = True
 					self.__headerLabel.setText(self.__defaultHeaderText)
-					self.__descriptionLabel.setText(self.__initText)
+					self.__descriptionLabel.setText(self.__initText, True)
 
 	def startScan(self):
 		logging.debug("SettingsScreen.startScan: beginning scan...")

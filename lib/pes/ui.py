@@ -181,6 +181,21 @@ class ConsoleMenuItem(MenuItem):
 		
 	def getConsole(self):
 		return self.__console
+	
+	def __repr__(self):
+		return "<ConsoleMenuItem: text: %s >" % self.__console.getName()
+	
+class GameMenuItem(MenuItem):
+	
+	def __init__(self, game, selected = False, toggable = False, callback = None, *callbackArgs):
+		super(GameMenuItem, self).__init__(game.getName(), selected, toggable, callback, *callbackArgs)
+		self.__game = game
+		
+	def getGame(self):
+		return self.__game
+	
+	def __repr__(self):
+		return "<GameMenuItem: text: %s >" % self.__game.getName()
 
 class UIObject(object):
 	
@@ -268,82 +283,67 @@ class Button(UIObject):
 			else:
 				sdl2.sdlgfx.rectangleRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__selectedBgColour.r, self.__selectedBgColour.g, self.__selectedBgColour.b, 255)
 			sdl2.SDL_RenderCopy(self.renderer, self.__texture, sdl2.SDL_Rect(0, 0, self.__labelWidth, self.__labelHeight), sdl2.SDL_Rect(self.__labelX, self.__labelY, self.__labelWidth, self.__labelHeight))
-		
+			
 class Label(UIObject):
 	
 	def __init__(self, renderer, x, y, text, font, colour, bgColour=None, wrap=0, fixedWidth=0, fixedHeight=0):
-		self.__truncate = False
-		txtWidth = c_int()
-		txtHeight = c_int()
-		sdl2.sdlttf.TTF_SizeText(font, text, txtWidth, txtHeight)
-		if fixedWidth > 0:
-			if txtWidth.value > fixedWidth:
-				width = fixedWidth
-				self.__truncate = True
-			else:
-				width = txtWidth.value
-			self.__labelWidth = fixedWidth
+		self.__text = text
+		self.__colour = colour
+		self.__font = font
+		if fixedWidth == 0: # no wrap
+			self.__surface = sdl2.sdlttf.TTF_RenderText_Blended(self.__font, self.__text, self.__colour)
+			width = self.__surface.contents.w
 		else:
-			width = txtWidth.value
-			self.__labelWidth = width
+			self.__surface = sdl2.sdlttf.TTF_RenderText_Blended_Wrapped(self.__font, self.__text, self.__colour, fixedWidth)
+			width = fixedWidth
+		self.__textWidth = self.__surface.contents.w
+		self.__textHeight = self.__surface.contents.h
 		if fixedHeight > 0:
-			#if txtHeight.value > fixedHeight:
-			#	height = fixedHeight
-			self.__truncate = True
-			#else:
-			#	height = txtHeight.value
-			self.__labelHeight = fixedHeight
 			height = fixedHeight
 		else:
-			height = txtHeight.value
-			self.__labelHeight = height
+			height = self.__textHeight
 		super(Label, self).__init__(renderer, x, y, width, height)
-		self.__font = font
-		self.__colour = colour
-		self.setBackgroundColour(bgColour)
-		self.__wrap = wrap
+		#self.__texture = sdl2.SDL_CreateTextureFromSurface(self.renderer, surface)
+		#sdl2.SDL_FreeSurface(surface)
 		self.__texture = None
-		self.__text = text
-		self.__fixedWidth = fixedWidth
-		self.__fixedHeight = fixedHeight
-		#logging.debug("Label.init: created label \"%s\" at (%d, %d) with dimensions (%d, %d)" % (self.__text, self.x, self.y, self.width, self.height))
+		self.__drawBackground = False
+		self.setBackgroundColour(bgColour)
 		
 	def destroy(self):
+		logging.debug("Label.destroy: destroying label \"%s\"" % self.__text)
+		self.setVisible(False)
+		if self.__surface != None:
+			sdl2.SDL_FreeSurface(self.__surface)
+			self.__surface = None
 		if self.__texture:
 			sdl2.SDL_DestroyTexture(self.__texture)
 			self.__texture = None
-		
+			
 	def draw(self):
 		if self.visible:
-			if self.__texture == None:
-				if self.__wrap > 0:
-					surface = sdl2.sdlttf.TTF_RenderText_Blended_Wrapped(self.__font, self.__text, self.__colour, self.__wrap)
-					self.__texture = sdl2.SDL_CreateTextureFromSurface(self.renderer, surface)
-				else:
-					surface = sdl2.sdlttf.TTF_RenderText_Blended(self.__font, self.__text, self.__colour)
-					self.__texture = sdl2.SDL_CreateTextureFromSurface(self.renderer, surface)
-				sdl2.SDL_FreeSurface(surface)
-				(w, h) = getTextureDimensions(self.__texture)
-				self.width = w
-				self.height = h
-				if h < self.__fixedHeight:
-					self.__fixedHeight = h
 			if self.__drawBackground:
-				sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.__labelWidth, self.y + self.__labelHeight, self.__bgColour.r, self.__bgColour.g, self.__bgColour.b, 255)
-			if self.__truncate:
-				w = self.width
-				h = self.height
-				if self.__fixedHeight > 0:
-					h = self.__fixedHeight
-				if self.__fixedWidth > 0:
-					w = self.__fixedWidth
-				sdl2.SDL_RenderCopy(self.renderer, self.__texture, sdl2.SDL_Rect(0, 0, w, h), sdl2.SDL_Rect(self.x, self.y, w, h))
+				sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__bgColour.r, self.__bgColour.g, self.__bgColour.b, 255)
+			if self.__texture == None and self.__surface != None:
+					self.__texture = sdl2.SDL_CreateTextureFromSurface(self.renderer, self.__surface)
+					sdl2.SDL_FreeSurface(self.__surface)
+					self.__surface = None
+			if self.__textWidth < self.width:
+				w = self.__textWidth
 			else:
-				sdl2.SDL_RenderCopy(self.renderer, self.__texture, None, sdl2.SDL_Rect(self.x, self.y, self.width, self.height))
-			
+				w = self.width
+			if self.__textHeight < self.height:
+				h = self.__textHeight
+			else:
+				h = self.height
+			sdl2.SDL_RenderCopy(self.renderer, self.__texture, sdl2.SDL_Rect(0, 0, w, h), sdl2.SDL_Rect(self.x, self.y, w, h))
+		
+	def getText(self):
+		return self.__text
+	
 	def setAlpha(self, alpha):
 		super(Label, self).setAlpha(alpha)
-		sdl2.SDL_SetTextureAlphaMod(self.__texture, alpha)
+		if self.__texture:
+			sdl2.SDL_SetTextureAlphaMod(self.__texture, alpha)
 		
 	def setBackgroundColour(self, colour):
 		# crap hack as the PySDL2 authors have overridden the __ne__ operator for colours and can't handle None
@@ -359,30 +359,30 @@ class Label(UIObject):
 		self.__colour = colour
 		if self.__texture:
 			sdl2.SDL_DestroyTexture(self.__texture)
-			self.__texture = None
+			surface = sdl2.sdlttf.TTF_RenderText_Blended_Wrapped(self.__font, self.__text, self.__colour, self.width)
+			self.__texture = sdl2.SDL_CreateTextureFromSurface(self.renderer, surface)
+			sdl2.SDL_FreeSurface(surface)
 			
-	def setText(self, text):
+	def setText(self, text, pack=False):
 		if text == self.__text:
 			return
-		if self.__texture != None:
-			sdl2.SDL_DestroyTexture(self.__texture)
-		
 		self.__text = text
-		txtWidth = c_int()
-		txtHeight = c_int()
-		sdl2.sdlttf.TTF_SizeText(self.__font, self.__text, txtWidth, txtHeight)
-		
-		if self.__wrap > 0:
-			surface = sdl2.sdlttf.TTF_RenderText_Blended_Wrapped(self.__font, self.__text, self.__colour, self.__wrap)
-		else:
-			surface = sdl2.sdlttf.TTF_RenderText_Blended(self.__font, self.__text, self.__colour)
+		sdl2.SDL_DestroyTexture(self.__texture)
+		surface = sdl2.sdlttf.TTF_RenderText_Blended_Wrapped(self.__font, self.__text, self.__colour, self.width)
+		self.__textWidth = surface.contents.w
+		self.__textHeight = surface.contents.h
 		self.__texture = sdl2.SDL_CreateTextureFromSurface(self.renderer, surface)
 		sdl2.SDL_FreeSurface(surface)
-		(w, h) = getTextureDimensions(self.__texture)
-		self.width = w
-		self.height = h
+		if pack:
+			self.height = self.__textHeight
 
 class List(UIObject):
+	
+	# listen events
+	LISTEN_ITEM_ADDED = 1
+	LISTEN_ITEM_REMOVED = 2
+	LISTEN_ITEM_SELECTED = 3
+	LISTEN_ITEM_INSERTED = 4
 	
 	def __init__(self, renderer, x, y, width, height, menu, font, colour, selectedColour, selectedBgColour, selectedBgColourNoFocus):
 		super(List, self).__init__(renderer,x, y, width, height)
@@ -398,18 +398,23 @@ class List(UIObject):
 		if self.__visibleMenuItems > self.__menuCount:
 			self.__visibleMenuItems = self.__menuCount
 		self.__labels = []
-		self.__labels.append(Label(self.renderer, self.x, y, self.__menu.getItem(0).getText(), self.__font, self.__selectedColour, self.__selectedBgColour, fixedWidth=width))
+		self.__labels.append(Label(self.renderer, self.x, y, self.__menu.getItem(0).getText(), self.__font, self.__selectedColour, self.__selectedBgColour, fixedWidth=width, fixedHeight=self.__fontHeight))
 		labelY = y + self.__fontHeight
 		for i in xrange(1, self.__visibleMenuItems):
-			self.__labels.append(Label(self.renderer, self.x, labelY, self.__menu.getItem(i).getText(), self.__font, self.__colour, fixedWidth=width))
+			self.__labels.append(Label(self.renderer, self.x, labelY, self.__menu.getItem(i).getText(), self.__font, self.__colour, fixedWidth=width, fixedHeight=self.__fontHeight))
 			labelY += self.__fontHeight
 		self.__firstMenuItem = 0
 		self.__labelIndex = 0
 		self.__toggleRad = 3
 		self.__toggleCenterY = self.__fontHeight / 2
 		self.__menu.addListener(self)
+		self.__listeners = []
 		logging.debug("List.init: created List with %d labels for %d menu items, width: %d, height: %d" % (len(self.__labels), self.__menuCount, self.width, self.height))
-		
+	
+	def addListener(self, l):
+		if l not in self.__listeners:
+			self.__listeners.append(l)
+	
 	def destroy(self):
 		self.__menu.removeListener(self)
 		logging.debug("List.destroy: destroying %d labels..." % len(self.__labels))
@@ -424,6 +429,10 @@ class List(UIObject):
 				if self.__menu.getItem(i).isToggled():
 					sdl2.sdlgfx.filledCircleRGBA(self.renderer, l.x - 10, self.__toggleCenterY + l.y, self.__toggleRad, self.__colour.r, self.__colour.g, self.__colour.b, 255)
 				i += 1
+	
+	def __fireListenEvent(self, eventType, item):
+		for l in self.__listeners:
+			l.processListEvent(eventType, item)
 	
 	def processEvent(self, event):
 		if self.visible and self.hasFocus():
@@ -451,8 +460,9 @@ class List(UIObject):
 					self.__labels[self.__labelIndex].setBackgroundColour(self.__selectedBgColour)
 					self.__labels[self.__labelIndex].setColour(self.__selectedColour)
 					self.__menu.setSelected(menuIndex, fireEvent=False)
+					self.__fireListenEvent(List.LISTEN_ITEM_SELECTED, self.__menu.getSelectedItem())
 				elif event.key.keysym.sym == sdl2.SDLK_UP:
-					logging.debug("List.processEvent: key event: UP")
+					#logging.debug("List.processEvent: key event: UP")
 					menuIndex = self.__menu.getSelectedIndex()
 					self.__labels[self.__labelIndex].setBackgroundColour(None)
 					self.__labels[self.__labelIndex].setColour(self.__colour)
@@ -473,6 +483,7 @@ class List(UIObject):
 					self.__labels[self.__labelIndex].setBackgroundColour(self.__selectedBgColour)
 					self.__labels[self.__labelIndex].setColour(self.__selectedColour)
 					self.__menu.setSelected(menuIndex, fireEvent=False)
+					self.__fireListenEvent(List.LISTEN_ITEM_SELECTED, self.__menu.getSelectedItem())
 				elif event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER:
 					logging.debug("List.processEvent: key event: RETURN")
 					m = self.__menu.getSelectedItem()
@@ -494,7 +505,8 @@ class List(UIObject):
 				self.__visibleMenuItems = self.__menuCount
 			labelLen = len(self.__labels)
 			if labelLen < self.__visibleMenuItems:
-				self.__labels.append(Label(self.renderer, self.x, (labelLen * self.__fontHeight) + self.y, item.getText(), self.__font, self.__colour, fixedWidth=self.width))
+				self.__labels.append(Label(self.renderer, self.x, (labelLen * self.__fontHeight) + self.y, item.getText(), self.__font, self.__colour, fixedWidth=self.width, fixedHeight=self.__fontHeight))
+			self.__fireListenEvent(List.LISTEN_ITEM_ADDED, item)
 		elif eventType == Menu.LISTEN_ITEM_INSERTED:
 			logging.debug("List.processMenuEvent: item inserted")
 			self.__menuCount = self.__menu.getCount()
@@ -503,13 +515,19 @@ class List(UIObject):
 				self.__visibleMenuItems = self.__menuCount
 			labelLen = len(self.__labels)
 			if labelLen < self.__visibleMenuItems:
-				self.__labels.append(Label(self.renderer, self.x, (labelLen * self.__fontHeight) + self.y, " ", self.__font, self.__colour, fixedWidth=self.width))
+				self.__labels.append(Label(self.renderer, self.x, (labelLen * self.__fontHeight) + self.y, " ", self.__font, self.__colour, fixedWidth=self.width, fixedHeight=self.__fontHeight))
 			# update label text
 			for i in xrange(self.__visibleMenuItems):
 				self.__labels[i].setText(self.__menu.getItem(self.__firstMenuItem + i).getText())
+			self.__fireListenEvent(List.LISTEN_ITEM_INSERTED, item)
 		elif eventType == Menu.LISTEN_ITEM_SELECTED:
 			logging.debug("List.processMenuEvent: item selected")
 			self.__selectLabel(self.__menu.getSelectedIndex())
+			self.__fireListenEvent(List.LISTEN_ITEM_SELECTED, item)
+			
+	def removeListener(self, l):
+		if l in self.__listeners:
+			self.__listeners.remove(l)
 						
 	def setFocus(self, focus):
 		color = None
@@ -574,7 +592,7 @@ class Thumbnail(UIObject):
 	
 	__cache = {} # shared texture cache
 	
-	def __init__(self, renderer, x, y, width, height, game, font, txtColour):
+	def __init__(self, renderer, x, y, width, height, game, font, txtColour, drawLabel=True):
 		self.__font = font
 		self.__fontHeight = sdl2.sdlttf.TTF_FontHeight(self.__font)
 		self.__thumbWidth = width
@@ -588,7 +606,10 @@ class Thumbnail(UIObject):
 		if self.__coverart == None:
 			self.__coverart = game.getConsole().getNoCoverArtImg()
 		self.__coverartTexture = None
-		self.__label = Label(self.renderer, self.x, self.y + self.__thumbHeight + 1, self.__game.getName(), self.__font, self.__txtColour, wrap=self.width, fixedHeight=self.__labelHeight)
+		if drawLabel:
+			self.__label = Label(self.renderer, self.x, self.y + self.__thumbHeight + 1, self.__game.getName(), self.__font, self.__txtColour, fixedWidth=self.width, fixedHeight=self.__labelHeight)
+		else:
+			self.__label = None
 		logging.debug("Thumbnail.init: initialised for %s" % game.getName())
 		
 	def draw(self):
@@ -604,10 +625,12 @@ class Thumbnail(UIObject):
 					#logging.debug("Thumbnail.draw: drawing at (%d, %d) dimensions (%d, %d)" % (self.x, self.y, self.__thumbWidth, self.__thumbHeight))
 			sdl2.SDL_RenderCopy(self.renderer, self.__coverartTexture, None, sdl2.SDL_Rect(self.x, self.y, self.__thumbWidth, self.__thumbHeight))
 			# render text underneath
-			self.__label.draw()
+			if self.__label:
+				self.__label.draw()
 			
 	def destroy(self):
-		self.__label.destroy
+		if self.__label:
+			self.__label.destroy()
 		
 	@staticmethod
 	def destroyTextures():
@@ -618,3 +641,14 @@ class Thumbnail(UIObject):
 			keys.append(key)
 		for k in keys:
 			del Thumbnail.__cache[k]
+			
+	def setGame(self, game):
+		if self.__game == game:
+			return
+		if self.__label:
+			self.__label.setText(game.getName())
+		self.__game = game
+		self.__coverart = game.getCoverArt()
+		if self.__coverart == None:
+			self.__coverart = game.getConsole().getNoCoverArtImg()
+		self.__coverartTexture = None
