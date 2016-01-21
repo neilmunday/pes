@@ -30,6 +30,7 @@ import sdl2.video
 import sdl2.render
 import sdl2.sdlgfx
 import sdl2.sdlttf
+import sdl2.timer
 
 def getTextureDimensions(texture):
 	flags = c_uint32()
@@ -208,12 +209,15 @@ class UIObject(object):
 		self.height = height
 		self.visible = True
 		self.__focus = False
+		self.__borderColour = None
+		self.__drawBorder = False
 	
 	def destroy(self):
 		pass
 	
 	def draw(self):
-		pass
+		if self.visible and self.__drawBorder:
+			sdl2.sdlgfx.rectangleRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__borderColour.r, self.__borderColour.g, self.__borderColour.b, 255)
 	
 	def hasFocus(self):
 		return self.__focus
@@ -222,6 +226,16 @@ class UIObject(object):
 		if alpha < 0 or alpha > 255:
 			raise ValueError("Invalid alpha value!")
 		self.alpha = alpha
+	
+	def setBorderColour(self, colour):
+		# crap hack as the PySDL2 authors have overridden the __ne__ operator for colours and can't handle None
+		self.__borderColour = colour
+		try:
+			if self.__borderColour != None:
+				self.__drawBorder = True
+			self.__drawBorder = False
+		except AttributeError:
+			self.__drawBorder = True
 	
 	def setCoords(self, x, y):
 		self.x = x
@@ -287,7 +301,7 @@ class Button(UIObject):
 			
 class Label(UIObject):
 	
-	def __init__(self, renderer, x, y, text, font, colour, bgColour=None, wrap=0, fixedWidth=0, fixedHeight=0):
+	def __init__(self, renderer, x, y, text, font, colour, bgColour=None, fixedWidth=0, fixedHeight=0, autoScroll=False):
 		self.__text = text
 		self.__colour = colour
 		self.__font = font
@@ -304,10 +318,12 @@ class Label(UIObject):
 		else:
 			height = self.__textHeight
 		super(Label, self).__init__(renderer, x, y, width, height)
-		#self.__texture = sdl2.SDL_CreateTextureFromSurface(self.renderer, surface)
-		#sdl2.SDL_FreeSurface(surface)
 		self.__texture = None
 		self.__drawBackground = False
+		self.__autoScroll = autoScroll
+		self.__scrollY = 0
+		self.__scrollTick = 0
+		self.__firstDraw = True
 		self.setBackgroundColour(bgColour)
 		
 	def destroy(self):
@@ -322,6 +338,7 @@ class Label(UIObject):
 			
 	def draw(self):
 		if self.visible:
+			super(Label, self).draw()
 			if self.__drawBackground:
 				sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__bgColour.r, self.__bgColour.g, self.__bgColour.b, 255)
 			if self.__texture == None and self.__surface != None:
@@ -336,7 +353,21 @@ class Label(UIObject):
 				h = self.__textHeight
 			else:
 				h = self.height
-			sdl2.SDL_RenderCopy(self.renderer, self.__texture, sdl2.SDL_Rect(0, 0, w, h), sdl2.SDL_Rect(self.x, self.y, w, h))
+			if self.__autoScroll and self.__textHeight > self.height:
+				tick = sdl2.timer.SDL_GetTicks()
+				if self.__firstDraw:
+					self.__scrollTick = tick
+					self.__firstDraw = False
+				if self.__scrollY == 0:
+					if tick - self.__scrollTick > 2000:
+						self.__scrollTick = tick
+						self.__scrollY += 1
+				elif tick - self.__scrollTick > 75:
+					self.__scrollTick = tick
+					self.__scrollY += 1
+				if self.__scrollY > self.__textHeight - self.height:
+					self.__scrollY = 0
+			sdl2.SDL_RenderCopy(self.renderer, self.__texture, sdl2.SDL_Rect(0, self.__scrollY, w, h), sdl2.SDL_Rect(self.x, self.y, w, h))
 		
 	def getText(self):
 		return self.__text
@@ -367,7 +398,12 @@ class Label(UIObject):
 	def setText(self, text, pack=False):
 		if text == self.__text:
 			return
-		self.__text = text
+		if text == None or text == "":
+			self.__text = " "
+		else:
+			self.__text = text
+		self.__scrollY = 0
+		self.__firstDraw = True
 		sdl2.SDL_DestroyTexture(self.__texture)
 		surface = sdl2.sdlttf.TTF_RenderText_Blended_Wrapped(self.__font, self.__text, self.__colour, self.width)
 		self.__textWidth = surface.contents.w
@@ -410,6 +446,8 @@ class List(UIObject):
 		self.__toggleCenterY = self.__fontHeight / 2
 		self.__menu.addListener(self)
 		self.__listeners = []
+		self.__lastScrollEvent = 0
+		self.__checkScrollEvent = False
 		logging.debug("List.init: created List with %d labels for %d menu items, width: %d, height: %d" % (len(self.__labels), self.__menuCount, self.width, self.height))
 	
 	def addListener(self, l):
@@ -424,12 +462,18 @@ class List(UIObject):
 		
 	def draw(self):
 		if self.visible:
+			super(List, self).draw()
 			i = self.__firstMenuItem
 			for l in self.__labels:
 				l.draw()
 				if self.__menu.getItem(i).isToggled():
 					sdl2.sdlgfx.filledCircleRGBA(self.renderer, l.x - 10, self.__toggleCenterY + l.y, self.__toggleRad, self.__colour.r, self.__colour.g, self.__colour.b, 255)
 				i += 1
+			if self.__checkScrollEvent:
+				if sdl2.timer.SDL_GetTicks() - self.__lastScrollEvent > 100:
+					self.__fireListenEvent(List.LISTEN_ITEM_SELECTED, self.__menu.getSelectedItem())
+					self.__checkScrollEvent = False
+				
 	
 	def __fireListenEvent(self, eventType, item):
 		for l in self.__listeners:
@@ -461,7 +505,8 @@ class List(UIObject):
 					self.__labels[self.__labelIndex].setBackgroundColour(self.__selectedBgColour)
 					self.__labels[self.__labelIndex].setColour(self.__selectedColour)
 					self.__menu.setSelected(menuIndex, fireEvent=False)
-					self.__fireListenEvent(List.LISTEN_ITEM_SELECTED, self.__menu.getSelectedItem())
+					self.__lastScrollEvent = sdl2.timer.SDL_GetTicks()
+					self.__checkScrollEvent = True
 				elif event.key.keysym.sym == sdl2.SDLK_UP:
 					#logging.debug("List.processEvent: key event: UP")
 					menuIndex = self.__menu.getSelectedIndex()
@@ -484,7 +529,8 @@ class List(UIObject):
 					self.__labels[self.__labelIndex].setBackgroundColour(self.__selectedBgColour)
 					self.__labels[self.__labelIndex].setColour(self.__selectedColour)
 					self.__menu.setSelected(menuIndex, fireEvent=False)
-					self.__fireListenEvent(List.LISTEN_ITEM_SELECTED, self.__menu.getSelectedItem())
+					self.__lastScrollEvent = sdl2.timer.SDL_GetTicks()
+					self.__checkScrollEvent = True
 				elif event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER:
 					logging.debug("List.processEvent: key event: RETURN")
 					m = self.__menu.getSelectedItem()
@@ -601,7 +647,8 @@ class Thumbnail(UIObject):
 		self.__thumbWidth = width
 		self.__thumbHeight = height
 		self.__labelHeight = self.__fontHeight * 2
-		height += 1 + self.__labelHeight # allow space for label
+		if drawLabel:
+			height += 1 + self.__labelHeight # allow space for label
 		super(Thumbnail, self).__init__(renderer, x, y, width, height)
 		self.__txtColour = txtColour
 		self.__game = game
@@ -628,6 +675,7 @@ class Thumbnail(UIObject):
 		
 	def draw(self):
 		if self.visible:
+			super(Thumbnail, self).draw()
 			if self.__gameId not in Thumbnail.__cache:
 				logging.debug("Thumbnail.draw: loading texture for %s" % self.__game.getName())
 				self.__coverartTexture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, self.__coverart)

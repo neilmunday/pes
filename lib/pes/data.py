@@ -20,6 +20,7 @@
 #    along with PES.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+from datetime import datetime
 import logging
 import sqlite3
 import os
@@ -372,6 +373,9 @@ class Game(Record):
 
 	def getPath(self):
 		return self.getProperty('game_path')
+	
+	def getPlayCount(self):
+		return self.getProperty('play_count')
 
 	def getReleased(self, fmt=None):
 		timestamp = self.getProperty('released')
@@ -379,11 +383,17 @@ class Game(Record):
 			return timestamp
 		return datetime.fromtimestamp(timestamp).strftime(fmt)
 
-	def getPlayCount(self):
-		return self.getProperty('play_count')
-
-	def getSize(self):
-		return self.getProperty('size')
+	def getSize(self, humanReadable=False):
+		if not humanReadable:
+			return self.getProperty('size')
+		size = self.getProperty('size')
+		if size < 1024:
+			return "%diB"
+		if size < 1048576:
+			return "%.1fKiB" % (size / 1024.0)
+		if size < 1073741824:
+			return "%.1fMiB" % (size / 1048576.0)
+		return "%.1fGiB" % (size / 1073741824.0)
 
 	def isFavourite(self, yesNoMap=None):
 		fav = self.getProperty('favourite') == 1

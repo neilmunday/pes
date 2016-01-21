@@ -303,7 +303,6 @@ class PESApp(object):
 					progressBar.draw()
 			else:
 				sdl2.sdlgfx.boxRGBA(self.renderer, 0, 0, self.__dimensions[0], self.__headerHeight, self.headerBackgroundColour.r, self.headerBackgroundColour.g, self.headerBackgroundColour.b, 255) # header bg
-				sdl2.sdlgfx.rectangleRGBA(self.renderer, 0, self.__headerHeight, self.__dimensions[0], self.__dimensions[1], self.lineColour.r, self.lineColour.g, self.lineColour.b, 255) # header line
 				headerLabel.draw()
 				
 				self.screens[self.screenStack[-1]].draw()
@@ -311,6 +310,8 @@ class PESApp(object):
 				now = datetime.now()
 				dateLabel.setText(now.strftime("%H:%M:%S %d/%m/%Y"))
 				dateLabel.draw()
+				
+				sdl2.sdlgfx.rectangleRGBA(self.renderer, 0, self.__headerHeight, self.__dimensions[0], self.__headerHeight, self.lineColour.r, self.lineColour.g, self.lineColour.b, 255) # header line
 			
 			sdl2.SDL_RenderPresent(self.renderer)
 		self.exit(0)
@@ -460,7 +461,6 @@ class Screen(object):
 		self.__menuMargin = 5
 		self.__menuTopMargin = 10
 		self.__menuItemChanged = False
-		self.__lastTick = sdl2.timer.SDL_GetTicks()
 		self.screenMargin = 10
 		self.wrap = self.screenRect[2] - (self.screenMargin * 2)
 		self.menu.setSelected(0)
@@ -540,6 +540,8 @@ class ConsoleScreen(Screen):
 		self.__noGamesFoundLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + (self.__titleLabel.height * 2), "No games found.", self.app.bodyFont, self.app.textColour))
 		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + (self.__titleLabel.height * 2), " ", self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
 		self.__gamesList = None
+		self.__gameInfoLabel = None
+		self.__gameOverviewLabel = None
 		self.__previewThumbnail = None
 		self.refresh()
 		logging.debug("ConsoleScreen.init: initialised for %s" % self.__consoleName)
@@ -601,9 +603,18 @@ class ConsoleScreen(Screen):
 			elif selectedText == "All":
 				self.__gamesList.draw()
 				self.__previewThumbnail.draw()
+				self.__gameInfoLabel.draw()
+				self.__gameOverviewLabel.draw()
 			elif selectedText == "Search":
 				pass
-						
+			
+	def __getGameInfoText(self, game):
+		lastPlayed = "N/A"
+		playCount = game.getPlayCount()
+		if playCount > 0:
+			lastPlayed = game.getLastPlayed("%d/%m/%Y")
+		return "Released: %s\nPlay Count: %d\nLast Played: %s\nSize: %s\nOverview:" % (game.getReleased("%d/%m/%Y"), playCount, lastPlayed, game.getSize(True))
+			
 	def processEvent(self, event):
 		super(ConsoleScreen, self).processEvent(event)
 		if self.menuActive:
@@ -631,19 +642,28 @@ class ConsoleScreen(Screen):
 							previewThumbnailX = self.__gamesList.x + self.__gamesList.width
 							previewThumbnailW, previewThumbnailH = scaleImage((self.__noCoverArtWidth, self.__noCoverArtHeight), (self.screenRect[0] + self.screenRect[2] - previewThumbnailX - 50,
  int((self.screenRect[3] - self.screenRect[1]) / 2)))
-							#print self.screenRect[2]
-							#print previewThumbnailX
 							previewThumbnailX += int((((self.screenRect[0] + self.screenRect[2]) - previewThumbnailX) / 2) - (previewThumbnailW / 2))
 							self.__previewThumbnail = self.addUiObject(Thumbnail(self.renderer, previewThumbnailX, self.__gamesList.y, previewThumbnailW, previewThumbnailH, games[0], self.app.bodyFont, self.app.textColour, False))
+							self.__previewThumbnail.setBorderColour(self.app.textColour)
 							self.__gamesList.addListener(self)
+							gameInfoLabelX = self.__gamesList.x + self.__gamesList.width + 10
+							gameInfoLabelY = self.__previewThumbnail.y + self.__previewThumbnail.height + 10
+							self.__gameInfoLabel = self.addUiObject(Label(self.renderer, gameInfoLabelX, gameInfoLabelY, self.__getGameInfoText(games[0]), self.app.bodyFont, self.app.textColour, fixedWidth=(self.screenRect[0] + self.screenRect[2] - gameInfoLabelX - 5),))
+							gameOverviewLabelY = self.__gameInfoLabel.y + self.__gameInfoLabel.height
+							self.__gameOverviewLabel = self.addUiObject(Label(self.renderer, gameInfoLabelX, gameOverviewLabelY, games[0].getOverview(), self.app.bodyFont, self.app.textColour, fixedWidth=self.__gameInfoLabel.width, fixedHeight=(self.screenRect[1] + self.screenRect[3] - gameOverviewLabelY), autoScroll=True))
+							#self.__gameInfoLabel.setBorderColour(self.app.textColour)
 				else:
 					if selectedText == "All":
+						# trap scroll rate
 						self.__gamesList.processEvent(event)
 						
 	def processListEvent(self, eventType, item):
 		if eventType == List.LISTEN_ITEM_SELECTED:
 			if self.__previewThumbnail:
-				self.__previewThumbnail.setGame(item.getGame())
+				game = item.getGame()
+				self.__previewThumbnail.setGame(game)
+				self.__gameInfoLabel.setText(self.__getGameInfoText(game))
+				self.__gameOverviewLabel.setText(game.getOverview())
 						
 	def refresh(self):
 		logging.debug("ConsoleScreen.refresh: reloading content for %s..." % self.__consoleName)
