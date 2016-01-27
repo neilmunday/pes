@@ -492,6 +492,10 @@ class Screen(object):
 				self.__menuList.setFocus(False)
 			else:
 				self.__menuList.processEvent(event)
+				
+	def removeUiObject(self, o):
+		if o in self.__uiObjects:
+			self.__uiObjects.remove(o)
 	
 	def setMenuActive(self, active):
 		self.menuActive = active
@@ -539,12 +543,35 @@ class ConsoleScreen(Screen):
  self.app.titleFont, self.app.textColour, fixedWidth=self.wrap))
 		self.__noGamesFoundLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + (self.__titleLabel.height * 2), "No games found.", self.app.bodyFont, self.app.textColour))
 		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + (self.__titleLabel.height * 2), " ", self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
-		self.__gamesList = None
+		self.__allGamesList = None
+		self.__recentlyAddedGamesList = None
 		self.__gameInfoLabel = None
 		self.__gameOverviewLabel = None
 		self.__previewThumbnail = None
+		self.__listX = self.screenRect[0] + self.screenMargin
+		self.__listY = self.__titleLabel.y + (self.__titleLabel.height * 2)
+		self.__listWidth = 300
+		self.__listHeight = self.screenRect[3] - self.__listY
+		self.__previewThumbnailX = self.__listX + self.__listWidth
+		self.__previewThumbnailWidth, self.__previewThumbnailHeight = scaleImage((self.__noCoverArtWidth, self.__noCoverArtHeight), (self.screenRect[0] + self.screenRect[2] - self.__previewThumbnailX - 50,
+ int((self.screenRect[3] - self.screenRect[1]) / 2)))
+		self.__previewThumbnailX += int((((self.screenRect[0] + self.screenRect[2]) - self.__previewThumbnailX) / 2) - (self.__previewThumbnailWidth / 2))
+		self.__previewThumbnailY = self.__listY
+		self.__gameInfoLabelX = self.__listX + self.__listWidth + 50
+		self.__gameInfoLabelY = self.__previewThumbnailY + self.__previewThumbnailHeight + 10
+		self.__gameInfoLabelWidth = self.screenRect[0] + self.screenRect[2] - self.__gameInfoLabelX - 5
+		self.__gameInfoLabelHeight = 5 * sdl2.sdlttf.TTF_FontHeight(self.app.bodyFont)
+		self.__gameInfoLabel = self.addUiObject(Label(self.renderer, self.__gameInfoLabelX, self.__gameInfoLabelY, " ", self.app.bodyFont, self.app.textColour, fixedWidth=self.__gameInfoLabelWidth,
+ fixedHeight=self.__gameInfoLabelHeight))
+		self.__gameOverviewLabelX = self.__gameInfoLabelX
+		self.__gameOverviewLabelY = self.__gameInfoLabelY + self.__gameInfoLabelHeight
+		self.__gameOverviewLabel = self.addUiObject(Label(self.renderer, self.__gameInfoLabelX, self.__gameOverviewLabelY, " ", self.app.bodyFont, self.app.textColour, fixedWidth=self.__gameInfoLabelWidth, fixedHeight=(self.screenRect[1] + self.screenRect[3] - self.__gameOverviewLabelY), autoScroll=True))
 		self.refresh()
 		logging.debug("ConsoleScreen.init: initialised for %s" % self.__consoleName)
+		
+	def __createPreviewThumbnail(self, game):
+		if self.__previewThumbnail == None:
+			self.__previewThumbnail = self.addUiObject(Thumbnail(self.renderer, self.__previewThumbnailX, self.__previewThumbnailY, self.__previewThumbnailWidth, self.__previewThumbnailHeight, game, self.app.bodyFont, self.app.textColour, False))
 		
 	def drawScreen(self):
 		if self.__consoleTexture == None:
@@ -581,8 +608,12 @@ class ConsoleScreen(Screen):
 				self.__descriptionLabel.draw()
 		else:
 			if selectedText == "Recently Added":
-				for t in self.__recentlyAddedThumbCache:
-					t.draw()
+				#for t in self.__recentlyAddedThumbCache:
+				#	t.draw()
+				self.__recentlyAddedGamesList.draw()
+				self.__previewThumbnail.draw()
+				self.__gameInfoLabel.draw()
+				self.__gameOverviewLabel.draw()
 			elif selectedText == "Recently Played":
 				if len(self.__recentlyPlayedThumbCache) == 0:
 					self.__noGamesFoundLabel.draw()
@@ -601,7 +632,7 @@ class ConsoleScreen(Screen):
 					for t in self.__mostPlayedThumbCache:
 						t.draw()
 			elif selectedText == "All":
-				self.__gamesList.draw()
+				self.__allGamesList.draw()
 				self.__previewThumbnail.draw()
 				self.__gameInfoLabel.draw()
 				self.__gameOverviewLabel.draw()
@@ -629,33 +660,38 @@ class ConsoleScreen(Screen):
 			if event.type == sdl2.SDL_KEYDOWN:
 				selectedText = self.menu.getSelectedItem().getText()
 				if event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER:
-					if selectedText == "All":
-						if self.__gamesList == None:
-							y = self.__titleLabel.y + (self.__titleLabel.height * 2)
-							menu = Menu([])
-							games = self.__console.getGames()
-							for g in games:
-								g.refresh()
-								menu.addItem(GameMenuItem(g))
-							self.__gamesList = self.addUiObject(List(self.renderer, self.screenRect[0] + self.screenMargin, y, int(self.screenRect[2] / 2), self.screenRect[3] - y, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour))
-							self.__gamesList.setFocus(True)
-							previewThumbnailX = self.__gamesList.x + self.__gamesList.width
-							previewThumbnailW, previewThumbnailH = scaleImage((self.__noCoverArtWidth, self.__noCoverArtHeight), (self.screenRect[0] + self.screenRect[2] - previewThumbnailX - 50,
- int((self.screenRect[3] - self.screenRect[1]) / 2)))
-							previewThumbnailX += int((((self.screenRect[0] + self.screenRect[2]) - previewThumbnailX) / 2) - (previewThumbnailW / 2))
-							self.__previewThumbnail = self.addUiObject(Thumbnail(self.renderer, previewThumbnailX, self.__gamesList.y, previewThumbnailW, previewThumbnailH, games[0], self.app.bodyFont, self.app.textColour, False))
-							self.__previewThumbnail.setBorderColour(self.app.textColour)
-							self.__gamesList.addListener(self)
-							gameInfoLabelX = self.__gamesList.x + self.__gamesList.width + 10
-							gameInfoLabelY = self.__previewThumbnail.y + self.__previewThumbnail.height + 10
-							self.__gameInfoLabel = self.addUiObject(Label(self.renderer, gameInfoLabelX, gameInfoLabelY, self.__getGameInfoText(games[0]), self.app.bodyFont, self.app.textColour, fixedWidth=(self.screenRect[0] + self.screenRect[2] - gameInfoLabelX - 5),))
-							gameOverviewLabelY = self.__gameInfoLabel.y + self.__gameInfoLabel.height
-							self.__gameOverviewLabel = self.addUiObject(Label(self.renderer, gameInfoLabelX, gameOverviewLabelY, games[0].getOverview(), self.app.bodyFont, self.app.textColour, fixedWidth=self.__gameInfoLabel.width, fixedHeight=(self.screenRect[1] + self.screenRect[3] - gameOverviewLabelY), autoScroll=True))
-							#self.__gameInfoLabel.setBorderColour(self.app.textColour)
+					if selectedText == "All" and self.__allGamesList == None:
+						y = self.__titleLabel.y + (self.__titleLabel.height * 2)
+						menu = Menu([])
+						games = self.__console.getGames()
+						for g in games:
+							g.refresh()
+							menu.addItem(GameMenuItem(g))
+						self.__allGamesList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour))
+						self.__allGamesList.setFocus(True)
+						self.__allGamesList.addListener(self)
+						self.__gameInfoLabel.setText(self.__getGameInfoText(games[0]))
+						self.__gameOverviewLabel.setText(games[0].getOverview())
+						self.__createPreviewThumbnail(games[0])
+					elif selectedText == "Recently Added" and self.__recentlyAddedGamesList == None:
+						y = self.__titleLabel.y + (self.__titleLabel.height * 2)
+						menu = Menu([])
+						games = self.__console.getRecentlyAddedGames()
+						for g in games:
+							g.refresh()
+							menu.addItem(GameMenuItem(g))
+						self.__recentlyAddedGamesList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour))
+						self.__recentlyAddedGamesList.setFocus(True)
+						self.__recentlyAddedGamesList.addListener(self)
+						self.__gameInfoLabel.setText(self.__getGameInfoText(games[0]))
+						self.__gameOverviewLabel.setText(games[0].getOverview())
+						self.__createPreviewThumbnail(games[0])
 				else:
 					if selectedText == "All":
 						# trap scroll rate
-						self.__gamesList.processEvent(event)
+						self.__allGamesList.processEvent(event)
+					elif selectedText == "Recently Added":
+						self.__recentlyAddedGamesList.processEvent(event)
 						
 	def processListEvent(self, eventType, item):
 		if eventType == List.LISTEN_ITEM_SELECTED:
@@ -667,16 +703,6 @@ class ConsoleScreen(Screen):
 						
 	def refresh(self):
 		logging.debug("ConsoleScreen.refresh: reloading content for %s..." % self.__consoleName)
-		for t in self.__recentlyPlayedThumbCache:
-			t.destroy()
-		for t in self.__recentlyAddedThumbCache:
-			t.destroy()
-		games = self.__console.getRecentlyAddedGames(self.__showThumbs)
-		thumbX = self.screenRect[0] + self.screenMargin
-		if len(games) > 0:
-			for g in games:
-				self.__recentlyAddedThumbCache.append(self.addUiObject(Thumbnail(self.renderer, thumbX, self.__titleLabel.y + self.__titleLabel.height + self.__thumbYGap, self.__thumbWidth, self.__thumbHeight, g, self.app.bodyFont, self.app.textColour)))
-				thumbX += self.__thumbWidth + self.__thumbXGap
 					
 	def stop(self):
 		super(ConsoleScreen, self).stop()
@@ -704,8 +730,6 @@ class HomeScreen(Screen):
 		self.__thumbXGap = 20
 		self.__thumbYGap = 10
 		self.__showThumbs = 10
-		self.__recentlyAddedThumbCache = []
-		self.__recentlyPlayedThumbCache = []
 		self.__desiredThumbWidth = int((screenRect[2] - (self.__showThumbs * self.__thumbXGap)) / self.__showThumbs)
 		self.__consoleTexture = None
 		self.__consoleSelected = False
@@ -715,6 +739,9 @@ class HomeScreen(Screen):
 		self.__recentlyAddedText = "Recently Added"
 		self.__recentlyAddedLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__recentlyAddedText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
 		self.__recentlyPlayedLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), "Recently Played", self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
+		
+		self.__recentlyAddedThumbPanel = None
+		self.__recentlyPlayedThumbPanel = None
 		
 		#logging.debug("HomeScreen.init: thumbWidth %d" % self.__thumbWidth)
 		logging.debug("HomeScreen.init: initialised")
@@ -726,11 +753,10 @@ class HomeScreen(Screen):
 		if self.__consoleSelected:
 			sdl2.SDL_RenderCopy(self.renderer, self.__consoleTexture, None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
 			self.__recentlyAddedLabel.draw()
-			for t in self.__recentlyAddedThumbCache:
-				t.draw()
+			self.__recentlyAddedThumbPanel.draw()
 			self.__recentlyPlayedLabel.draw()
-			for t in self.__recentlyPlayedThumbCache:
-				t.draw()
+			if self.__recentlyPlayedThumbPanel:
+				self.__recentlyPlayedThumbPanel.draw()
 		else:
 			self.__descriptionLabel.draw()
 
@@ -745,42 +771,32 @@ class HomeScreen(Screen):
 					sdl2.SDL_DestroyTexture(self.__consoleTexture)
 				self.__consoleTexture = sdl2.SDL_CreateTextureFromSurface(self.renderer, self.app.consoleSurfaces[consoleName])
 				sdl2.SDL_SetTextureAlphaMod(self.__consoleTexture, CONSOLE_TEXTURE_ALPHA)
-				img = Image.open(console.getNoCoverArtImg())
-				img.close()
-				width, height = img.size
-				ratio = float(height) / float(width)
-				thumbWidth = self.__desiredThumbWidth
-				thumbHeight = int(ratio * thumbWidth)
 				self.__headerLabel.setText(consoleName)
-				logging.debug("HomeScreen.drawScreen: destroying recently added textures...")
-				for t in self.__recentlyAddedThumbCache:
-					t.destroy()
-				del self.__recentlyAddedThumbCache[:]
 				# get recently added
 				logging.debug("HomeScreen.drawScreen: getting recently added games for %s..." % consoleName)
-				games = console.getRecentlyAddedGames(self.__showThumbs)
+				games = console.getRecentlyAddedGames(0, self.__showThumbs)
 				thumbX = self.screenRect[0] + self.screenMargin
 				if len(games) > 0:
-					for g in games:
-						self.__recentlyAddedThumbCache.append(self.addUiObject(Thumbnail(self.renderer, thumbX, self.__recentlyAddedLabel.y + self.__recentlyAddedLabel.height + self.__thumbYGap, thumbWidth, thumbHeight, g, self.app.bodyFont, self.app.textColour)))
-						thumbX += thumbWidth + self.__thumbXGap
-					self.__recentlyPlayedLabel.y = self.__recentlyAddedLabel.y + self.__recentlyAddedLabel.height + self.__thumbYGap + self.__recentlyAddedThumbCache[0].height + self.__thumbYGap
+					if self.__recentlyAddedThumbPanel:
+						self.__recentlyAddedThumbPanel.setGames(games)
+					else:
+						self.__recentlyAddedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyAddedLabel.y + self.__recentlyPlayedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
+					self.__recentlyPlayedLabel.y = self.__recentlyAddedThumbPanel.y + self.__recentlyPlayedLabel.height + 10
 				else:
 					self.__recentlyAddedLabel.setText(self.__recentlyAddedText + ": None added")
-				logging.debug("HomeScreen.drawScreen: destorying recently played textures...")
-				for t in self.__recentlyPlayedThumbCache:
-					t.destroy()
-				del self.__recentlyPlayedThumbCache[:]
 				# get recently added
 				logging.debug("HomeScreen.drawScreen: getting recently played games for %s..." % consoleName)
-				games = console.getRecentlyPlayedGames(self.__showThumbs)
+				games = console.getRecentlyPlayedGames(0, self.__showThumbs)
 				if len(games) > 0:
-					thumbX = self.screenRect[0] + self.screenMargin
-					for g in games:
-						self.__recentlyPlayedThumbCache.append(self.addUiObject(Thumbnail(self.renderer, thumbX, self.__recentlyPlayedLabel.y + self.__recentlyPlayedLabel.height + self.__thumbYGap, thumbWidth, thumbHeight, g, self.app.bodyFont, self.app.textColour)))
-						thumbX += thumbWidth + self.__thumbXGap
+					if self.__recentlyPlayedThumbPanel:
+						self.__recentlyPlayedThumbPanel.setGames(games)
+					else:
+						self.__recentlyPlayedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyPlayedLabel.y + self.__recentlyPlayedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
 					self.__recentlyPlayedLabel.setVisible(True)
+					self.__recentlyPlayedThumbPanel.setVisible(True)
 				else:
+					if self.__recentlyPlayedThumbPanel:
+						self.__recentlyPlayedThumbPanel.setVisible(False)
 					self.__recentlyPlayedLabel.setVisible(False)
 					
 				self.__consoleSelected = True

@@ -22,6 +22,7 @@
 
 from ctypes import c_int, c_uint32, byref
 from collections import deque
+from PIL import Image
 import logging
 import sdl2
 import sdl2.sdlimage
@@ -712,3 +713,47 @@ class Thumbnail(UIObject):
 		if self.__coverart == None:
 			self.__coverart = game.getConsole().getNoCoverArtImg()
 		self.__coverartTexture = None
+		
+class ThumbnailPanel(UIObject):
+	
+	def __init__(self, renderer, x, y, width, games, font, txtColour, selectedColour, gap=10, drawLabels=True, maxThumbs=0):
+		super(ThumbnailPanel, self).__init__(renderer, x, y, width, 1) # height is overridden later
+		self.__gap = gap
+		self.__thumbnails = []
+		self.__font = font
+		self.__txtColour = txtColour
+		self.__selectedColour = selectedColour
+		self.__drawLabels = drawLabels
+		self.__maxThumbs = maxThumbs
+		self.setGames(games)
+			
+	def draw(self):
+		if self.visible:
+			for t in self.__thumbnails:
+				t.draw()
+			
+	def destroy(self):
+		logging.debug("ThumbnailPanel.destory: destroying...")
+		for t in self.__thumbnails:
+			t.destroy()
+			
+	def setGames(self, games):
+		self.__games = games
+		if self.__maxThumbs > 0:
+			maxThumbs = self.__maxThumbs
+		else:
+			maxThumbs = len(games)
+		desiredThumbWidth = int((self.width - (maxThumbs * self.__gap)) / maxThumbs)
+		img = Image.open(games[0].getConsole().getNoCoverArtImg())
+		img.close()
+		w, h = img.size
+		ratio = float(h) / float(w)
+		self.__thumbWidth = desiredThumbWidth
+		self.__thumbHeight = int(ratio * self.__thumbWidth)
+		for t in self.__thumbnails:
+			t.destroy()
+		self.__thumbnails = []
+		currentX = self.x
+		for g in self.__games:
+			self.__thumbnails.append(Thumbnail(self.renderer, currentX, self.y, self.__thumbWidth, self.__thumbHeight, g, self.__font, self.__txtColour, self.__drawLabels))
+			currentX += self.__thumbWidth + self.__gap

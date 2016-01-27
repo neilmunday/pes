@@ -212,9 +212,6 @@ class Console(Record):
 		self.__imgCacheDir = imgCacheDir
 		self.__gameTotal = None
 		self.__ignoreRoms = []
-		self.__recentlyAdded = None
-		self.__recentlyPlayed = None
-		self.__mostPlayed = None
 		
 	def addIgnoreRom(self, rom):
 		if rom not in self.__ignoreRoms:
@@ -280,44 +277,52 @@ class Console(Record):
 	def getNoCoverArtImg(self):
 		return self.__noCoverArtImg
 	
-	def getMostPlayedGames(self, limit=10):
-		if self.__mostPlayed == None:
-			self.connect()
-			self.__mostPlayed = []
-			cur = self.doQuery('SELECT `game_id` FROM `games` WHERE `console_id` = %d AND `play_count` > 0 ORDER BY `play_count` DESC LIMIT 0,%d;' % (self.getId(), limit))
-			while True:
-				row = cur.fetchone()
-				if row == None:
-					break
-				self.__mostPlayed.append(Game(row['game_id'], self.getDb(), self))
-			self.disconnect()
-		return self.__mostPlayed
+	def getMostPlayedGames(self, limit=0, count=0):
+		self.connect()
+		mostPlayed = []
+		query = 'SELECT `game_id` FROM `games` WHERE `console_id` = %d AND `play_count` > 0 ORDER BY `play_count`' % self.getId()
+		if limit >= 0 and count > 0:
+			query += ' LIMIT %d, %d' % (limit, count)
+		cur = self.doQuery(query)
+		while True:
+			row = cur.fetchone()
+			if row == None:
+				break
+			mostPlayed.append(Game(row['game_id'], self.getDb(), self))
+		self.disconnect()
+		return mostPlayed
 	
-	def getRecentlyAddedGames(self, limit=10):
-		if self.__recentlyAdded == None:
-			self.connect()
-			self.__recentlyAdded = []
-			cur = self.doQuery('SELECT `game_id` FROM `games` WHERE `console_id` = %d ORDER BY `added` DESC LIMIT 0,%d;' % (self.getId(), limit))
-			while True:
-				row = cur.fetchone()
-				if row == None:
-					break
-				self.__recentlyAdded.append(Game(row['game_id'], self.getDb(), self))
-			self.disconnect()
-		return self.__recentlyAdded
+	def getRecentlyAddedGames(self, limit=0, count=0):
+		self.connect()
+		recentlyAdded = []
+		query = 'SELECT `game_id` FROM `games` WHERE `console_id` = %d ORDER BY `added`, UPPER(`name`)' % self.getId()
+		if limit >= 0 and count > 0:
+			query += ' LIMIT %d, %d' % (limit, count)
+		query += ';'
+		cur = self.doQuery(query)
+		while True:
+			row = cur.fetchone()
+			if row == None:
+				break
+			recentlyAdded.append(Game(row['game_id'], self.getDb(), self))
+		self.disconnect()
+		return recentlyAdded
 	
-	def getRecentlyPlayedGames(self, limit=10):
-		if self.__recentlyPlayed == None:
-			self.connect()
-			self.__recentlyPlayed = []
-			cur = self.doQuery('SELECT `game_id` FROM `games` WHERE `console_id` = %d AND `last_played` > -1 ORDER BY `last_played` DESC LIMIT 0,%d;' % (self.getId(), limit))
-			while True:
-				row = cur.fetchone()
-				if row == None:
-					break
-				self.__recentlyPlayed.append(Game(row['game_id'], self.getDb(), self))
-			self.disconnect()
-		return self.__recentlyPlayed
+	def getRecentlyPlayedGames(self, limit=0, count=0):
+		self.connect()
+		recentlyPlayed = []
+		query = 'SELECT `game_id` FROM `games` WHERE `console_id` = %d AND `last_played` > -1 ORDER BY `last_played`' % self.getId()
+		if limit >= 0 and count > 0:
+			query += ' LIMIT %d, %d' % (limit, count)
+		query += ';'
+		cur = self.doQuery(query)
+		while True:
+			row = cur.fetchone()
+			if row == None:
+				break
+			recentlyPlayed.append(Game(row['game_id'], self.getDb(), self))
+		self.disconnect()
+		return recentlyPlayed
 
 	def getRomDir(self):
 		return self.__romDir
@@ -327,9 +332,6 @@ class Console(Record):
 	
 	def refresh(self):
 		super(Console, self).refresh()
-		self.__mostPlayed = None
-		self.__recentlyAdded = None
-		self.__recentlyPlayed = None
 		self.__gameTotal = None
 		self.__games = None
 
