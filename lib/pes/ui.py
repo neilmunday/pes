@@ -302,7 +302,7 @@ class Button(UIObject):
 			
 class Label(UIObject):
 	
-	def __init__(self, renderer, x, y, text, font, colour, bgColour=None, fixedWidth=0, fixedHeight=0, autoScroll=False):
+	def __init__(self, renderer, x, y, text, font, colour, bgColour=None, fixedWidth=0, fixedHeight=0, autoScroll=False, bgAlpha=255):
 		self.__text = text
 		self.__colour = colour
 		self.__font = font
@@ -325,6 +325,7 @@ class Label(UIObject):
 		self.__scrollY = 0
 		self.__scrollTick = 0
 		self.__firstDraw = True
+		self.__bgAlpha = bgAlpha
 		self.setBackgroundColour(bgColour)
 		
 	def destroy(self):
@@ -341,7 +342,7 @@ class Label(UIObject):
 		if self.visible:
 			super(Label, self).draw()
 			if self.__drawBackground:
-				sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__bgColour.r, self.__bgColour.g, self.__bgColour.b, 255)
+				sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__bgColour.r, self.__bgColour.g, self.__bgColour.b, self.__bgAlpha)
 			if self.__texture == None and self.__surface != None:
 					self.__texture = sdl2.SDL_CreateTextureFromSurface(self.renderer, self.__surface)
 					sdl2.SDL_FreeSurface(self.__surface)
@@ -422,8 +423,13 @@ class List(UIObject):
 	LISTEN_ITEM_SELECTED = 3
 	LISTEN_ITEM_INSERTED = 4
 	
-	def __init__(self, renderer, x, y, width, height, menu, font, colour, selectedColour, selectedBgColour, selectedBgColourNoFocus):
+	SCROLLBAR_AUTO = 1
+	SCROLLBAR_DISABLED = 2
+	SCROLLBAR_ENABLED = 3
+	
+	def __init__(self, renderer, x, y, width, height, menu, font, colour, selectedColour, selectedBgColour, selectedBgColourNoFocus, showScrollbarPref=1, drawBackground=False):
 		super(List, self).__init__(renderer,x, y, width, height)
+		self.__drawBackground = drawBackground
 		self.__menu = menu
 		self.__font = font
 		self.__colour = colour
@@ -435,11 +441,18 @@ class List(UIObject):
 		self.__menuCount = self.__menu.getCount()
 		if self.__visibleMenuItems > self.__menuCount:
 			self.__visibleMenuItems = self.__menuCount
+		self.__showScrollbarPref = showScrollbarPref
+		if self.__showScrollbarPref == List.SCROLLBAR_ENABLED or (self.__showScrollbarPref == List.SCROLLBAR_AUTO and self.__menuCount > self.__visibleMenuItems):
+			self.__setupScrollbar()
+		else:
+			self.__labelX = self.x
+			self.__labelWidth = self.width
+			self.__showScrollbar = False
 		self.__labels = []
-		self.__labels.append(Label(self.renderer, self.x, y, self.__menu.getItem(0).getText(), self.__font, self.__selectedColour, self.__selectedBgColour, fixedWidth=width, fixedHeight=self.__fontHeight))
+		self.__labels.append(Label(self.renderer, self.__labelX, y, self.__menu.getItem(0).getText(), self.__font, self.__selectedColour, self.__selectedBgColour, fixedWidth=self.__labelWidth, fixedHeight=self.__fontHeight))
 		labelY = y + self.__fontHeight
 		for i in xrange(1, self.__visibleMenuItems):
-			self.__labels.append(Label(self.renderer, self.x, labelY, self.__menu.getItem(i).getText(), self.__font, self.__colour, fixedWidth=width, fixedHeight=self.__fontHeight))
+			self.__labels.append(Label(self.renderer, self.__labelX, labelY, self.__menu.getItem(i).getText(), self.__font, self.__colour, fixedWidth=self.__labelWidth, fixedHeight=self.__fontHeight))
 			labelY += self.__fontHeight
 		self.__firstMenuItem = 0
 		self.__labelIndex = 0
@@ -470,11 +483,15 @@ class List(UIObject):
 				if self.__menu.getItem(i).isToggled():
 					sdl2.sdlgfx.filledCircleRGBA(self.renderer, l.x - 10, self.__toggleCenterY + l.y, self.__toggleRad, self.__colour.r, self.__colour.g, self.__colour.b, 255)
 				i += 1
+			if self.__drawBackground:
+				sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__selectedBgColourNoFocus.r, self.__selectedBgColourNoFocus.g, self.__selectedBgColourNoFocus.b, 50)
+			if self.__showScrollbar:
+				sdl2.sdlgfx.boxRGBA(self.renderer, self.__sliderX, self.__sliderY, self.__sliderX + self.__sliderWidth, self.__sliderY + self.__sliderHeight, self.__selectedColour.r, self.__selectedColour.g, self.__selectedColour.b, 50)
+				
 			if self.__checkScrollEvent:
 				if sdl2.timer.SDL_GetTicks() - self.__lastScrollEvent > 100:
 					self.__fireListenEvent(List.LISTEN_ITEM_SELECTED, self.__menu.getSelectedItem())
 					self.__checkScrollEvent = False
-				
 	
 	def __fireListenEvent(self, eventType, item):
 		for l in self.__listeners:
@@ -508,6 +525,8 @@ class List(UIObject):
 					self.__menu.setSelected(menuIndex, fireEvent=False)
 					self.__lastScrollEvent = sdl2.timer.SDL_GetTicks()
 					self.__checkScrollEvent = True
+					if self.__showScrollbar:
+						self.__updateScrollbar()
 				elif event.key.keysym.sym == sdl2.SDLK_UP:
 					#logging.debug("List.processEvent: key event: UP")
 					menuIndex = self.__menu.getSelectedIndex()
@@ -532,6 +551,8 @@ class List(UIObject):
 					self.__menu.setSelected(menuIndex, fireEvent=False)
 					self.__lastScrollEvent = sdl2.timer.SDL_GetTicks()
 					self.__checkScrollEvent = True
+					if self.__showScrollbar:
+						self.__updateScrollbar()
 				elif event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER:
 					logging.debug("List.processEvent: key event: RETURN")
 					m = self.__menu.getSelectedItem()
@@ -551,9 +572,14 @@ class List(UIObject):
 			self.__visibleMenuItems = int(self.height / self.__fontHeight)
 			if self.__visibleMenuItems > self.__menuCount:
 				self.__visibleMenuItems = self.__menuCount
+			else:
+				if self.__showScrollbarPref == List.SCROLLBAR_AUTO or self.__showScrollbarPref == List.SCROLLBAR_ENABLED:
+					self.__setupScrollbar()
 			labelLen = len(self.__labels)
 			if labelLen < self.__visibleMenuItems:
-				self.__labels.append(Label(self.renderer, self.x, (labelLen * self.__fontHeight) + self.y, item.getText(), self.__font, self.__colour, fixedWidth=self.width, fixedHeight=self.__fontHeight))
+				self.__labels.append(Label(self.renderer, self.__labelX, (labelLen * self.__fontHeight) + self.y, item.getText(), self.__font, self.__colour, fixedWidth=self.__labelWidth, fixedHeight=self.__fontHeight))
+				if self.__showScrollbar:
+					self.__sliderHeight = int((float(self.__visibleMenuItems) / float(self.__menuCount)) * self.__scrollbarHeight)
 			self.__fireListenEvent(List.LISTEN_ITEM_ADDED, item)
 		elif eventType == Menu.LISTEN_ITEM_INSERTED:
 			logging.debug("List.processMenuEvent: item inserted")
@@ -561,9 +587,14 @@ class List(UIObject):
 			self.__visibleMenuItems = int(self.height / self.__fontHeight)
 			if self.__visibleMenuItems > self.__menuCount:
 				self.__visibleMenuItems = self.__menuCount
+			else:
+				if self.__showScrollbarPref == List.SCROLLBAR_AUTO or self.__showScrollbarPref == List.SCROLLBAR_ENABLED:
+					self.__setupScrollbar()
 			labelLen = len(self.__labels)
 			if labelLen < self.__visibleMenuItems:
-				self.__labels.append(Label(self.renderer, self.x, (labelLen * self.__fontHeight) + self.y, " ", self.__font, self.__colour, fixedWidth=self.width, fixedHeight=self.__fontHeight))
+				self.__labels.append(Label(self.renderer, self.__labelX, (labelLen * self.__fontHeight) + self.y, " ", self.__font, self.__colour, fixedWidth=self.__labelWidth, fixedHeight=self.__fontHeight))
+				if self.__showScrollbar:
+					self.__sliderHeight = int((float(self.__visibleMenuItems) / float(self.__menuCount)) * self.__scrollbarHeight)
 			# update label text
 			for i in xrange(self.__visibleMenuItems):
 				self.__labels[i].setText(self.__menu.getItem(self.__firstMenuItem + i).getText())
@@ -612,6 +643,26 @@ class List(UIObject):
 					self.__labels[i].setText(self.__menu.getItem(i + self.__firstMenuItem).getText())
 		self.__labels[self.__labelIndex].setBackgroundColour(self.__selectedBgColour)
 		self.__labels[self.__labelIndex].setColour(self.__selectedColour)
+		self.__updateScrollbar()
+		
+	def __setupScrollbar(self):
+		self.__scrollbarWidth = 20
+		self.__scrollbarHeight = self.height
+		self.__scrollbarX = self.x
+		self.__scrollbarY = self.y
+		self.__sliderGap = 2
+		self.__labelX = self.__scrollbarX + self.__scrollbarWidth + 10
+		self.__labelWidth = self.width - self.__scrollbarWidth - 10
+		# work out slider height
+		self.__sliderHeight = int((float(self.__visibleMenuItems) / float(self.__menuCount)) * self.__scrollbarHeight) - (self.__sliderGap * 2)
+		self.__sliderX = self.__scrollbarX + 2
+		self.__sliderWidth = self.__scrollbarWidth - (self.__sliderGap * 2)
+		self.__showScrollbar = True
+		self.__updateScrollbar()
+		
+	def __updateScrollbar(self):
+		if self.__showScrollbar:
+				self.__sliderY = int(((float(self.__menu.getSelectedIndex()) / float(self.__menuCount)) * float(self.__scrollbarHeight - self.__sliderHeight)) + self.__scrollbarY) + self.__sliderGap
 
 class ProgressBar(UIObject):
 	

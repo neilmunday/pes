@@ -465,7 +465,7 @@ class Screen(object):
 		self.wrap = self.screenRect[2] - (self.screenMargin * 2)
 		self.menu.setSelected(0)
 		self.__uiObjects = []
-		self.__menuList = self.addUiObject(List(self.renderer, self.__menuMargin + self.menuRect[0], self.menuRect[1] + self.__menuTopMargin, self.menuRect[2] - (self.__menuMargin * 2), self.menuRect[3] - (self.menuRect[1] + self.__menuTopMargin), self.menu, self.app.menuFont, self.app.menuTextColour, self.app.menuSelectedTextColour, self.app.menuSelectedBgColour, self.app.menuTextColour))
+		self.__menuList = self.addUiObject(List(self.renderer, self.__menuMargin + self.menuRect[0], self.menuRect[1] + self.__menuTopMargin, self.menuRect[2] - (self.__menuMargin * 2), self.menuRect[3] - (self.menuRect[1] + self.__menuTopMargin), self.menu, self.app.menuFont, self.app.menuTextColour, self.app.menuSelectedTextColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_DISABLED))
 		self.__menuList.setFocus(True)
 		
 	def addUiObject(self, o):
@@ -562,10 +562,10 @@ class ConsoleScreen(Screen):
 		self.__gameInfoLabelWidth = self.screenRect[0] + self.screenRect[2] - self.__gameInfoLabelX - 5
 		self.__gameInfoLabelHeight = 5 * sdl2.sdlttf.TTF_FontHeight(self.app.bodyFont)
 		self.__gameInfoLabel = self.addUiObject(Label(self.renderer, self.__gameInfoLabelX, self.__gameInfoLabelY, " ", self.app.bodyFont, self.app.textColour, fixedWidth=self.__gameInfoLabelWidth,
- fixedHeight=self.__gameInfoLabelHeight))
+ fixedHeight=self.__gameInfoLabelHeight, bgColour=self.app.menuTextColour, bgAlpha=50))
 		self.__gameOverviewLabelX = self.__gameInfoLabelX
 		self.__gameOverviewLabelY = self.__gameInfoLabelY + self.__gameInfoLabelHeight
-		self.__gameOverviewLabel = self.addUiObject(Label(self.renderer, self.__gameInfoLabelX, self.__gameOverviewLabelY, " ", self.app.bodyFont, self.app.textColour, fixedWidth=self.__gameInfoLabelWidth, fixedHeight=(self.screenRect[1] + self.screenRect[3] - self.__gameOverviewLabelY), autoScroll=True))
+		self.__gameOverviewLabel = self.addUiObject(Label(self.renderer, self.__gameInfoLabelX, self.__gameOverviewLabelY, " ", self.app.bodyFont, self.app.textColour, fixedWidth=self.__gameInfoLabelWidth, fixedHeight=(self.screenRect[1] + self.screenRect[3] - self.__gameOverviewLabelY), autoScroll=True, bgColour=self.app.menuTextColour, bgAlpha=50))
 		self.refresh()
 		logging.debug("ConsoleScreen.init: initialised for %s" % self.__consoleName)
 		
@@ -667,7 +667,7 @@ class ConsoleScreen(Screen):
 						for g in games:
 							g.refresh()
 							menu.addItem(GameMenuItem(g))
-						self.__allGamesList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour))
+						self.__allGamesList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True))
 						self.__allGamesList.setFocus(True)
 						self.__allGamesList.addListener(self)
 						self.__gameInfoLabel.setText(self.__getGameInfoText(games[0]))
@@ -680,7 +680,7 @@ class ConsoleScreen(Screen):
 						for g in games:
 							g.refresh()
 							menu.addItem(GameMenuItem(g))
-						self.__recentlyAddedGamesList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour))
+						self.__recentlyAddedGamesList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True))
 						self.__recentlyAddedGamesList.setFocus(True)
 						self.__recentlyAddedGamesList.addListener(self)
 						self.__gameInfoLabel.setText(self.__getGameInfoText(games[0]))
