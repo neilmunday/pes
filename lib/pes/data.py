@@ -257,6 +257,21 @@ class Console(Record):
 
 	def getExtensions(self):
 		return self.__extensions
+	
+	def getFavourites(self, limit=0, count=0):
+		self.connect()
+		favourites = []
+		query = 'SELECT `game_id` FROM `games` WHERE `console_id` = %d AND `favourite` = 1 ORDER BY UPPER(`name`)' % self.getId()
+		if limit >= 0 and count > 0:
+			query += ' LIMIT %d, %d' % (limit, count)
+		cur = self.doQuery(query)
+		while True:
+			row = cur.fetchone()
+			if row == None:
+				break
+			favourites.append(Game(row['game_id'], self.getDb(), self))
+		self.disconnect()
+		return favourites
 		
 	def getFavouriteTotal(self):
 		self.connect()
