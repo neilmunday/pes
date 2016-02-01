@@ -479,12 +479,6 @@ class List(UIObject):
 			if event.type == sdl2.SDL_KEYUP:
 				if event.key.keysym.sym == sdl2.SDLK_DOWN or event.key.keysym.sym == sdl2.SDLK_UP:
 					self.__fireListenEvent(List.LISTEN_ITEM_SELECTED, self.__menu.getSelectedItem())
-					# shift labels
-					# only shift them we have stopped scrolling
-					if self.__shiftLabels:
-						for i in xrange(self.__visibleMenuItems):
-							self.__labels[i].setText(self.__menu.getItem(i + self.__firstMenuItem).getText())
-						self.__shiftLabels = False
 			elif event.type == sdl2.SDL_KEYDOWN:
 				if event.key.keysym.sym == sdl2.SDLK_DOWN:
 					#logging.debug("List.processEvent: key event: DOWN")
@@ -497,11 +491,20 @@ class List(UIObject):
 							self.__firstMenuItem = 0
 							self.__labelIndex = 0
 							menuIndex = 0
+							if self.__menuCount > self.__visibleMenuItems:
+								for i in xrange(self.__visibleMenuItems):
+									self.__labels[i].setText(self.__menu.getItem(i + self.__firstMenuItem).getText())
 						else:
 							self.__firstMenuItem += 1
 							menuIndex += 1
-						self.__shiftLabels = True
-						self.__labels[-1].setText(self.__menu.getItem(self.__visibleMenuItems + self.__firstMenuItem - 1).getText())
+							if self.__menuCount > self.__visibleMenuItems:
+								labelY = self.y
+								lbl = self.__labels.popleft()
+								lbl.setText(self.__menu.getItem(self.__firstMenuItem - 1 + self.__visibleMenuItems).getText())
+								self.__labels.append(lbl)
+								for l in self.__labels:
+									l.y = labelY
+									labelY += self.__fontHeight
 					else:
 						self.__labelIndex += 1
 						menuIndex += 1
@@ -520,11 +523,20 @@ class List(UIObject):
 							self.__firstMenuItem = self.__menuCount - self.__visibleMenuItems
 							self.__labelIndex = self.__visibleMenuItems - 1
 							menuIndex = self.__menuCount - 1
+							if self.__menuCount > self.__visibleMenuItems:
+								for i in xrange(self.__visibleMenuItems):
+									self.__labels[i].setText(self.__menu.getItem(i + self.__firstMenuItem).getText())
 						else:
 							self.__firstMenuItem -= 1
 							menuIndex -= 1
-						self.__shiftLabels = True
-						self.__labels[0].setText(self.__menu.getItem(self.__firstMenuItem).getText())
+							if self.__menuCount > self.__visibleMenuItems:
+								labelY = self.y
+								lbl = self.__labels.pop()
+								lbl.setText(self.__menu.getItem(self.__firstMenuItem).getText())
+								self.__labels.appendleft(lbl)
+								for l in self.__labels:
+									l.y = labelY
+									labelY += self.__fontHeight						
 					else:
 						self.__labelIndex -= 1
 						menuIndex -= 1
@@ -643,7 +655,8 @@ class List(UIObject):
 			for l in self.__labels:
 				l.destroy()
 				del l
-		self.__labels = []
+		#self.__labels = []
+		self.__labels = deque()
 		self.__labels.append(Label(self.renderer, self.__labelX, self.y, self.__menu.getItem(0).getText(), self.__font, self.__selectedColour, self.__selectedBgColour, fixedWidth=self.__labelWidth, fixedHeight=self.__fontHeight))
 		labelY = self.y + self.__fontHeight
 		for i in xrange(1, self.__visibleMenuItems):
