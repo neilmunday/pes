@@ -26,7 +26,7 @@ import sys
 import logging
 
 VERSION_NUMBER = '2.0 (ALPHA)'
-VERSION_DATE = '2016-01'
+VERSION_DATE = '2016-02'
 VERSION_AUTHOR = 'Neil Munday'
 
 baseDir = os.path.abspath('%s%s../../' % (os.path.dirname(os.path.realpath(__file__)), os.sep))
