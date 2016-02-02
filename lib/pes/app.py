@@ -232,6 +232,9 @@ class PESApp(object):
 		progressBarY = splashLabel.y + splashLabel.height + 20
 		loadingThread = PESLoadingThread(self)
 		progressBar = ProgressBar(self.renderer, progressBarX, progressBarY, progressBarWidth, progressBarHeight, self.lineColour, self.menuBackgroundColour)
+		statusLabel = Label(self.renderer, 0, 0, loadingThread.status, self.bodyFont, self.textColour)
+		statusLabel.x = int((self.__dimensions[0] - statusLabel.width) / 2)
+		statusLabel.y = progressBarY + progressBarHeight + 2
 		
 		while running:
 			events = sdl2.ext.get_events()
@@ -298,9 +301,13 @@ class PESApp(object):
 				if loadingThread.done and splashTextureAlpha >= 255:
 					loading = False
 					splashLabel.destroy()
+					statusLabel.destroy()
 				else:
 					progressBar.setProgress(loadingThread.progress)
 					progressBar.draw()
+					if statusLabel.setText(loadingThread.status):
+						statusLabel.x = int((self.__dimensions[0] - statusLabel.width) / 2)
+					statusLabel.draw()
 			else:
 				sdl2.sdlgfx.boxRGBA(self.renderer, 0, 0, self.__dimensions[0], self.__headerHeight, self.headerBackgroundColour.r, self.headerBackgroundColour.g, self.headerBackgroundColour.b, 255) # header bg
 				headerLabel.draw()
@@ -333,6 +340,7 @@ class PESLoadingThread(threading.Thread):
 		self.progress = 0
 		self.started = False
 		self.done = False
+		self.status = "Initialising"
 		
 	def run(self):
 		self.started = True
@@ -341,6 +349,7 @@ class PESLoadingThread(threading.Thread):
 		con = None
 		logging.debug('PESLoadingThread.run: connecting to database: %s' % userPesDb)
 		try:
+			self.status = "Checking database..."
 			con = sqlite3.connect(userPesDb)
 			con.row_factory = sqlite3.Row
 			cur = con.cursor()
@@ -357,6 +366,7 @@ class PESLoadingThread(threading.Thread):
 			cur.execute('SELECT COUNT(*) AS `total` FROM `games_catalogue`')
 			row = cur.fetchone()
 			if row['total'] == 0:
+				self.status = "Populating games catalogue..."
 				logging.info("PESLoadingThread.run: populating games catalogue using file: %s" % userGamesCatalogueFile)
 				catalogueConfigParser = ConfigParser.ConfigParser()
 				catalogueConfigParser.read(userGamesCatalogueFile)
@@ -382,6 +392,7 @@ class PESLoadingThread(threading.Thread):
 				con.close()
 				
 		self.progress = 40
+		self.status = "Loading consoles..."
 		
 		# load consoles
 		configParser = ConfigParser.ConfigParser()
@@ -437,10 +448,13 @@ class PESLoadingThread(threading.Thread):
 				return
 			
 		self.progress = 60
+		self.status = "Loading surfaces..."
 		self.app.initSurfaces()
 		self.progress = 80
+		self.status = "Preparing screens..."
 		self.app.initScreens()
 		self.progress = 100
+		self.status = "Complete!"
 		time.sleep(0.1)
 		pes.event.pushPesEvent(pes.event.EVENT_RESOURCES_LOADED)
 		logging.debug("PESLoadingThread.run: %d complete" % self.progress)
@@ -465,7 +479,7 @@ class Screen(object):
 		self.wrap = self.screenRect[2] - (self.screenMargin * 2)
 		self.menu.setSelected(0)
 		self.__uiObjects = []
-		self.__menuList = self.addUiObject(List(self.renderer, self.__menuMargin + self.menuRect[0], self.menuRect[1] + self.__menuTopMargin, self.menuRect[2] - (self.__menuMargin * 2), self.menuRect[3] - (self.menuRect[1] + self.__menuTopMargin), self.menu, self.app.menuFont, self.app.menuTextColour, self.app.menuSelectedTextColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_DISABLED))
+		self.__menuList = self.addUiObject(List(self.renderer, self.__menuMargin + self.menuRect[0], self.menuRect[1] + self.__menuTopMargin, self.menuRect[2] - (self.__menuMargin * 2), self.menuRect[3] - (self.menuRect[1] + self.__menuTopMargin), self.menu, self.app.menuFont, self.app.menuTextColour, self.app.menuSelectedTextColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_DISABLED, labelMargin=0))
 		self.__menuList.setFocus(True)
 		
 	def addUiObject(self, o):
@@ -679,7 +693,7 @@ class ConsoleScreen(Screen):
 				if selectedText == "All" and self.__allGamesList:
 					self.__allGamesList.processEvent(event)
 				elif selectedText == "Recently Added" and self.__recentlyAddedGamesList:
-					self.__recentlyAddedGames.processEvent(event)
+					self.__recentlyAddedGamesList.processEvent(event)
 				elif selectedText == "Most Played" and self.__mostPlayedList:
 					self.__mostPlayedList.processEvent(event)
 				elif selectedText == "Recently Played" and self.__recentlyPlayedList:
@@ -693,8 +707,10 @@ class ConsoleScreen(Screen):
 						menu = Menu([])
 						for g in self.__allGames:
 							g.refresh()
-							menu.addItem(GameMenuItem(g))
-						self.__allGamesList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True))
+							m = GameMenuItem(g, toggable=True)
+							m.toggle(g.isFavourite())
+							menu.addItem(m)
+						self.__allGamesList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
 						self.__allGamesList.setFocus(True)
 						self.__allGamesList.addListener(self)
 						self.__gameInfoLabel.setText(self.__getGameInfoText(self.__allGames[0]))
@@ -704,8 +720,10 @@ class ConsoleScreen(Screen):
 						menu = Menu([])
 						for g in self.__recentlyAddedGames:
 							g.refresh()
-							menu.addItem(GameMenuItem(g))
-						self.__recentlyAddedGamesList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True))
+							m = GameMenuItem(g, toggable=True)
+							m.toggle(g.isFavourite())
+							menu.addItem(m)
+						self.__recentlyAddedGamesList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
 						self.__recentlyAddedGamesList.setFocus(True)
 						self.__recentlyAddedGamesList.addListener(self)
 						self.__gameInfoLabel.setText(self.__getGameInfoText(self.__recentlyAddedGames[0]))
@@ -716,8 +734,10 @@ class ConsoleScreen(Screen):
 							menu = Menu([])
 							for g in self.__mostPlayedGames:
 								g.refresh()
-								menu.addItem(GameMenuItem(g))
-							self.__mostPlayedList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True))
+								m = GameMenuItem(g, toggable=True)
+								m.toggle(g.isFavourite())
+								menu.addItem(m)
+							self.__mostPlayedList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
 							self.__mostPlayedList.setFocus(True)
 							self.__mostPlayedList.addListener(self)
 							self.__gameInfoLabel.setText(self.__getGameInfoText(self.__mostPlayedGames[0]))
@@ -728,8 +748,10 @@ class ConsoleScreen(Screen):
 							menu = Menu([])
 							for g in self.__recentlyPlayedGames:
 								g.refresh()
-								menu.addItem(GameMenuItem(g))
-							self.__recentlyPlayedList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True))
+								m = GameMenuItem(g, toggable=True)
+								m.toggle(g.isFavourite())
+								menu.addItem(m)
+							self.__recentlyPlayedList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
 							self.__recentlyPlayedList.setFocus(True)
 							self.__recentlyPlayedList.addListener(self)
 							self.__gameInfoLabel.setText(self.__getGameInfoText(self.__recentlyPlayedGames[0]))
@@ -740,8 +762,10 @@ class ConsoleScreen(Screen):
 							menu = Menu([])
 							for g in self.__favouriteGames:
 								g.refresh()
-								menu.addItem(GameMenuItem(g))
-							self.__favouritesList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True))
+								m = GameMenuItem(g, toggable=True)
+								m.toggle(g.isFavourite())
+								menu.addItem(m)
+							self.__favouritesList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
 							self.__favouritesList.setFocus(True)
 							self.__favouritesList.addListener(self)
 							self.__gameInfoLabel.setText(self.__getGameInfoText(self.__favouriteGames[0]))
@@ -752,14 +776,28 @@ class ConsoleScreen(Screen):
 						self.__allGamesList.processEvent(event)
 					elif selectedText == "Recently Added":
 						self.__recentlyAddedGamesList.processEvent(event)
+					elif selectedText == "Favourites":
+						if self.__favouritesList:
+							self.__favouritesList.processEvent(event)
+					elif selectedText == "Most Played":
+						if self.__mostPlayedList:
+							self.__mostPlayedList.processEvent(event)
+					elif selectedText == "Recently Played":
+						if self.__recentlyPlayedList:
+							self.__recentlyPlayedList.processEvent(event)
 						
-	def processListEvent(self, eventType, item):
+	def processListEvent(self, uiList, eventType, item):
 		if eventType == List.LISTEN_ITEM_SELECTED:
 			if self.__previewThumbnail:
 				game = item.getGame()
 				self.__previewThumbnail.setGame(game)
 				self.__gameInfoLabel.setText(self.__getGameInfoText(game))
 				self.__gameOverviewLabel.setText(game.getOverview())
+		if eventType == List.LISTEN_ITEM_TOGGLED:
+			g = item.getGame()
+			g.setFavourite(item.isToggled())
+			g.save()
+			self.__updateFavourites()
 						
 	def refresh(self):
 		logging.debug("ConsoleScreen.refresh: reloading content for %s..." % self.__consoleName)
@@ -803,14 +841,19 @@ class ConsoleScreen(Screen):
 				self.__recentlyPlayedList.setMenu(menu)
 			if self.__recentlyPlayedThumbPanel:
 				self.__recentlyPlayedThumbPanel.setGames(self.__recentlyPlayedGames[0:self.__showThumbs])
+		self.__updateFavourites()
+		
+	def __updateFavourites(self):
 		self.__favouriteGames = self.__console.getFavourites()
 		self.__favouriteGamesTotal = len(self.__favouriteGames)
 		if self.__favouriteGamesTotal > 0:
-			if self.__favouriteGames:
+			if self.__favouritesList:
 				menu = Menu([])
 				for g in self.__favouriteGames:
 					g.refresh()
-					menu.addItem(GameMenuItem(g))
+					m = GameMenuItem(g, toggable=True)
+					m.toggle(g.isFavourite())
+					menu.addItem(m)
 				self.__favouritesList.setMenu(menu)
 			if self.__favouriteThumbPanel:
 				self.__favouriteThumbPanel.setGames(self.__favouriteGames[0:self.__showThumbs])
