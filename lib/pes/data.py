@@ -22,9 +22,14 @@
 
 from datetime import datetime
 import logging
+import re
 import sqlite3
 import os
 import sys
+
+def regexp(expr, item):
+    reg = re.compile(expr)
+    return reg.search(item) is not None
 
 class Record(object):
 
@@ -52,6 +57,7 @@ class Record(object):
 			return self.__con
 
 		self.__con = sqlite3.connect(self.__db)
+		self.__con.create_function("REGEXP", 2, regexp)
 		self.__con.row_factory = sqlite3.Row
 		self.__cur = self.__con.cursor()
 		#logging.debug("connected to %s database, using table %s" % (self.__db, self.__table))
@@ -349,6 +355,19 @@ class Console(Record):
 		super(Console, self).refresh()
 		self.__gameTotal = None
 		self.__games = None
+		
+	def searchForGames(self, regexpStr):
+		#regexpStr = regexpStr.replace('.', '\.')
+		games = []
+		self.connect()
+		cur = self.doQuery('SELECT `game_id`, `name` FROM `games` WHERE `console_id` = %d AND `name` REGEXP "%s" ORDER BY UPPER(`name`)' % (self.getId(), regexpStr))
+		while True:
+			row = cur.fetchone()
+			if row == None:
+				break
+			games.append((row['game_id'], row['name']))
+		self.disconnect()
+		return games
 
 class Game(Record):
 
