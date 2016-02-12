@@ -43,7 +43,7 @@ setterm -blank 0
 # set-up environment
 
 libcecPath="/opt/libcec/current/lib"
-pythonPath="/opt/libcec/current/lib/python2.7/dist-packages:$pesInstallDir/lib"
+pythonPath="/opt/libcec/current/lib/python2.7/dist-packages:$pesInstallDir/lib:/opt/python/lib/python2.7/site-packages"
 
 if [ -d $libcecPath ]; then
 	if [ -z $LD_LIBRARY_PATH ]; then
@@ -65,6 +65,7 @@ if [ -d $sdlInstallDir ]; then
 	else
 		export LD_LIBRARY_PATH=$sdlInstallDir:$LD_LIBRARY_PATH
 	fi
+	export PYSDL2_DLL_PATH=$sdlInstallDir
 fi
 
 $pesInstallDir/lib/pes/main.py $@
