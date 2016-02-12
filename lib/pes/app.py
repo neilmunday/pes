@@ -62,45 +62,39 @@ import urllib2
 
 CONSOLE_TEXTURE_ALPHA = 50
 
+def mapButtonToKey(button):
+	if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+		return sdl2.SDLK_DOWN
+	if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP:
+		return sdl2.SDLK_UP
+	if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+		return sdl2.SDLK_LEFT
+	if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+		return sdl2.SDLK_RIGHT
+	if button == sdl2.SDL_CONTROLLER_BUTTON_A:
+		return sdl2.SDLK_RETURN
+	if button == sdl2.SDL_CONTROLLER_BUTTON_B:
+		return sdl2.SDLK_BACKSPACE
+	if button == sdl2.SDL_CONTROLLER_BUTTON_BACK: # select button
+		return sdl2.SDLK_s
+	if button == sdl2.SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+		return sdl2.SDLK_PAGEUP
+	if button == sdl2.SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+		return sdl2.SDLK_PAGEDOWN
+	return None
+
 def mapControlPadEvent(event, eventType):
-	if event.cbutton.button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+	key = mapButtonToKey(event.cbutton.button)
+	if key:
 		e = sdl2.SDL_Event()
 		e.type = eventType
-		e.key.keysym.sym = sdl2.SDLK_DOWN
-		return e
-	if event.cbutton.button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP:
-		e = sdl2.SDL_Event()
-		e.type = eventType
-		e.key.keysym.sym = sdl2.SDLK_UP
-		return e
-	if event.cbutton.button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT:
-		e = sdl2.SDL_Event()
-		e.type = eventType
-		e.key.keysym.sym = sdl2.SDLK_LEFT
-		return e
-	if event.cbutton.button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
-		e = sdl2.SDL_Event()
-		e.type = eventType
-		e.key.keysym.sym = sdl2.SDLK_RIGHT
-		return e
-	if event.cbutton.button == sdl2.SDL_CONTROLLER_BUTTON_A:
-		e = sdl2.SDL_Event()
-		e.type = eventType
-		e.key.keysym.sym = sdl2.SDLK_RETURN
-		return e
-	if event.cbutton.button == sdl2.SDL_CONTROLLER_BUTTON_B:
-		e = sdl2.SDL_Event()
-		e.type = eventType
-		e.key.keysym.sym = sdl2.SDLK_BACKSPACE
-		return e
-	if event.cbutton.button == sdl2.SDL_CONTROLLER_BUTTON_BACK: # select button
-		e = sdl2.SDL_Event()
-		e.type = eventType
-		e.key.keysym.sym = sdl2.SDLK_s
+		e.key.keysym.sym = key
 		return e
 	return None
 
 class PESApp(object):
+	
+	__CONTROL_PAD_BUTTON_REPEAT = 50 # delay in ms between firing events for button holds
 	
 	def __del__(self):
 		logging.debug("PESApp.del: deleting object")
@@ -146,6 +140,8 @@ class PESApp(object):
 			logging.debug("PESApp.exit: unloading surface for %s..." % console)
 			sdl2.SDL_FreeSurface(surface)
 		logging.debug("PESApp.exit: tidying up...")
+		sdl2.SDL_DestroyTexture(self.__gamepadTexture)
+		sdl2.SDL_DestroyTexture(self.__networkTexture)
 		Thumbnail.destroyTextures()
 		for o in self.__uiObjects:
 			o.destroy()
@@ -188,8 +184,8 @@ class PESApp(object):
 			logging.debug("PESApp.initSurfaces: pre-loaded %s surface from %s" % (c.getName(), c.getImg()))
         
 	def run(self):
-		sdl2.SDL_Init(sdl2.SDL_INIT_EVERYTHING)
-		#sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO | sdl2.SDL_INIT_JOYSTICK | sdl2.SDL_INIT_GAMECONTROLLER)
+		#sdl2.SDL_Init(sdl2.SDL_INIT_EVERYTHING)
+		sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO | sdl2.SDL_INIT_JOYSTICK | sdl2.SDL_INIT_GAMECONTROLLER)
 		sdl2.SDL_ShowCursor(0)
 		sdl2.sdlttf.TTF_Init()
 		imgFlags = sdl2.sdlimage.IMG_INIT_JPG | sdl2.sdlimage.IMG_INIT_PNG
@@ -267,9 +263,22 @@ class PESApp(object):
 		# load joystick database
 		sdl2.SDL_GameControllerAddMappingsFromFile(userGameControllerFile)
 		
+		self.__gamepadTexture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, gamepadImageFile)
+		gamepadTextureWidth, gamepadTextureHeight = getTextureDimensions(self.__gamepadTexture)
+		showGamepadIcon = False
+		
+		self.__networkTexture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, networkImageFile)
+		networkTextureWidth, networkTextureHeight = getTextureDimensions(self.__networkTexture)
+		self.__ip = None
+		defaultInterface = getDefaultInterface()
+		if defaultInterface:
+			self.__ip = getIPAddress(defaultInterface)
+			logging.debug("PESApp.run: default interface: %s, IP address: %s" % (defaultInterface, self.__ip))
+		
 		self.__controlPad = None
 		self.__controlPadIndex = None
 		tick = sdl2.timer.SDL_GetTicks()
+		downTick = tick
 		
 		while running:
 			events = sdl2.ext.get_events()
@@ -278,10 +287,12 @@ class PESApp(object):
 				if self.__controlPad and event.cbutton.which == self.__controlPadIndex:
 					if event.type == sdl2.SDL_CONTROLLERBUTTONDOWN:
 						logging.debug("PESApp.run: player 1 button \"%s\" pressed" % sdl2.SDL_GameControllerGetStringForButton(event.cbutton.button))
+						downTick = sdl2.timer.SDL_GetTicks() + (self.__CONTROL_PAD_BUTTON_REPEAT * 2)
 						e = mapControlPadEvent(event, sdl2.SDL_KEYDOWN)
 						if e:
 							sdl2.SDL_PushEvent(e)
 					elif event.type == sdl2.SDL_CONTROLLERBUTTONUP:
+						buttonDown = False
 						e = mapControlPadEvent(event, sdl2.SDL_KEYUP)
 						if e:
 							sdl2.SDL_PushEvent(e)
@@ -371,6 +382,16 @@ class PESApp(object):
 				dateLabel.setText(now.strftime("%H:%M:%S %d/%m/%Y"))
 				dateLabel.draw()
 				
+				iconX = dateLabel.x - 10
+				
+				if self.__ip:
+					iconX = iconX - networkTextureWidth
+					sdl2.SDL_RenderCopy(self.renderer, self.__networkTexture, None, sdl2.SDL_Rect(iconX, dateLabel.y, networkTextureWidth, networkTextureHeight))
+				
+				if showGamepadIcon:
+					iconX = iconX - gamepadTextureWidth
+					sdl2.SDL_RenderCopy(self.renderer, self.__gamepadTexture, None, sdl2.SDL_Rect(iconX, dateLabel.y, gamepadTextureWidth, gamepadTextureHeight))
+				
 				sdl2.sdlgfx.rectangleRGBA(self.renderer, 0, self.__headerHeight, self.__dimensions[0], self.__headerHeight, self.lineColour.r, self.lineColour.g, self.lineColour.b, 255) # header line
 				
 				# detect joysticks
@@ -379,6 +400,20 @@ class PESApp(object):
 					sdl2.SDL_GameControllerClose(self.__controlPad)
 					self.__controlPad = None
 					self.__controlPadIndex = None
+					showGamepadIcon = False
+				else:
+					# is the user holding down a button?
+					# note: we only care about directional buttons
+					for b in [sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN, sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP]:
+						if sdl2.SDL_GameControllerGetButton(self.__controlPad, b):
+							if sdl2.timer.SDL_GetTicks() - downTick > self.__CONTROL_PAD_BUTTON_REPEAT:
+								downTick = sdl2.timer.SDL_GetTicks()
+								key = mapButtonToKey(b)
+								if key:
+									e = sdl2.SDL_Event()
+									e.type = sdl2.SDL_KEYDOWN
+									e.key.keysym.sym = key
+									sdl2.SDL_PushEvent(e)
 				
 				if sdl2.timer.SDL_GetTicks() - tick > 1000:
 					tick = sdl2.timer.SDL_GetTicks()
@@ -392,10 +427,11 @@ class PESApp(object):
 								if sdl2.SDL_GameControllerGetAttached(c):
 									#logging.debug("PESApp.run: %s is attached at %d" % (sdl2.SDL_GameControllerNameForIndex(i), i))
 									if self.__controlPad == None:
-										logging.debug("PESApp.run: switching player 1 to control pad #%d: %s" % (i, sdl2.SDL_GameControllerNameForIndex(i)))
+										logging.debug("PESApp.run: switching player 1 to control pad #%d: %s (%s)" % (i, sdl2.SDL_GameControllerNameForIndex(i), getJoystickGUIDString(sdl2.SDL_JoystickGetDeviceGUID(i))))
 										self.__controlPad = c
 										self.__controlPadIndex = i
 										close = False
+										showGamepadIcon = True
 								if close:
 									sdl2.SDL_GameControllerClose(c)
 			

@@ -84,6 +84,8 @@ if __name__ == '__main__':
 		checkFile(userGamesCatalogueFile)
 		checkFile(userConsolesConfigFile)
 		checkFile(userGameControllerFile)
+		checkFile(gamepadImageFile)
+		checkFile(networkImageFile)
 		
 		logging.info("loading settings...")
 		checkFile(userPesConfigFile)
@@ -109,6 +111,9 @@ if __name__ == '__main__':
 			fontFile = configParser.get('settings', 'fontFile').replace('%%BASE%%', baseDir)
 			romsDir = configParser.get('settings', 'romsDir').replace('%%HOME%%', userHome)
 			coverartDir = configParser.get('settings', 'coverartDir').replace('%%HOME%%', userHome)
+			checkDir(romsDir)
+			checkDir(coverartDir)
+			checkFile(fontFile)
 			# colour settings
 			backgroundColour = processColour(configParser.get("colours", "background").split(','))
 			if backgroundColour == None:

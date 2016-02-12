@@ -22,6 +22,10 @@
 
 from pes import *
 from Levenshtein import *
+import csv
+import fcntl
+import socket
+import struct
 
 def checkDir(dir):
 	if not os.path.exists(dir):
@@ -34,16 +38,36 @@ def checkFile(file):
 		pesExit("Error: %s does not exist!" % file, True)
 	if not os.path.isfile(file):
 		pesExit("Error: %s is not a file!" % file, True)
+		
+def getDefaultInterface(): 
+	f = open('/proc/net/route') 
+	for i in csv.DictReader(f, delimiter="\t"): 
+		if long(i['Destination'], 16) == 0: 
+			return i['Iface'] 
+	f.close()
+	return None
+
+def getIPAddress(ifname): 
+	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+	return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s', ifname[:15]))[20:24])
 
 # workaround for http://bugs.python.org/issue22273
 # thanks to https://github.com/GreatFruitOmsk/py-sdl2/commit/e9b13cb5a13b0f5265626d02b0941771e0d1d564
-def SDL_JoystickGetGUIDString(guid):
+def getJoystickGUIDString(guid):
 	s = ''
 	for g in guid.data:
 		s += "{:x}".format(g >> 4)
 		s += "{:x}".format(g & 0x0F)
 	return s
-		
+
+def getJoystickDeviceInfoFromGUID(guid):
+	vendorId = guid[8:12]
+	productId = guid[16:20]
+	# swap from big endian to little endian and covert to an int
+	vendorId = int(vendorId.decode('hex')[::-1].encode('hex'), 16)
+	productId = int(productId.decode('hex')[::-1].encode('hex'), 16)
+	return (vendorId, productId)
+
 def initConfig():
 	logging.debug("initialising config...")
 	checkDir(userConfDir)
@@ -60,8 +84,7 @@ def initConfig():
 			if not os.path.exists(dest):
 				logging.debug("copying %s to %s" % (source, dest))
 				shutil.copy(source, dest)
-			
-		
+
 def mkdir(path):
 	if not os.path.exists(path):
 		logging.debug("creating directory: %s" % path)
@@ -114,7 +137,7 @@ def scaleImage((ix, iy), (bx,by)):
 		else:
 			sy = by
 	return (int(sx),int(sy))
-	
+
 #
 #	StringMatcher class sourced from https://github.com/ztane/python-Levenshtein/blob/master/StringMatcher.py
 #	Author: Antti Haapala <antti@haapala.name>

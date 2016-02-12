@@ -572,10 +572,23 @@ class List(UIObject):
 					m.trigger()
 				elif event.key.keysym.sym == sdl2.SDLK_s:
 					self.__menu.toggle(self.__menu.getSelectedIndex(), not self.__menu.getSelectedItem().isToggled())
-				elif event.key.keysym.sym == sdl2.SDLK_PAGEDOWN and self.__allowSelectAll:
-					self.__menu.toggleAll(False)
-				elif event.key.keysym.sym == sdl2.SDLK_PAGEUP and self.__allowSelectAll:
-					self.__menu.toggleAll(True)
+				#elif event.key.keysym.sym == sdl2.SDLK_PAGEDOWN and self.__allowSelectAll:
+				#	self.__menu.toggleAll(False)
+				#elif event.key.keysym.sym == sdl2.SDLK_PAGEUP and self.__allowSelectAll:
+				#	self.__menu.toggleAll(True)
+				elif event.key.keysym.sym == sdl2.SDLK_PAGEDOWN or event.key.keysym.sym == sdl2.SDLK_PAGEUP:
+					menuIndex = self.__menu.getSelectedIndex()
+					if event.key.keysym.sym == sdl2.SDLK_PAGEDOWN:
+						if menuIndex + self.__visibleMenuItems < self.__menuCount:
+							menuIndex = menuIndex + self.__visibleMenuItems
+						else:
+							menuIndex = 0
+					else:
+						if menuIndex - self.__visibleMenuItems >= 0:
+							menuIndex = menuIndex - self.__visibleMenuItems
+						else:
+							menuIndex = self.__menuCount - self.__visibleMenuItems
+					self.__menu.setSelected(menuIndex)
 					
 	def processMenuEvent(self, menu, eventType, item):
 		if eventType == Menu.LISTEN_ITEM_ADDED:

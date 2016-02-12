@@ -88,7 +88,7 @@ class Record(object):
 	def doQuery(self, query):
 		if not self.__con:
 			raise sqlite3.Error('Database %s not connected' % self.__db)
-		logging.debug('Record.doQuery: executing query: %s' % query)
+		#logging.debug('Record.doQuery: executing query: %s' % query)
 		self.__cur.execute(query)
 		return self.__cur
 

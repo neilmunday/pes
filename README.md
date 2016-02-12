@@ -70,6 +70,7 @@ I would like to thank the following people/groups as without them PES would not 
 * [theGamesDB.net](http://thegamesdb.net) for their comprehensive game meta data API
 * All the maintainers of the [Python](https://www.python.org>) programming language in which PES is written
 * Marcus von Appen for [PySDL2](http://pysdl2.readthedocs.org/>) which PES uses to create its GUI
+* [Game-icons.net](http://game-icons.net) for providing some of the icons used by PES
 * The [Raspberry Pi Foundation](http://www.raspberrypi.org)
 * Eric Smith for his many hours of testing, finding bugs, suggesting new features and for supplying graphics for PES
 * Alex Moriarty for finding and fixing bugs in some of PES' set-up scripts.
