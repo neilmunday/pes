@@ -233,6 +233,9 @@ class UIObject(object):
 	def hasFocus(self):
 		return self.__focus
 	
+	def isVisible(self):
+		return self.visible
+	
 	def setAlpha(self, alpha):
 		if alpha < 0 or alpha > 255:
 			raise ValueError("Invalid alpha value!")
