@@ -23,11 +23,11 @@
 #
 # TO DO:
 #
-# - games screens
 # - joystick integration and settings etc.
+# - joystick button repeat
 #
 
-from ctypes import c_int, c_char_p, c_uint32, c_void_p, byref, cast
+from ctypes import c_int, c_char, c_char_p, c_uint32, c_void_p, byref, cast
 from datetime import datetime
 from pes import *
 from pes.data import *
@@ -61,6 +61,44 @@ import urllib
 import urllib2
 
 CONSOLE_TEXTURE_ALPHA = 50
+
+def mapControlPadEvent(event, eventType):
+	if event.cbutton.button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+		e = sdl2.SDL_Event()
+		e.type = eventType
+		e.key.keysym.sym = sdl2.SDLK_DOWN
+		return e
+	if event.cbutton.button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP:
+		e = sdl2.SDL_Event()
+		e.type = eventType
+		e.key.keysym.sym = sdl2.SDLK_UP
+		return e
+	if event.cbutton.button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+		e = sdl2.SDL_Event()
+		e.type = eventType
+		e.key.keysym.sym = sdl2.SDLK_LEFT
+		return e
+	if event.cbutton.button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+		e = sdl2.SDL_Event()
+		e.type = eventType
+		e.key.keysym.sym = sdl2.SDLK_RIGHT
+		return e
+	if event.cbutton.button == sdl2.SDL_CONTROLLER_BUTTON_A:
+		e = sdl2.SDL_Event()
+		e.type = eventType
+		e.key.keysym.sym = sdl2.SDLK_RETURN
+		return e
+	if event.cbutton.button == sdl2.SDL_CONTROLLER_BUTTON_B:
+		e = sdl2.SDL_Event()
+		e.type = eventType
+		e.key.keysym.sym = sdl2.SDLK_BACKSPACE
+		return e
+	if event.cbutton.button == sdl2.SDL_CONTROLLER_BUTTON_BACK: # select button
+		e = sdl2.SDL_Event()
+		e.type = eventType
+		e.key.keysym.sym = sdl2.SDLK_s
+		return e
+	return None
 
 class PESApp(object):
 	
@@ -96,13 +134,7 @@ class PESApp(object):
 		self.textColour = sdl2.SDL_Color(textColour[0], textColour[1], textColour[2])
 		
 		self.__headerHeight = 30
-		#self.__footerHeight = self.__headerHeight
 		self.__footerHeight = 0
-		
-		#self.joystickTotal = SDLJoystick.SDL_NumJoysticks()
-		#print "Joysticks: %d " % self.joystickTotal
-		#for i in range(0, self.joystickTotal):
-		#   print SDLJoystick.SDL_JoystickNameForIndex(i)
 		
 	def exit(self, rtn=0):
 		# tidy up
@@ -157,6 +189,7 @@ class PESApp(object):
         
 	def run(self):
 		sdl2.SDL_Init(sdl2.SDL_INIT_EVERYTHING)
+		#sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO | sdl2.SDL_INIT_JOYSTICK | sdl2.SDL_INIT_GAMECONTROLLER)
 		sdl2.SDL_ShowCursor(0)
 		sdl2.sdlttf.TTF_Init()
 		imgFlags = sdl2.sdlimage.IMG_INIT_JPG | sdl2.sdlimage.IMG_INIT_PNG
@@ -192,11 +225,6 @@ class PESApp(object):
 		
 		self.menuRect = [0, self.__headerHeight + 1, self.menuWidth, self.__dimensions[1] - self.__headerHeight + 1]
 		self.screenRect = [self.menuWidth + 1, self.__headerHeight + 1, self.__dimensions[0] - self.menuWidth + 1, self.__dimensions[1] - self.__headerHeight + 1]
-		
-		#self.__joystickTotal = sdl2.joystick.SDL_NumJoysticks()
-        ##print "Joysticks: %d " % self.__joystickTotal
-        ##for i in range(0, self.__joystickTotal):
-        #   print sdl2.joystick.SDL_JoystickNameForIndex(i)
 		
 		logging.debug("PESApp.run: window dimensions: (%d, %d)" % (self.__dimensions[0], self.__dimensions[1]))
 		
@@ -236,9 +264,34 @@ class PESApp(object):
 		statusLabel.x = int((self.__dimensions[0] - statusLabel.width) / 2)
 		statusLabel.y = progressBarY + progressBarHeight + 2
 		
+		# load joystick database
+		sdl2.SDL_GameControllerAddMappingsFromFile(userGameControllerFile)
+		
+		self.__controlPad = None
+		self.__controlPadIndex = None
+		tick = sdl2.timer.SDL_GetTicks()
+		
 		while running:
 			events = sdl2.ext.get_events()
 			for event in events:
+				
+				if self.__controlPad and event.cbutton.which == self.__controlPadIndex:
+					if event.type == sdl2.SDL_CONTROLLERBUTTONDOWN:
+						logging.debug("PESApp.run: player 1 button \"%s\" pressed" % sdl2.SDL_GameControllerGetStringForButton(event.cbutton.button))
+						e = mapControlPadEvent(event, sdl2.SDL_KEYDOWN)
+						if e:
+							sdl2.SDL_PushEvent(e)
+					elif event.type == sdl2.SDL_CONTROLLERBUTTONUP:
+						e = mapControlPadEvent(event, sdl2.SDL_KEYUP)
+						if e:
+							sdl2.SDL_PushEvent(e)
+				
+				# device add/remove isn't reliable at the moment so don't use it for now
+				#if event.type == sdl2.SDL_CONTROLLERDEVICEADDED:
+				#	print "ADDED %d" % event.cdevice.which
+				#elif event.type == sdl2.SDL_CONTROLLERDEVICEREMOVED:
+				#	print "REMOVED %d" % event.cdevice.which
+
 				if event.type == pes.event.EVENT_TYPE:
 					(t, d1, d2) = pes.event.decodePesEvent(event)
 					logging.debug("PESApp.run: trapping PES Event")
@@ -319,8 +372,35 @@ class PESApp(object):
 				dateLabel.draw()
 				
 				sdl2.sdlgfx.rectangleRGBA(self.renderer, 0, self.__headerHeight, self.__dimensions[0], self.__headerHeight, self.lineColour.r, self.lineColour.g, self.lineColour.b, 255) # header line
+				
+				# detect joysticks
+				if self.__controlPad and not sdl2.SDL_GameControllerGetAttached(self.__controlPad):
+					logging.debug("PESApp.run: player 1 control pad no longer attached!")
+					sdl2.SDL_GameControllerClose(self.__controlPad)
+					self.__controlPad = None
+					self.__controlPadIndex = None
+				
+				if sdl2.timer.SDL_GetTicks() - tick > 1000:
+					tick = sdl2.timer.SDL_GetTicks()
+					joystickTotal = sdl2.joystick.SDL_NumJoysticks()
+					if joystickTotal > 0:
+						#logging.debug("PESApp.run: found %d control pads" % joystickTotal)
+						for i in xrange(joystickTotal):
+							if sdl2.SDL_IsGameController(i):
+								close = True
+								c = sdl2.SDL_GameControllerOpen(i)
+								if sdl2.SDL_GameControllerGetAttached(c):
+									#logging.debug("PESApp.run: %s is attached at %d" % (sdl2.SDL_GameControllerNameForIndex(i), i))
+									if self.__controlPad == None:
+										logging.debug("PESApp.run: switching player 1 to control pad #%d: %s" % (i, sdl2.SDL_GameControllerNameForIndex(i)))
+										self.__controlPad = c
+										self.__controlPadIndex = i
+										close = False
+								if close:
+									sdl2.SDL_GameControllerClose(c)
 			
 			sdl2.SDL_RenderPresent(self.renderer)
+			
 		self.exit(0)
 		
 	def setScreen(self, screen, doAppend=True):
@@ -531,8 +611,7 @@ class ConsoleScreen(Screen):
 			MenuItem("Recently Added"),
 			MenuItem("Favourites"),
 			MenuItem("Most Played"),
-			MenuItem("All"),
-			MenuItem("Search"),
+			MenuItem("All")
 		]),
 		menuRect, screenRect)
 		self.__console = console
@@ -618,8 +697,6 @@ class ConsoleScreen(Screen):
 					self.__noGamesFoundLabel.draw()
 			elif selectedText == "All":
 				self.__descriptionLabel.draw()
-			elif selectedText == "Search":
-				self.__descriptionLabel.draw()
 		else:
 			if selectedText == "Recently Added":
 				self.__recentlyAddedGamesList.draw()
@@ -655,8 +732,6 @@ class ConsoleScreen(Screen):
 				self.__previewThumbnail.draw()
 				self.__gameInfoLabel.draw()
 				self.__gameOverviewLabel.draw()
-			elif selectedText == "Search":
-				pass
 			
 	def __getGameInfoText(self, game):
 		lastPlayed = "N/A"
@@ -668,13 +743,16 @@ class ConsoleScreen(Screen):
 	def processEvent(self, event):
 		super(ConsoleScreen, self).processEvent(event)
 		if self.menuActive:
-			if event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_UP or event.key.keysym.sym == sdl2.SDLK_DOWN):
+			if event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_UP or event.key.keysym.sym == sdl2.SDLK_DOWN or event.key.keysym.sym == sdl2.SDLK_BACKSPACE):
 				selectedText = self.menu.getSelectedItem().getText()
 				self.__titleLabel.setText("%s: %s" % (self.__consoleName, selectedText))
 				if selectedText == "All":
-					self.__descriptionLabel.setText("Browse all %d games." % self.__console.getGameTotal())
+					self.__descriptionLabel.setText("Browse all %d games." % self.__console.getGameTotal(), True)
 				elif selectedText == "Search":
-					self.__descriptionLabel.setText("Search for games here.")
+					self.__descriptionLabel.setText("Search for games here.", True)
+					if self.__searchLabel:
+						self.__searchLabel.setFocus(False)
+						self.__searchLabel.setVisible(False)
 				elif selectedText == "Recently Added":
 					if self.__recentlyAddedGamesTotal > 0 and self.__recentlyAddedThumbPanel == None:
 						self.__recentlyAddedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__recentlyAddedGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))

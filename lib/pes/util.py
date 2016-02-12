@@ -34,6 +34,15 @@ def checkFile(file):
 		pesExit("Error: %s does not exist!" % file, True)
 	if not os.path.isfile(file):
 		pesExit("Error: %s is not a file!" % file, True)
+
+# workaround for http://bugs.python.org/issue22273
+# thanks to https://github.com/GreatFruitOmsk/py-sdl2/commit/e9b13cb5a13b0f5265626d02b0941771e0d1d564
+def SDL_JoystickGetGUIDString(guid):
+	s = ''
+	for g in guid.data:
+		s += "{:x}".format(g >> 4)
+		s += "{:x}".format(g & 0x0F)
+	return s
 		
 def initConfig():
 	logging.debug("initialising config...")
