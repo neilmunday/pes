@@ -866,3 +866,4 @@ class ThumbnailPanel(UIObject):
 		for g in self.__games:
 			self.__thumbnails.append(Thumbnail(self.renderer, currentX, self.y, self.__thumbWidth, self.__thumbHeight, g, self.__font, self.__txtColour, self.__drawLabels))
 			currentX += self.__thumbWidth + self.__gap
+		self.height = self.__thumbnails[0].height

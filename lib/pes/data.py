@@ -21,11 +21,13 @@
 #
 
 from datetime import datetime
+from pes import *
 import logging
 import re
 import sqlite3
 import os
 import sys
+import time
 
 def regexp(expr, item):
     reg = re.compile(expr)
@@ -227,7 +229,7 @@ class Console(Record):
 		return self.__apiId
 
 	def getCommand(self, game):
-		return self.__command.replace('%%GAME%%', "\"%s\"" % game.getPath())
+		return self.__command.replace('%%GAME%%', "\"%s\"" % game.getPath()).replace('%%USERCONFDIR%%', userConfDir)
 
 	def getDir(self):
 		return self.__dir
@@ -301,7 +303,7 @@ class Console(Record):
 	def getMostPlayedGames(self, limit=0, count=0):
 		self.connect()
 		mostPlayed = []
-		query = 'SELECT `game_id` FROM `games` WHERE `console_id` = %d AND `play_count` > 0 ORDER BY `play_count`' % self.getId()
+		query = 'SELECT `game_id` FROM `games` WHERE `console_id` = %d AND `play_count` > 0 ORDER BY `play_count` DESC' % self.getId()
 		if limit >= 0 and count > 0:
 			query += ' LIMIT %d, %d' % (limit, count)
 		cur = self.doQuery(query)

@@ -32,7 +32,11 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 pesInstallDir="$DIR/../"
 sdlInstallDir="/opt/sdl2/default/lib"
-script="$DIR/commands.sh"
+pesUserDir="$HOME/pes"
+logDir="$pesUserDir/log"
+script="$pesUserDir/commands.sh"
+
+mkdir -p $logDir
 
 # remove previous script file
 rm -f $script
@@ -70,16 +74,14 @@ fi
 
 $pesInstallDir/lib/pes/main.py $@
 
-#if [ $? -eq 0 ]; then
-#	if [ -e $script ]; then
-#		chmod 700 $script
-#		exec $script
-#	else
-#		echo "$script does not exist!"
-#		exit 1
-#	fi
-#else
-#	echo "PES experienced an error!"
-#	exit 1
-#fi
-
+if [ $? -eq 0 ]; then
+	if [ -e $script ]; then
+		chmod 700 $script
+		exec $script
+	else
+		exit 0
+	fi
+else
+	echo "PES experienced an error!"
+	exit 1
+fi

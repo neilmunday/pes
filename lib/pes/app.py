@@ -182,6 +182,15 @@ class PESApp(object):
 				self.exit(1)
 			self.consoleSurfaces[c.getName()] = surface
 			logging.debug("PESApp.initSurfaces: pre-loaded %s surface from %s" % (c.getName(), c.getImg()))
+			
+	def playGame(self, game):
+		logging.info("loading game: %s" % game.getName())
+		game.setPlayCount()
+		game.setLastPlayed()
+		game.save()
+		launchString = game.getCommand()
+		logging.debug("PESApp.playGame: launch string: %s" % launchString)
+		self.runCommand(launchString)
         
 	def run(self):
 		#sdl2.SDL_Init(sdl2.SDL_INIT_EVERYTHING)
@@ -269,11 +278,11 @@ class PESApp(object):
 		
 		self.__networkTexture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, networkImageFile)
 		networkTextureWidth, networkTextureHeight = getTextureDimensions(self.__networkTexture)
-		self.__ip = None
+		self.ip = None
 		defaultInterface = getDefaultInterface()
 		if defaultInterface:
-			self.__ip = getIPAddress(defaultInterface)
-			logging.debug("PESApp.run: default interface: %s, IP address: %s" % (defaultInterface, self.__ip))
+			self.ip = getIPAddress(defaultInterface)
+			logging.debug("PESApp.run: default interface: %s, IP address: %s" % (defaultInterface, self.ip))
 		
 		self.__controlPad = None
 		self.__controlPadIndex = None
@@ -384,7 +393,7 @@ class PESApp(object):
 				
 				iconX = dateLabel.x - 10
 				
-				if self.__ip:
+				if self.ip:
 					iconX = iconX - networkTextureWidth
 					sdl2.SDL_RenderCopy(self.renderer, self.__networkTexture, None, sdl2.SDL_Rect(iconX, dateLabel.y, networkTextureWidth, networkTextureHeight))
 				
@@ -437,6 +446,17 @@ class PESApp(object):
 			
 			sdl2.SDL_RenderPresent(self.renderer)
 			
+		self.exit(0)
+		
+	def runCommand(self, command):
+		logging.debug("PESApp.runCommand: about to write to: %s" % scriptFile)
+		logging.debug("PESApp.runCommand: command: %s" % command)
+		execLog = "%s%sexec.log" % (userLogDir, os.sep)
+		with open(scriptFile, 'w') as f:
+			f.write("echo running %s\n" % command)
+			f.write("echo see %s for console output\n" % execLog)
+			f.write("%s &> %s\n" % (command, execLog))
+			f.write("exec %s%sbin%spes %s\n" % (baseDir, os.sep, os.sep, ' '.join(sys.argv[1:])))
 		self.exit(0)
 		
 	def setScreen(self, screen, doAppend=True):
@@ -588,6 +608,7 @@ class Screen(object):
 		self.menuRect = menuRect
 		self.screenRect = screenRect
 		self.menuActive = True
+		self.justActivated = False
 		self.__menuMargin = 5
 		self.__menuTopMargin = 10
 		self.__menuItemChanged = False
@@ -620,8 +641,12 @@ class Screen(object):
 				self.menu.getSelectedItem().trigger()
 				self.setMenuActive(False)
 				self.__menuList.setFocus(False)
+				self.justActivated = True
 			else:
+				self.justActivated = False
 				self.__menuList.processEvent(event)
+		elif not self.menuActive:
+			self.justActivated = False
 				
 	def removeUiObject(self, o):
 		if o in self.__uiObjects:
@@ -701,6 +726,15 @@ class ConsoleScreen(Screen):
 		self.refresh()
 		logging.debug("ConsoleScreen.init: initialised for %s" % self.__consoleName)
 		
+	def __createMenu(self, games):
+		menu = Menu([])
+		for g in games:
+			g.refresh()
+			m = GameMenuItem(g, False, True, self.app.playGame, g)
+			m.toggle(g.isFavourite())
+			menu.addItem(m)
+		return menu
+		
 	def __createPreviewThumbnail(self, game):
 		if self.__previewThumbnail == None:
 			self.__previewThumbnail = self.addUiObject(Thumbnail(self.renderer, self.__previewThumbnailX, self.__previewThumbnailY, self.__previewThumbnailWidth, self.__previewThumbnailHeight, game, self.app.bodyFont, self.app.textColour, False))
@@ -717,17 +751,17 @@ class ConsoleScreen(Screen):
 			if selectedText == "Recently Added":
 				self.__recentlyAddedThumbPanel.draw()
 			elif selectedText == "Recently Played":
-				if self.__recentlyPlayedGamesTotal > 0:
+				if self.__recentlyPlayedGamesTotal > 0 and self.__recentlyPlayedThumbPanel:
 					self.__recentlyPlayedThumbPanel.draw()
 				else:
 					self.__noGamesFoundLabel.draw()
 			elif selectedText == "Favourites":
-				if self.__favouriteGamesTotal > 0:
+				if self.__favouriteGamesTotal > 0 and self.__favouriteThumbPanel:
 					self.__favouriteThumbPanel.draw()
 				else:
 					self.__noGamesFoundLabel.draw()
 			elif selectedText == "Most Played":
-				if self.__mostPlayedGamesTotal > 0:
+				if self.__mostPlayedGamesTotal > 0 and self.__mostPlayedThumbPanel:
 					self.__mostPlayedThumbPanel.draw()
 				else:
 					self.__noGamesFoundLabel.draw()
@@ -789,18 +823,6 @@ class ConsoleScreen(Screen):
 					if self.__searchLabel:
 						self.__searchLabel.setFocus(False)
 						self.__searchLabel.setVisible(False)
-				elif selectedText == "Recently Added":
-					if self.__recentlyAddedGamesTotal > 0 and self.__recentlyAddedThumbPanel == None:
-						self.__recentlyAddedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__recentlyAddedGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
-				elif selectedText == "Recently Played":
-					if self.__recentlyPlayedGamesTotal > 0 and self.__recentlyPlayedThumbPanel == None:
-						self.__recentlyPlayedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__recentlyPlayedGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
-				elif selectedText == "Most Played":
-					if self.__mostPlayedGamesTotal > 0 and self.__mostPlayedThumbPanel == None:
-						self.__mostPlayedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__mostPlayedGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
-				elif selectedText == "Favourites":
-					if self.__favouriteGamesTotal > 0 and self.__favouriteThumbPanel == None:
-						self.__favouriteThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__favouriteGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
 		else:
 			if event.type == sdl2.SDL_KEYUP:
 				selectedText = self.menu.getSelectedItem().getText()
@@ -816,28 +838,16 @@ class ConsoleScreen(Screen):
 					self.__favouritesList.processEvent(event)
 			elif event.type == sdl2.SDL_KEYDOWN:
 				selectedText = self.menu.getSelectedItem().getText()
-				if event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER:
+				if self.justActivated and (event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER):
 					if selectedText == "All" and self.__allGamesList == None:
-						menu = Menu([])
-						for g in self.__allGames:
-							g.refresh()
-							m = GameMenuItem(g, toggable=True)
-							m.toggle(g.isFavourite())
-							menu.addItem(m)
-						self.__allGamesList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
+						self.__allGamesList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, self.__createMenu(self.__allGames), self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
 						self.__allGamesList.setFocus(True)
 						self.__allGamesList.addListener(self)
 						self.__gameInfoLabel.setText(self.__getGameInfoText(self.__allGames[0]))
 						self.__gameOverviewLabel.setText(self.__allGames[0].getOverview())
 						self.__createPreviewThumbnail(self.__allGames[0])
 					elif selectedText == "Recently Added" and self.__recentlyAddedGamesList == None:
-						menu = Menu([])
-						for g in self.__recentlyAddedGames:
-							g.refresh()
-							m = GameMenuItem(g, toggable=True)
-							m.toggle(g.isFavourite())
-							menu.addItem(m)
-						self.__recentlyAddedGamesList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
+						self.__recentlyAddedGamesList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, self.__createMenu(self.__recentlyAddedGames), self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
 						self.__recentlyAddedGamesList.setFocus(True)
 						self.__recentlyAddedGamesList.addListener(self)
 						self.__gameInfoLabel.setText(self.__getGameInfoText(self.__recentlyAddedGames[0]))
@@ -845,13 +855,7 @@ class ConsoleScreen(Screen):
 						self.__createPreviewThumbnail(self.__recentlyAddedGames[0])
 					elif selectedText == "Most Played" and self.__mostPlayedList == None:
 						if self.__mostPlayedGamesTotal > 0:
-							menu = Menu([])
-							for g in self.__mostPlayedGames:
-								g.refresh()
-								m = GameMenuItem(g, toggable=True)
-								m.toggle(g.isFavourite())
-								menu.addItem(m)
-							self.__mostPlayedList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
+							self.__mostPlayedList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, self.__createMenu(self.__mostPlayedGames), self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
 							self.__mostPlayedList.setFocus(True)
 							self.__mostPlayedList.addListener(self)
 							self.__gameInfoLabel.setText(self.__getGameInfoText(self.__mostPlayedGames[0]))
@@ -859,13 +863,7 @@ class ConsoleScreen(Screen):
 							self.__createPreviewThumbnail(self.__mostPlayedGames[0])
 					elif selectedText == "Recently Played" and self.__recentlyPlayedList == None:
 						if self.__recentlyPlayedGamesTotal > 0:
-							menu = Menu([])
-							for g in self.__recentlyPlayedGames:
-								g.refresh()
-								m = GameMenuItem(g, toggable=True)
-								m.toggle(g.isFavourite())
-								menu.addItem(m)
-							self.__recentlyPlayedList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
+							self.__recentlyPlayedList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, self.__createMenu(self.__recentlyPlayedGames), self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
 							self.__recentlyPlayedList.setFocus(True)
 							self.__recentlyPlayedList.addListener(self)
 							self.__gameInfoLabel.setText(self.__getGameInfoText(self.__recentlyPlayedGames[0]))
@@ -873,13 +871,7 @@ class ConsoleScreen(Screen):
 							self.__createPreviewThumbnail(self.__recentlyPlayedGames[0])
 					elif selectedText == "Favourites" and self.__favouritesList == None:
 						if self.__favouriteGamesTotal > 0:
-							menu = Menu([])
-							for g in self.__favouriteGames:
-								g.refresh()
-								m = GameMenuItem(g, toggable=True)
-								m.toggle(g.isFavourite())
-								menu.addItem(m)
-							self.__favouritesList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
+							self.__favouritesList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, self.__createMenu(self.__favouriteGames), self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
 							self.__favouritesList.setFocus(True)
 							self.__favouritesList.addListener(self)
 							self.__gameInfoLabel.setText(self.__getGameInfoText(self.__favouriteGames[0]))
@@ -918,43 +910,33 @@ class ConsoleScreen(Screen):
 		self.__allGames = self.__console.getGames()
 		self.__allGamesTotal = len(self.__allGames)
 		if self.__allGamesList:
-			menu = Menu([])
-			for g in self.__allGames:
-				g.refresh()
-				menu.addItem(GameMenuItem(g))
-			self.__allGamesList.setMenu(menu)
+			self.__allGamesList.setMenu(self.__createMenu(self.__allGames))
 		self.__recentlyAddedGames = self.__console.getRecentlyAddedGames()
 		self.__recentlyAddedGamesTotal = len(self.__recentlyAddedGames)
 		if self.__recentlyAddedGamesList:
-			menu = Menu([])
-			for g in self.__recentlyAddedGames:
-				g.refresh()
-				menu.addItem(GameMenuItem(g))
-			self.__recentlyAddedGamesList.setMenu(menu)
+			self.__recentlyAddedGamesList.setMenu(self.__createMenu(self.__recentlyAddedGames))
 		if self.__recentlyAddedThumbPanel:
 			self.__recentlyAddedThumbPanel.setGames(self.__recentlyAddedGames[0:self.__showThumbs])
+		else:
+			self.__recentlyAddedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__recentlyAddedGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
 		self.__mostPlayedGames = self.__console.getMostPlayedGames()
 		self.__mostPlayedGamesTotal = len(self.__mostPlayedGames)
 		if self.__mostPlayedGamesTotal > 0:
 			if self.__mostPlayedList:
-				menu = Menu([])
-				for g in self.__mostPlayedGames:
-					g.refresh()
-					menu.addItem(GameMenuItem(g))
-				self.__mostPlayedList.setMenu(menu)
+				self.__mostPlayedList.setMenu(self.__createMenu(self.__mostPlayedGames))
 			if self.__mostPlayedThumbPanel:
 				self.__mostPlayedThumbPanel.setGames(self.__mostPlayedGames[0:self.__showThumbs])
+			else:
+				self.__mostPlayedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__mostPlayedGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
 		self.__recentlyPlayedGames = self.__console.getRecentlyPlayedGames()
 		self.__recentlyPlayedGamesTotal = len(self.__recentlyPlayedGames)
 		if self.__recentlyPlayedGamesTotal > 0:
 			if self.__recentlyPlayedList:
-				menu = Menu([])
-				for g in self.__recentlyPlayedGames:
-					g.refresh()
-					menu.addItem(GameMenuItem(g))
-				self.__recentlyPlayedList.setMenu(menu)
+				self.__recentlyPlayedList.setMenu(self.__createMenu(self.__recentlyPlayedGames))
 			if self.__recentlyPlayedThumbPanel:
 				self.__recentlyPlayedThumbPanel.setGames(self.__recentlyPlayedGames[0:self.__showThumbs])
+			else:
+				self.__recentlyPlayedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__recentlyPlayedGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
 		self.__updateFavourites()
 		
 	def __updateFavourites(self):
@@ -962,15 +944,11 @@ class ConsoleScreen(Screen):
 		self.__favouriteGamesTotal = len(self.__favouriteGames)
 		if self.__favouriteGamesTotal > 0:
 			if self.__favouritesList:
-				menu = Menu([])
-				for g in self.__favouriteGames:
-					g.refresh()
-					m = GameMenuItem(g, toggable=True)
-					m.toggle(g.isFavourite())
-					menu.addItem(m)
-				self.__favouritesList.setMenu(menu)
+				self.__favouritesList.setMenu(self.__createMenu(self.__favouriteGames))
 			if self.__favouriteThumbPanel:
 				self.__favouriteThumbPanel.setGames(self.__favouriteGames[0:self.__showThumbs])
+			else:
+				self.__favouriteThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__favouriteGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
 		
 	def stop(self):
 		super(ConsoleScreen, self).stop()
@@ -1042,8 +1020,8 @@ class HomeScreen(Screen):
 					if self.__recentlyAddedThumbPanel:
 						self.__recentlyAddedThumbPanel.setGames(games)
 					else:
-						self.__recentlyAddedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyAddedLabel.y + self.__recentlyPlayedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
-					self.__recentlyPlayedLabel.y = self.__recentlyAddedThumbPanel.y + self.__recentlyPlayedLabel.height + 10
+						self.__recentlyAddedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyAddedLabel.y + self.__recentlyAddedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
+					self.__recentlyPlayedLabel.y = self.__recentlyAddedThumbPanel.y + self.__recentlyAddedThumbPanel.height + 50
 				else:
 					self.__recentlyAddedLabel.setText(self.__recentlyAddedText + ": None added")
 				# get recently added
@@ -1199,7 +1177,7 @@ class SettingsScreen(Screen):
 					self.__scanButton.setFocus(False)
 				elif selected == "About":
 					self.__headerLabel.setText(selected)
-					self.__descriptionLabel.setText("Pi Entertainment System version %s\n\nReleased: %s\n\nLicense: Licensed under version 3 of the GNU Public License (GPL)\n\nAuthor: %s\n\nContributors: Eric Smith\n\nCover art: theGamesDB.net\n\nDocumentation: http://pes.mundayweb.com\n\nFacebook: https://www.facebook.com/pientertainmentsystem\n\nHelp: pes@mundayweb.com" % (VERSION_NUMBER, VERSION_DATE, VERSION_AUTHOR), True)
+					self.__descriptionLabel.setText("Pi Entertainment System version %s\n\nReleased: %s\n\nLicense: Licensed under version 3 of the GNU Public License (GPL)\n\nAuthor: %s\n\nContributors: Eric Smith\n\nCover art: theGamesDB.net\n\nDocumentation: http://pes.mundayweb.com\n\nFacebook: https://www.facebook.com/pientertainmentsystem\n\nHelp: pes@mundayweb.com\n\nIP Address: %s" % (VERSION_NUMBER, VERSION_DATE, VERSION_AUTHOR, self.app.ip), True)
 				elif selected == "Joystick Set-Up":
 					self.__headerLabel.setText(selected)
 					self.__descriptionLabel.setText("To be implemented.", True)

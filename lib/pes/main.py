@@ -109,10 +109,12 @@ if __name__ == '__main__':
 		try:
 			# pes settings
 			fontFile = configParser.get('settings', 'fontFile').replace('%%BASE%%', baseDir)
-			romsDir = configParser.get('settings', 'romsDir').replace('%%HOME%%', userHome)
-			coverartDir = configParser.get('settings', 'coverartDir').replace('%%HOME%%', userHome)
-			checkDir(romsDir)
-			checkDir(coverartDir)
+			romsDir = configParser.get('settings', 'romsDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
+			coverartDir = configParser.get('settings', 'coverartDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
+			biosDir = configParser.get('settings', 'biosDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
+			mkdir(romsDir)
+			mkdir(coverartDir)
+			mkdir(biosDir)
 			checkFile(fontFile)
 			# colour settings
 			backgroundColour = processColour(configParser.get("colours", "background").split(','))
