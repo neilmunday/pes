@@ -140,8 +140,10 @@ class PESApp(object):
 			logging.debug("PESApp.exit: unloading surface for %s..." % console)
 			sdl2.SDL_FreeSurface(surface)
 		logging.debug("PESApp.exit: tidying up...")
-		sdl2.SDL_DestroyTexture(self.__gamepadTexture)
-		sdl2.SDL_DestroyTexture(self.__networkTexture)
+		#sdl2.SDL_DestroyTexture(self.__gamepadTexture)
+		#sdl2.SDL_DestroyTexture(self.__networkTexture)
+		self.__gamepadIcon.destroy()
+		self.__networkIcon.destroy()
 		Thumbnail.destroyTextures()
 		for o in self.__uiObjects:
 			o.destroy()
@@ -272,17 +274,17 @@ class PESApp(object):
 		# load joystick database
 		sdl2.SDL_GameControllerAddMappingsFromFile(userGameControllerFile)
 		
-		self.__gamepadTexture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, gamepadImageFile)
-		gamepadTextureWidth, gamepadTextureHeight = getTextureDimensions(self.__gamepadTexture)
-		showGamepadIcon = False
+		self.__gamepadIcon = Icon(self.renderer, dateLabel.x, dateLabel.y, 32, 32, gamepadImageFile)
+		self.__gamepadIcon.setVisible(False)
 		
-		self.__networkTexture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, networkImageFile)
-		networkTextureWidth, networkTextureHeight = getTextureDimensions(self.__networkTexture)
+		self.__networkIcon = Icon(self.renderer, dateLabel.x - 42, dateLabel.y, 32, 32, networkImageFile)
 		self.ip = None
 		defaultInterface = getDefaultInterface()
 		if defaultInterface:
 			self.ip = getIPAddress(defaultInterface)
 			logging.debug("PESApp.run: default interface: %s, IP address: %s" % (defaultInterface, self.ip))
+		else:
+			self.__networkIcon.setVisible(False)
 		
 		self.__controlPad = None
 		self.__controlPadIndex = None
@@ -391,15 +393,17 @@ class PESApp(object):
 				dateLabel.setText(now.strftime("%H:%M:%S %d/%m/%Y"))
 				dateLabel.draw()
 				
-				iconX = dateLabel.x - 10
+				#iconX = dateLabel.x - 10
 				
-				if self.ip:
-					iconX = iconX - networkTextureWidth
-					sdl2.SDL_RenderCopy(self.renderer, self.__networkTexture, None, sdl2.SDL_Rect(iconX, dateLabel.y, networkTextureWidth, networkTextureHeight))
-				
-				if showGamepadIcon:
-					iconX = iconX - gamepadTextureWidth
-					sdl2.SDL_RenderCopy(self.renderer, self.__gamepadTexture, None, sdl2.SDL_Rect(iconX, dateLabel.y, gamepadTextureWidth, gamepadTextureHeight))
+				if self.__networkIcon.visible:
+					self.__networkIcon.draw()
+					
+				if self.__gamepadIcon.visible:
+					if self.__networkIcon.visible:
+						self.__gamepadIcon.x = self.__networkIcon.x - 37
+					else:
+						self.__gamepadIcon.x = dateLabel.x - 42
+					self.__gamepadIcon.draw()
 				
 				sdl2.sdlgfx.rectangleRGBA(self.renderer, 0, self.__headerHeight, self.__dimensions[0], self.__headerHeight, self.lineColour.r, self.lineColour.g, self.lineColour.b, 255) # header line
 				
@@ -409,7 +413,7 @@ class PESApp(object):
 					sdl2.SDL_GameControllerClose(self.__controlPad)
 					self.__controlPad = None
 					self.__controlPadIndex = None
-					showGamepadIcon = False
+					self.__gamepadIcon.setVisible(False)
 				else:
 					# is the user holding down a button?
 					# note: we only care about directional buttons
@@ -440,7 +444,7 @@ class PESApp(object):
 										self.__controlPad = c
 										self.__controlPadIndex = i
 										close = False
-										showGamepadIcon = True
+										self.__gamepadIcon.setVisible(True)
 								if close:
 									sdl2.SDL_GameControllerClose(c)
 			

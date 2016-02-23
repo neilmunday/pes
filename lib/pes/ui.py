@@ -313,6 +313,26 @@ class Button(UIObject):
 				sdl2.sdlgfx.rectangleRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__selectedBgColour.r, self.__selectedBgColour.g, self.__selectedBgColour.b, 255)
 			sdl2.SDL_RenderCopy(self.renderer, self.__texture, sdl2.SDL_Rect(0, 0, self.__labelWidth, self.__labelHeight), sdl2.SDL_Rect(self.__labelX, self.__labelY, self.__labelWidth, self.__labelHeight))
 			
+class Icon(UIObject):
+	
+	def __init__(self, renderer, x, y, width, height, image):
+		super(Icon, self).__init__(renderer, x, y, width, height)
+		self.__image = image
+		self.__texture = None
+		logging.debug("Icon.init: initialised for \"%s\"" % image)
+		
+	def destroy(self):
+		if self.__texture:
+			logging.debug("Icon.destory: destroying icon \"%s\"" % self.__image)
+			sdl2.SDL_DestroyTexture(self.__texture)
+			self.__texture = None
+		
+	def draw(self):
+		if self.visible:
+			if not self.__texture:
+				self.__texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, self.__image)
+			sdl2.SDL_RenderCopy(self.renderer, self.__texture, None, sdl2.SDL_Rect(self.x, self.y, self.width, self.height))
+			
 class Label(UIObject):
 	
 	def __init__(self, renderer, x, y, text, font, colour, bgColour=None, fixedWidth=0, fixedHeight=0, autoScroll=False, bgAlpha=255):
