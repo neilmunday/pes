@@ -132,6 +132,7 @@ class ConsoleTask(object):
 						urlLoaded = True
 					except urllib2.URLError, e:
 						logging.error(e)
+						logging.error("Failed to process: %s" % filename)
 
 					if urlLoaded:
 						bestResultDistance = -1
@@ -179,7 +180,7 @@ class ConsoleTask(object):
 						except ParseError, e:
 							logging.error(e)
 							logging.error("Failed URL was: %s" % gameUrl)
-							logginer.error("Failed content was: %s" % response)
+							logging.error("Failed content was: %s" % response)
 							
 						if dataOk:
 							overviewElement = xmlData.find("Game/Overview")
@@ -211,6 +212,7 @@ class ConsoleTask(object):
 										imageSaved = True
 									except urllib2.URLError, e:
 										logging.error(e)
+										logging.error("Failed to process url: %s" % imgUrl)
 
 									if imageSaved:
 										# resize the image if it is too big
@@ -406,6 +408,7 @@ class UpdateDbThread(Thread):
 				consoleApiName = xmlData.find('Platform/Platform').text
 			except urllib2.URLError, e:
 				logging.error(e)
+				logging.error("Could not get console API name for: %s" % consoleName)
 				
 			files = glob.glob("%s%s*" % (c.getRomDir(), os.sep))
 			fileTotal = len(files)
