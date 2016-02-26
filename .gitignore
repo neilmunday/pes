@@ -6,9 +6,7 @@ bin/commands.sh
 
 # Ignore these files and directories:
 build/
-emulators/BIOS/*.bin
-emulators/RetroArch/
-emulators/mupen64plus/
+emulators/
 images/
 log/
 roms/
