@@ -293,13 +293,16 @@ class Button(UIObject):
 			self.__texture = None
 			
 	def processEvent(self, event):
-		if self.__callback and self.visible and self.hasFocus():
+		if self.visible and self.hasFocus():
 			if event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER):
-				logging.debug("Button.processEvent: calling callback for button \"%s\"" % self.__text)
-				if self.__callbackArgs:
-					self.__callback(*self.__callbackArgs)
+				if self.__callback:
+					logging.debug("Button.processEvent: calling callback for button \"%s\"" % self.__text)
+					if self.__callbackArgs:
+						self.__callback(*self.__callbackArgs)
+					else:
+						self.__callback()
 				else:
-					self.__callback()
+					logging.debug("Button.processEvent: no callback for button \"%s\"" % self.__text)
 			
 	def draw(self):
 		if self.visible:

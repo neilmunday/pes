@@ -61,6 +61,15 @@ import urllib
 import urllib2
 
 CONSOLE_TEXTURE_ALPHA = 50
+JOYSTICK_AXIS_MIN = -32000
+JOYSTICK_AXIS_MAX = 32000
+
+def mapAxisToKey(axis, value):
+	if axis == sdl2.SDL_CONTROLLER_AXIS_LEFTY:
+		if value > 0:
+			return sdl2.SDLK_DOWN
+		return sdl2.SDLK_UP
+	return None
 
 def mapButtonToKey(button):
 	if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN:
@@ -81,9 +90,20 @@ def mapButtonToKey(button):
 		return sdl2.SDLK_PAGEUP
 	if button == sdl2.SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
 		return sdl2.SDLK_PAGEDOWN
+	if button == sdl2.SDL_CONTROLLER_BUTTON_GUIDE:
+		return sdl2.SDLK_HOME
 	return None
 
-def mapControlPadEvent(event, eventType):
+def mapControlPadAxisEvent(event, eventType):
+	key = mapAxisToKey(event.caxis.axis, event.caxis.value)
+	if key:
+		e = sdl2.SDL_Event()
+		e.type = eventType
+		e.key.keysym.sym = key
+		return e
+	return None
+
+def mapControlPadButtonEvent(event, eventType):
 	key = mapButtonToKey(event.cbutton.button)
 	if key:
 		e = sdl2.SDL_Event()
@@ -295,16 +315,26 @@ class PESApp(object):
 			events = sdl2.ext.get_events()
 			for event in events:
 				
-				if self.__controlPad and event.cbutton.which == self.__controlPadIndex:
+				if (event.type == sdl2.SDL_CONTROLLERBUTTONDOWN or event.type == sdl2.SDL_CONTROLLERBUTTONUP) and self.__controlPad and event.cbutton.which == self.__controlPadIndex:
 					if event.type == sdl2.SDL_CONTROLLERBUTTONDOWN:
 						logging.debug("PESApp.run: player 1 button \"%s\" pressed" % sdl2.SDL_GameControllerGetStringForButton(event.cbutton.button))
 						downTick = sdl2.timer.SDL_GetTicks() + (self.__CONTROL_PAD_BUTTON_REPEAT * 2)
-						e = mapControlPadEvent(event, sdl2.SDL_KEYDOWN)
+						e = mapControlPadButtonEvent(event, sdl2.SDL_KEYDOWN)
 						if e:
 							sdl2.SDL_PushEvent(e)
 					elif event.type == sdl2.SDL_CONTROLLERBUTTONUP:
-						buttonDown = False
-						e = mapControlPadEvent(event, sdl2.SDL_KEYUP)
+						e = mapControlPadButtonEvent(event, sdl2.SDL_KEYUP)
+						if e:
+							sdl2.SDL_PushEvent(e)
+				elif event.type == sdl2.SDL_CONTROLLERAXISMOTION and self.__controlPad and event.cbutton.which == self.__controlPadIndex:
+					if event.caxis.value < JOYSTICK_AXIS_MIN or event.caxis.value > JOYSTICK_AXIS_MAX:
+						logging.debug("PESApp.run: player 1 axis \"%s\" activated" % sdl2.SDL_GameControllerGetStringForAxis(event.caxis.axis))
+						downTick = sdl2.timer.SDL_GetTicks() + (self.__CONTROL_PAD_BUTTON_REPEAT * 2)
+						e = mapControlPadAxisEvent(event, sdl2.SDL_KEYDOWN)
+						if e:
+							sdl2.SDL_PushEvent(e)
+					else:
+						e = mapControlPadAxisEvent(event, sdl2.SDL_KEYUP)
 						if e:
 							sdl2.SDL_PushEvent(e)
 				
@@ -347,6 +377,16 @@ class PESApp(object):
 									self.setScreen(self.screenStack[-1], False)
 							else:
 								self.screens[self.screenStack[-1]].setMenuActive(True)
+						elif event.key.keysym.sym == sdl2.SDLK_HOME:
+							logging.debug("PESApp.run: trapping home key event")
+							# pop all screens and return home
+							while len(self.screenStack) > 1:
+								s = self.screenStack.pop()
+								self.screens[s].setMenuActive(False)
+							self.setScreen("Home", False)
+							self.screens["Home"].setMenuActive(True)
+							self.screens["Home"].menu.setSelected(0)
+							self.screens["Home"].update()
 					self.screens[self.screenStack[-1]].processEvent(event)
 								
 				if event.type == sdl2.SDL_KEYDOWN and event.key.keysym.sym == sdl2.SDLK_ESCAPE:
@@ -427,6 +467,19 @@ class PESApp(object):
 									e.type = sdl2.SDL_KEYDOWN
 									e.key.keysym.sym = key
 									sdl2.SDL_PushEvent(e)
+					# is the user holding down an axis?
+					# note: at the moment we only care about the left axis in the Y plane
+					for a in [sdl2.SDL_CONTROLLER_AXIS_LEFTY]:
+						value = sdl2.SDL_GameControllerGetAxis(self.__controlPad, a)
+						if value < JOYSTICK_AXIS_MIN or value > JOYSTICK_AXIS_MAX:
+							if sdl2.timer.SDL_GetTicks() - downTick > self.__CONTROL_PAD_BUTTON_REPEAT:
+								downTick = sdl2.timer.SDL_GetTicks()
+								key = mapAxisToKey(a, value)
+								if key:
+									e = sdl2.SDL_Event()
+									e.type = sdl2.SDL_KEYDOWN
+									e.key.keysym.sym = key
+									sdl2.SDL_PushEvent(e)
 				
 				if sdl2.timer.SDL_GetTicks() - tick > 1000:
 					tick = sdl2.timer.SDL_GetTicks()
@@ -445,6 +498,7 @@ class PESApp(object):
 										self.__controlPadIndex = i
 										close = False
 										self.__gamepadIcon.setVisible(True)
+										print sdl2.SDL_GameControllerMapping(c)
 								if close:
 									sdl2.SDL_GameControllerClose(c)
 			
@@ -655,6 +709,9 @@ class Screen(object):
 	def removeUiObject(self, o):
 		if o in self.__uiObjects:
 			self.__uiObjects.remove(o)
+			
+	def select(self, index):
+		self.menu.setSelected(0, True)
 	
 	def setMenuActive(self, active):
 		self.menuActive = active
@@ -1007,60 +1064,7 @@ class HomeScreen(Screen):
 	def processEvent(self, event):
 		super(HomeScreen, self).processEvent(event)
 		if self.menuActive and event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_UP or event.key.keysym.sym == sdl2.SDLK_DOWN):
-			selected = self.menu.getSelectedItem()
-			if isinstance(selected, ConsoleMenuItem):
-				console = selected.getConsole()
-				consoleName = console.getName()
-				if self.__consoleTexture:
-					sdl2.SDL_DestroyTexture(self.__consoleTexture)
-				self.__consoleTexture = sdl2.SDL_CreateTextureFromSurface(self.renderer, self.app.consoleSurfaces[consoleName])
-				sdl2.SDL_SetTextureAlphaMod(self.__consoleTexture, CONSOLE_TEXTURE_ALPHA)
-				self.__headerLabel.setText(consoleName)
-				# get recently added
-				logging.debug("HomeScreen.drawScreen: getting recently added games for %s..." % consoleName)
-				games = console.getRecentlyAddedGames(0, self.__showThumbs)
-				thumbX = self.screenRect[0] + self.screenMargin
-				if len(games) > 0:
-					if self.__recentlyAddedThumbPanel:
-						self.__recentlyAddedThumbPanel.setGames(games)
-					else:
-						self.__recentlyAddedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyAddedLabel.y + self.__recentlyAddedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
-					self.__recentlyPlayedLabel.y = self.__recentlyAddedThumbPanel.y + self.__recentlyAddedThumbPanel.height + 50
-				else:
-					self.__recentlyAddedLabel.setText(self.__recentlyAddedText + ": None added")
-				# get recently added
-				logging.debug("HomeScreen.drawScreen: getting recently played games for %s..." % consoleName)
-				games = console.getRecentlyPlayedGames(0, self.__showThumbs)
-				if len(games) > 0:
-					if self.__recentlyPlayedThumbPanel:
-						self.__recentlyPlayedThumbPanel.setGames(games)
-					else:
-						self.__recentlyPlayedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyPlayedLabel.y + self.__recentlyPlayedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
-					self.__recentlyPlayedLabel.setVisible(True)
-					self.__recentlyPlayedThumbPanel.setVisible(True)
-				else:
-					if self.__recentlyPlayedThumbPanel:
-						self.__recentlyPlayedThumbPanel.setVisible(False)
-					self.__recentlyPlayedLabel.setVisible(False)
-					
-				self.__consoleSelected = True
-			else:
-				self.__consoleSelected = False
-				if selected.getText() == "Home":
-					self.__headerLabel.setText("Welcome to PES!")
-					self.__descriptionLabel.setText(self.__welcomeText)
-				elif selected.getText() == "Reboot":
-					self.__headerLabel.setText("Reboot")
-					self.__descriptionLabel.setText("Select this menu item to reboot your system.")
-				elif selected.getText() == "Exit":
-					self.__headerLabel.setText("Exit")
-					self.__descriptionLabel.setText("Select this menu item to exit the PES GUI and return to the command line.")
-				elif selected.getText() == "Settings":
-					self.__headerLabel.setText("Settings")
-					self.__descriptionLabel.setText("Select this menu item to customise PES and to add ROMs to PES' database.")
-				elif selected.getText() == "Power Off":
-					self.__headerLabel.setText("Power Off")
-					self.__descriptionLabel.setText("Select this menu item to power off your system.")
+			self.update()
 		
 	def refreshMenu(self):
 		logging.debug("HomeScreen.refreshMenu: refreshing menu contents...")
@@ -1076,11 +1080,68 @@ class HomeScreen(Screen):
 				logging.debug("HomeScreen.refreshMenu: inserting %s" % c.getName())
 				self.menu.insertItem(len(self.menu.getItems()) - 4, ConsoleMenuItem(c, False, False, self.app.setScreen, "Console %s" % c.getName()))
 		self.menu.setSelected(0, deselectAll=True)
+		self.update()
 		
 	def stop(self):
 		super(HomeScreen, self).stop()
 		logging.debug("HomeScreen.stop: deleting textures...")
 		sdl2.SDL_DestroyTexture(self.__consoleTexture)
+		
+	def update(self):
+		selected = self.menu.getSelectedItem()
+		if isinstance(selected, ConsoleMenuItem):
+			console = selected.getConsole()
+			consoleName = console.getName()
+			if self.__consoleTexture:
+				sdl2.SDL_DestroyTexture(self.__consoleTexture)
+			self.__consoleTexture = sdl2.SDL_CreateTextureFromSurface(self.renderer, self.app.consoleSurfaces[consoleName])
+			sdl2.SDL_SetTextureAlphaMod(self.__consoleTexture, CONSOLE_TEXTURE_ALPHA)
+			self.__headerLabel.setText(consoleName)
+			# get recently added
+			logging.debug("HomeScreen.drawScreen: getting recently added games for %s..." % consoleName)
+			games = console.getRecentlyAddedGames(0, self.__showThumbs)
+			thumbX = self.screenRect[0] + self.screenMargin
+			if len(games) > 0:
+				if self.__recentlyAddedThumbPanel:
+					self.__recentlyAddedThumbPanel.setGames(games)
+				else:
+					self.__recentlyAddedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyAddedLabel.y + self.__recentlyAddedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
+				self.__recentlyPlayedLabel.y = self.__recentlyAddedThumbPanel.y + self.__recentlyAddedThumbPanel.height + 50
+			else:
+				self.__recentlyAddedLabel.setText(self.__recentlyAddedText + ": None added")
+			# get recently added
+			logging.debug("HomeScreen.drawScreen: getting recently played games for %s..." % consoleName)
+			games = console.getRecentlyPlayedGames(0, self.__showThumbs)
+			if len(games) > 0:
+				if self.__recentlyPlayedThumbPanel:
+					self.__recentlyPlayedThumbPanel.setGames(games)
+				else:
+					self.__recentlyPlayedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyPlayedLabel.y + self.__recentlyPlayedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
+				self.__recentlyPlayedLabel.setVisible(True)
+				self.__recentlyPlayedThumbPanel.setVisible(True)
+			else:
+				if self.__recentlyPlayedThumbPanel:
+					self.__recentlyPlayedThumbPanel.setVisible(False)
+				self.__recentlyPlayedLabel.setVisible(False)
+				
+			self.__consoleSelected = True
+		else:
+			self.__consoleSelected = False
+			if selected.getText() == "Home":
+				self.__headerLabel.setText("Welcome to PES!")
+				self.__descriptionLabel.setText(self.__welcomeText)
+			elif selected.getText() == "Reboot":
+				self.__headerLabel.setText("Reboot")
+				self.__descriptionLabel.setText("Select this menu item to reboot your system.")
+			elif selected.getText() == "Exit":
+				self.__headerLabel.setText("Exit")
+				self.__descriptionLabel.setText("Select this menu item to exit the PES GUI and return to the command line.")
+			elif selected.getText() == "Settings":
+				self.__headerLabel.setText("Settings")
+				self.__descriptionLabel.setText("Select this menu item to customise PES and to add ROMs to PES' database.")
+			elif selected.getText() == "Power Off":
+				self.__headerLabel.setText("Power Off")
+				self.__descriptionLabel.setText("Select this menu item to power off your system.")
 		
 class SettingsScreen(Screen):
 	
@@ -1108,6 +1169,8 @@ class SettingsScreen(Screen):
 		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__initText, self.app.bodyFont, self.app.textColour, fixedWidth=self.screenRect[2] - self.screenMargin))
 		self.__consoleList = None
 		self.__scanButton = None
+		self.__selectAllButton = None
+		self.__deselectAllButton = None
 
 	def drawScreen(self):
 		super(SettingsScreen, self).drawScreen()
@@ -1139,6 +1202,8 @@ class SettingsScreen(Screen):
 			else:
 				self.__consoleList.draw()
 				self.__scanButton.draw()
+				self.__selectAllButton.draw()
+				self.__deselectAllButton.draw()
 		
 	def processEvent(self, event):
 		selected = self.menu.getSelectedItem().getText()
@@ -1178,6 +1243,8 @@ class SettingsScreen(Screen):
 					self.__updateDatabaseMenu.setSelected(0)
 					if self.__scanButton == None:
 						self.__scanButton = self.addUiObject(Button(self.renderer, self.__consoleList.x + self.__consoleList.width + 200, self.__consoleList.y, 150, 50, "Begin Scan", self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.startScan))
+						self.__selectAllButton = self.addUiObject(Button(self.renderer, self.__scanButton.x, self.__scanButton.y + self.__scanButton.height + 10, 150, 50, "Select All", self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__updateDatabaseMenu.toggleAll, True))
+						self.__deselectAllButton = self.addUiObject(Button(self.renderer, self.__scanButton.x, self.__selectAllButton.y + self.__selectAllButton.height + 10, 150, 50, "Deselect All", self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__updateDatabaseMenu.toggleAll, False))
 					self.__scanButton.setFocus(False)
 				elif selected == "About":
 					self.__headerLabel.setText(selected)
@@ -1198,11 +1265,35 @@ class SettingsScreen(Screen):
 							self.__scanButton.setFocus(False)
 						else:
 							self.__consoleList.processEvent(event)
-							if self.__updateDatabaseMenu.getToggledCount() == 0:
-								self.__scanButton.setVisible(False)
-							else:
-								self.__scanButton.setVisible(True)
-								self.__scanButton.processEvent(event)
+							#if self.__updateDatabaseMenu.getToggledCount() == 0:
+							#	self.__scanButton.setVisible(False)
+							#else:
+							#	self.__scanButton.setVisible(True)
+							self.__scanButton.processEvent(event)
+							self.__selectAllButton.processEvent(event)
+							self.__deselectAllButton.processEvent(event)
+								
+						if not self.__consoleList.hasFocus():
+							if event.key.keysym.sym == sdl2.SDLK_DOWN:
+								if self.__scanButton.hasFocus():
+									self.__scanButton.setFocus(False)
+									self.__selectAllButton.setFocus(True)
+								elif self.__selectAllButton.hasFocus():
+									self.__selectAllButton.setFocus(False)
+									self.__deselectAllButton.setFocus(True)
+								elif self.__deselectAllButton.hasFocus():
+									self.__deselectAllButton.setFocus(False)
+									self.__scanButton.setFocus(True)
+							elif event.key.keysym.sym == sdl2.SDLK_UP:
+								if self.__scanButton.hasFocus():
+									self.__scanButton.setFocus(False)
+									self.__deselectAllButton.setFocus(True)
+								elif self.__selectAllButton.hasFocus():
+									self.__selectAllButton.setFocus(False)
+									self.__scanButton.setFocus(True)
+								elif self.__deselectAllButton.hasFocus():
+									self.__deselectAllButton.setFocus(False)
+									self.__selectAllButton.setFocus(True)
 
 		if self.menuActive: # this will be true if parent method trapped a backspace event
 			if event.type == sdl2.SDL_KEYDOWN:
