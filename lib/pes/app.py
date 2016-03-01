@@ -20,13 +20,6 @@
 #    along with PES.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-#
-# TO DO:
-#
-# - joystick integration and settings etc.
-# - joystick button repeat
-#
-
 from ctypes import c_int, c_char, c_char_p, c_uint32, c_void_p, byref, cast
 from datetime import datetime
 from pes import *
@@ -150,6 +143,8 @@ class PESApp(object):
 		self.__headerHeight = 30
 		self.__footerHeight = 0
 		
+		self.doKeyEvents = True
+		
 	def exit(self, rtn=0):
 		# tidy up
 		logging.debug("PESApp.exit: stopping screens...")
@@ -204,8 +199,64 @@ class PESApp(object):
 				self.exit(1)
 			self.consoleSurfaces[c.getName()] = surface
 			logging.debug("PESApp.initSurfaces: pre-loaded %s surface from %s" % (c.getName(), c.getImg()))
+	
+	@staticmethod
+	def getRetroArchConfigValue(controller, button):
+		bind = sdl2.SDL_GameControllerGetBindForButton(controller, button)
+		if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_BUTTON:
+			return bind.value.button
+		if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_AXIS:
+			return bind.value.axis
+		if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_HAT:
+			if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP:
+				return "h%d%s" % (bind.value.hat.hat, "up")
+			if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+				return "h%d%s" % (bind.value.hat.hat, "down")
+			if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+				return "h%d%s" % (bind.value.hat.hat, "left")
+			if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+				return "h%d%s" % (bind.value.hat.hat, "right")
 			
 	def playGame(self, game):
+		# check joystick configs
+		joystickTotal = sdl2.joystick.SDL_NumJoysticks()
+		if joystickTotal > 0:
+			for i in xrange(joystickTotal):
+				if sdl2.SDL_IsGameController(i):
+					c = sdl2.SDL_GameControllerOpen(i)
+					if sdl2.SDL_GameControllerGetAttached(c):
+						# get joystick name
+						j = sdl2.SDL_GameControllerGetJoystick(c)
+						jsName = sdl2.SDL_JoystickName(j)
+						jsConfig = os.path.join(userRetroArchJoysticksConfDir, "%s.cfg" % jsName)
+						logging.debug("PESApp.playGame: checking for \"%s\" config..." % jsConfig)
+						if not os.path.exists(jsConfig):
+							logging.debug("PESApp.playGame: creating configuration file %s for %s" % (jsConfig, jsName))
+							vendorId, productId = getJoystickDeviceInfoFromGUID(getJoystickGUIDString(sdl2.SDL_JoystickGetDeviceGUID(i)))
+							with open(jsConfig, 'w') as f:
+								f.write("input_device = \"%s\"\n" % jsName)
+								f.write("input_vendor_id = \"%s\"\n" % vendorId)
+								f.write("input_product_id = \"%s\"\n" % productId)
+								f.write("input_driver = \"udev\"\n")
+								f.write("input_a_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_A))
+								f.write("input_b_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_B))
+								f.write("input_x_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_X))
+								f.write("input_y_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_Y))
+								f.write("input_start_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_START))
+								f.write("input_select_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_BACK))
+								f.write("input_l_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_LEFTSHOULDER))
+								f.write("input_r_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_RIGHTSHOULDER))
+								f.write("input_up_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP))
+								f.write("input_down_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN))
+								f.write("input_left_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT))
+								f.write("input_right_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT))
+								f.write("input_enable_hotkey_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_BACK))
+								f.write("input_exit_emulator_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_START))
+								f.write("input_save_state_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_A))
+								f.write("input_load_state_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_B))
+								f.write("input_pause_toggle = \"nul\"\n")
+					sdl2.SDL_GameControllerClose(c)
+		
 		logging.info("loading game: %s" % game.getName())
 		game.setPlayCount()
 		game.setLastPlayed()
@@ -365,7 +416,7 @@ class PESApp(object):
 				
 				if not loading:
 					# keyboard events
-					if event.type == sdl2.SDL_KEYDOWN:
+					if self.doKeyEvents and event.type == sdl2.SDL_KEYDOWN:
 						if event.key.keysym.sym == sdl2.SDLK_BACKSPACE:
 							logging.debug("PESApp.run: trapping backspace key event")
 							if self.screens[self.screenStack[-1]].menuActive:
@@ -498,7 +549,6 @@ class PESApp(object):
 										self.__controlPadIndex = i
 										close = False
 										self.__gamepadIcon.setVisible(True)
-										print sdl2.SDL_GameControllerMapping(c)
 								if close:
 									sdl2.SDL_GameControllerClose(c)
 			
@@ -1174,7 +1224,6 @@ class SettingsScreen(Screen):
 
 	def drawScreen(self):
 		super(SettingsScreen, self).drawScreen()
-		#logging.debug("SettingsScreen.draw: drawing screen at (%d, %d) dimensions (%d, %d)" % (self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
 		
 		currentX = self.screenRect[0] + self.screenMargin
 		currentY = self.screenRect[1]
@@ -1195,6 +1244,7 @@ class SettingsScreen(Screen):
 					self.__scanProgressBar.setProgress(self.__updateDbThread.getProgress())
 					self.__scanProgressBar.draw()
 				elif self.__updateDbThread.done:
+					self.app.doKeyEvents = True
 					interruptedStr = ""
 					if self.__updateDbThread.interrupted:
 						interruptedStr = "(scan interrupted)"
@@ -1305,6 +1355,7 @@ class SettingsScreen(Screen):
 
 	def startScan(self):
 		logging.debug("SettingsScreen.startScan: beginning scan...")
+		self.app.doKeyEvents = False
 		if self.__scanProgressBar == None:
 			self.__scanProgressBar = ProgressBar(self.renderer, self.screenRect[0] + self.screenMargin, self.__descriptionLabel.y + self.__descriptionLabel.height + 10, self.screenRect[2] - (self.screenMargin * 2), 40, self.app.lineColour, self.app.menuBackgroundColour)
 		else:
