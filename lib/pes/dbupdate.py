@@ -430,6 +430,9 @@ class UpdateDbThread(Thread):
 		for w in consumers:
 			w.start()
 		
+		for w in consumers:
+			w.join()
+		
 		self.__tasks.join()
 		
 		logging.debug("UpdateDbThread.run: processing results...")
