@@ -201,21 +201,37 @@ class PESApp(object):
 			logging.debug("PESApp.initSurfaces: pre-loaded %s surface from %s" % (c.getName(), c.getImg()))
 	
 	@staticmethod
-	def getRetroArchConfigValue(controller, button):
+	def getRetroArchConfigAxisValue(param, controller, axis, both=False):
+		bind = sdl2.SDL_GameControllerGetBindForAxis(controller, axis)
+		if bind:
+			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_AXIS:
+				if both:
+						return "%s_plus_axis = \"+%d\"\n%s_minus_axis = \"-%d\"\n" % (param, bind.value.axis, param, bind.value.axis)
+				return "%s_axis = \"+%d\"\n" % (param, bind.value.axis)
+			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_BUTTON:
+				return "%s_btn = \"%d\"\n" % (param, bind.value.button)
+		if both:
+			return "%s_plus_axis = \"nul\"\n%s_minus_axis = \"nul\"\n" % (param, param)
+		return "%s = \"nul\"\n" % param
+	
+	@staticmethod
+	def getRetroArchConfigButtonValue(param, controller, button):
 		bind = sdl2.SDL_GameControllerGetBindForButton(controller, button)
-		if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_BUTTON:
-			return bind.value.button
-		if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_AXIS:
-			return bind.value.axis
-		if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_HAT:
-			if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP:
-				return "h%d%s" % (bind.value.hat.hat, "up")
-			if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN:
-				return "h%d%s" % (bind.value.hat.hat, "down")
-			if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT:
-				return "h%d%s" % (bind.value.hat.hat, "left")
-			if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
-				return "h%d%s" % (bind.value.hat.hat, "right")
+		if bind:			
+			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_BUTTON:
+				return "%s_btn = \"%d\"\n" % (param, bind.value.button)
+			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_AXIS:
+				return PESApp.getRetroArchConfigAxisValue(param, controller, button)
+			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_HAT:
+				if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP:
+					return "%s_btn = \"h%d%s\"\n" % (param, bind.value.hat.hat, "up")
+				if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+					return "%s_btn = \"h%d%s\"\n" % (param, bind.value.hat.hat, "down")
+				if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+					return "%s_btn = \"h%d%s\"\n" % (param, bind.value.hat.hat, "left")
+				if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+					return "%s_btn = \"h%d%s\"\n" % (param, bind.value.hat.hat, "right")
+		return "%s = \"nul\"\n" % param
 			
 	def playGame(self, game):
 		# check joystick configs
@@ -230,31 +246,45 @@ class PESApp(object):
 						jsName = sdl2.SDL_JoystickName(j)
 						jsConfig = os.path.join(userRetroArchJoysticksConfDir, "%s.cfg" % jsName)
 						logging.debug("PESApp.playGame: checking for \"%s\" config..." % jsConfig)
-						if not os.path.exists(jsConfig):
-							logging.debug("PESApp.playGame: creating configuration file %s for %s" % (jsConfig, jsName))
-							vendorId, productId = getJoystickDeviceInfoFromGUID(getJoystickGUIDString(sdl2.SDL_JoystickGetDeviceGUID(i)))
-							with open(jsConfig, 'w') as f:
-								f.write("input_device = \"%s\"\n" % jsName)
-								f.write("input_vendor_id = \"%s\"\n" % vendorId)
-								f.write("input_product_id = \"%s\"\n" % productId)
-								f.write("input_driver = \"udev\"\n")
-								f.write("input_a_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_A))
-								f.write("input_b_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_B))
-								f.write("input_x_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_X))
-								f.write("input_y_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_Y))
-								f.write("input_start_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_START))
-								f.write("input_select_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_BACK))
-								f.write("input_l_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_LEFTSHOULDER))
-								f.write("input_r_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_RIGHTSHOULDER))
-								f.write("input_up_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP))
-								f.write("input_down_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN))
-								f.write("input_left_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT))
-								f.write("input_right_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT))
-								f.write("input_enable_hotkey_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_BACK))
-								f.write("input_exit_emulator_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_START))
-								f.write("input_save_state_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_A))
-								f.write("input_load_state_btn = \"%s\"\n" % self.getRetroArchConfigValue(c, sdl2.SDL_CONTROLLER_BUTTON_B))
-								f.write("input_pause_toggle = \"nul\"\n")
+						logging.debug("PESApp.playGame: creating configuration file %s for %s" % (jsConfig, jsName))
+						vendorId, productId = getJoystickDeviceInfoFromGUID(getJoystickGUIDString(sdl2.SDL_JoystickGetDeviceGUID(i)))
+						with open(jsConfig, 'w') as f:
+							# control pad id etc.
+							f.write("input_device = \"%s\"\n" % jsName)
+							f.write("input_vendor_id = \"%s\"\n" % vendorId)
+							f.write("input_product_id = \"%s\"\n" % productId)
+							f.write("input_driver = \"udev\"\n")
+							# buttons
+							f.write(self.getRetroArchConfigButtonValue("input_a", c, sdl2.SDL_CONTROLLER_BUTTON_A))
+							f.write(self.getRetroArchConfigButtonValue("input_b", c, sdl2.SDL_CONTROLLER_BUTTON_B))
+							f.write(self.getRetroArchConfigButtonValue("input_x", c, sdl2.SDL_CONTROLLER_BUTTON_X))
+							f.write(self.getRetroArchConfigButtonValue("input_y", c, sdl2.SDL_CONTROLLER_BUTTON_Y))
+							f.write(self.getRetroArchConfigButtonValue("input_start", c, sdl2.SDL_CONTROLLER_BUTTON_START))
+							f.write(self.getRetroArchConfigButtonValue("input_select", c, sdl2.SDL_CONTROLLER_BUTTON_BACK))
+							# shoulder buttons
+							f.write(self.getRetroArchConfigButtonValue("input_l", c, sdl2.SDL_CONTROLLER_BUTTON_LEFTSHOULDER))
+							f.write(self.getRetroArchConfigButtonValue("input_r", c, sdl2.SDL_CONTROLLER_BUTTON_RIGHTSHOULDER))
+							f.write(self.getRetroArchConfigAxisValue("input_l2", c, sdl2.SDL_CONTROLLER_AXIS_TRIGGERLEFT))
+							f.write(self.getRetroArchConfigAxisValue("input_r2", c, sdl2.SDL_CONTROLLER_AXIS_TRIGGERRIGHT))
+							# L3/R3 buttons
+							f.write(self.getRetroArchConfigButtonValue("input_l3", c, sdl2.SDL_CONTROLLER_BUTTON_LEFTSTICK))
+							f.write(self.getRetroArchConfigButtonValue("input_r3", c, sdl2.SDL_CONTROLLER_BUTTON_RIGHTSTICK))
+							# d-pad buttons
+							f.write(self.getRetroArchConfigButtonValue("input_up", c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP))
+							f.write(self.getRetroArchConfigButtonValue("input_down", c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN))
+							f.write(self.getRetroArchConfigButtonValue("input_left", c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT))
+							f.write(self.getRetroArchConfigButtonValue("input_right", c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT))
+							# axis
+							f.write(self.getRetroArchConfigAxisValue("input_l_x", c, sdl2.SDL_CONTROLLER_AXIS_LEFTX, True))
+							f.write(self.getRetroArchConfigAxisValue("input_l_y", c, sdl2.SDL_CONTROLLER_AXIS_LEFTY, True))
+							f.write(self.getRetroArchConfigAxisValue("input_r_x", c, sdl2.SDL_CONTROLLER_AXIS_RIGHTX, True))
+							f.write(self.getRetroArchConfigAxisValue("input_r_y", c, sdl2.SDL_CONTROLLER_AXIS_RIGHTY, True))
+							# hot key buttons
+							f.write(self.getRetroArchConfigButtonValue("input_enable_hotkey", c, sdl2.SDL_CONTROLLER_BUTTON_BACK))
+							f.write(self.getRetroArchConfigButtonValue("input_exit_emulator", c, sdl2.SDL_CONTROLLER_BUTTON_START))
+							f.write(self.getRetroArchConfigButtonValue("input_save_state", c, sdl2.SDL_CONTROLLER_BUTTON_A))
+							f.write(self.getRetroArchConfigButtonValue("input_load_state", c, sdl2.SDL_CONTROLLER_BUTTON_B))
+							f.write("input_pause_toggle = \"nul\"\n")
 					sdl2.SDL_GameControllerClose(c)
 		
 		logging.info("loading game: %s" % game.getName())
@@ -264,6 +294,7 @@ class PESApp(object):
 		launchString = game.getCommand()
 		logging.debug("PESApp.playGame: launch string: %s" % launchString)
 		self.runCommand(launchString)
+		#self.exit(0)
         
 	def run(self):
 		#sdl2.SDL_Init(sdl2.SDL_INIT_EVERYTHING)
@@ -549,6 +580,7 @@ class PESApp(object):
 										self.__controlPadIndex = i
 										close = False
 										self.__gamepadIcon.setVisible(True)
+										#print sdl2.SDL_GameControllerMapping(c)
 								if close:
 									sdl2.SDL_GameControllerClose(c)
 			
@@ -1313,6 +1345,8 @@ class SettingsScreen(Screen):
 						elif event.key.keysym.sym == sdl2.SDLK_LEFT:
 							self.__consoleList.setFocus(True)
 							self.__scanButton.setFocus(False)
+							self.__selectAllButton.setFocus(False)
+							self.__deselectAllButton.setFocus(False)
 						else:
 							self.__consoleList.processEvent(event)
 							#if self.__updateDatabaseMenu.getToggledCount() == 0:
