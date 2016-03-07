@@ -35,6 +35,7 @@ source $setupDir/functions.sh
 
 run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
 	gcc git cmake make patch pkg-config scons swig vim wget \
+	freetype2 \
 	libusb-compat linuxconsole libplatform \
 	python2 python2-levenshtein python2-pip python2-imaging \
 	ntp \

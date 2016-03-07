@@ -31,8 +31,8 @@ fi
 
 source $setupDir/functions.sh
 
-romDir=$baseDir/roms
-coverartDir=$baseDir/coverart
+romDir=$pesUserDir/roms
+coverartDir=$pesUserDir/coverart
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 header "Clean Image"
@@ -43,24 +43,21 @@ echo ""
 echo "WARNING: Answering yes to the following question will perform the following operations:"
 echo -e "\t-Delete all ROMs from $romDir including any game saves"
 echo -e "\t-Delete all cover art from $coverartDir"
-echo -e "\t-Delete any BIOSes installed in $baseDir/emulators/BIOS"
-echo -e "\t-Delete PES user preferences and cover art cache from $userDir/.pes"
-echo -e "\t-Delete PES and PESPad logs"
+echo -e "\t-Delete any BIOSes installed in $pesBiosDir"
+echo -e "\t-Delete PES user preferences and cover art cache from $coverartDir"
+echo -e "\t-Delete PES logs"
 echo -e "\t-Delete pi user RetroArch config"
 echo -e "\t-Delete all cached packages from pacman"
 echo -e "\t-Delete command history for root and pi users"
 echo -e "\t-Delete pip cache"
 echo -e "\t-Delete SSH known_hosts files for root and pi users"
-echo -e "\t-Delete $baseDir/build contents"
+echo -e "\t-Delete $buildDir contents"
 echo -e "\t-Remove unnecessary packages, including compilation utilities"
 echo ""
 
 read -p "Are you sure you want to proceed? [y/n]" response
 if [ "$response" == "y" ]; then
 	echo "Beginning purge..."
-	echo ""
-	#echo "Stopping PESPad..."
-	#run sudo systemctl stop pespad.service
 	echo ""
 	echo "Removing cached packages..."
 	run sudo pacman -Scc
@@ -72,19 +69,19 @@ if [ "$response" == "y" ]; then
 	run rm -rfv $coverartDir/*
 	echo ""
 	echo "Deleting BIOSes..."
-	run rm -fv $baseDir/emulators/BIOS/*.bin
+	run rm -fv $pesBiosDir/*.bin
 	echo ""
 	echo "Deleting PES build dir contents..."
-	run sudo rm -rfv $baseDir/build/*
+	run sudo rm -rfv $buildDir
 	echo ""
-	echo "Deleting PES user configs and image cache for pi user..."
-	run rm -rfv $userDir/.pes
+	echo "Deleting PES user configs for pi user..."
+	run rm -rfv $pesUserDir/pes.db $pesUserDir/conf.d
 	echo ""
 	echo "Deleting RetroArch config for pi user..."
 	run rm -rfv $userDir/.config/retroarch
 	echo ""
-	echo "Deleting PES and PESPad logs..."
-	run sudo rm -fv /var/log/pespad.log $baseDir/log/*
+	echo "Deleting PES logs..."
+	run sudo rm -fv $pesUserDir/log/*
 	echo ""
 	echo "Removing unnecessary packages..."
 	run sudo $DIR/remove-packages.sh
