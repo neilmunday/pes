@@ -6,7 +6,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2016 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -41,6 +41,6 @@ checkDir imame4all-libretro
 cd imame4all-libretro
 export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -O3"
 export CXXFLAGS=$CFLAGS
-run make -f makefile.libretro ARM=1 -j
-checkFile libretro.so
-run cp -v libretro.so $retroArchCoresDir/imame4all_libretro.so
+run make ARM=1 -j
+checkFile mame2000_libretro.so
+run sudo cp -v mame2000_libretro.so $retroArchCoresDir/imame4all_libretro.so

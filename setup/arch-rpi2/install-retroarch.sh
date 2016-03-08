@@ -6,7 +6,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2016 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -44,8 +44,8 @@ header "Building RetroArch"
 
 cd $retroarchDir
 
-run mkdir -p $retroArchCoresDir
-run mkdir -p $retroArchConfigDir
+run sudo mkdir -p $retroArchCoresDir
+run sudo mkdir -p $retroArchConfigDir
 
 export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -O3"
 export CXXFLAGS=$CFLAGS
@@ -53,5 +53,5 @@ export CXXFLAGS=$CFLAGS
 
 run ./configure --prefix="$retroArchInstallDir" --disable-udev --disable-ffmpeg --enable-netplay --disable-pulse --disable-x11 --disable-sdl --enable-neon --enable-floathard
 run make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1
-run make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1 install
+run sudo make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1 install
 
