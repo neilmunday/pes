@@ -107,7 +107,7 @@ def mapControlPadButtonEvent(event, eventType):
 
 class PESApp(object):
 	
-	__CONTROL_PAD_BUTTON_REPEAT = 50 # delay in ms between firing events for button holds
+	__CONTROL_PAD_BUTTON_REPEAT = 150 # delay in ms between firing events for button holds
 	
 	def __del__(self):
 		logging.debug("PESApp.del: deleting object")
@@ -116,9 +116,11 @@ class PESApp(object):
 			sdl2.video.SDL_DestroyWindow(self.__window)
 			self.__window = None
 
-	def __init__(self, dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour):
+	def __init__(self, dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, shutdownCommmand, rebootCommand):
 		super(PESApp, self).__init__()
 		self.__dimensions = dimensions
+		self.__shutdownCommand = shutdownCommmand
+		self.__rebootCommand = rebootCommand
 		self.fontFile = fontFile
 		self.romsDir = romsDir
 		self.coverartDir = coverartDir
@@ -323,6 +325,10 @@ class PESApp(object):
 		logging.debug("PESApp.playGame: launch string: %s" % launchString)
 		self.runCommand(launchString)
 		#self.exit(0)
+		
+	def reboot(self):
+		logging.info("PES is rebooting...")
+		self.runCommand(self.__rebootCommand)
         
 	def run(self):
 		#sdl2.SDL_Init(sdl2.SDL_INIT_EVERYTHING)
@@ -637,6 +643,10 @@ class PESApp(object):
 				self.screenStack.append(screen)
 			self.screens[screen].setMenuActive(True)
 			
+	def shutdown(self):
+		logging.info("PES is shutting down...")
+		self.runCommand(self.__shutdownCommand)
+			
 class PESLoadingThread(threading.Thread):
 	def __init__(self, app):
 		super(PESLoadingThread, self).__init__()
@@ -877,8 +887,7 @@ class ConsoleScreen(Screen):
 		self.__listWidth = 300
 		self.__listHeight = self.screenRect[1] + self.screenRect[3] - self.__listY - self.screenMargin
 		self.__previewThumbnailX = self.__listX + self.__listWidth
-		self.__previewThumbnailWidth, self.__previewThumbnailHeight = scaleImage((self.__noCoverArtWidth, self.__noCoverArtHeight), (self.screenRect[0] + self.screenRect[2] - self.__previewThumbnailX - 50,
- int((self.screenRect[3] - self.screenRect[1]) / 2)))
+		self.__previewThumbnailWidth, self.__previewThumbnailHeight = scaleImage((self.__noCoverArtWidth, self.__noCoverArtHeight), (self.screenRect[0] + self.screenRect[2] - self.__previewThumbnailX - 50, int((self.screenRect[3] - self.screenRect[1]) / 2)))
 		self.__previewThumbnailX += int((((self.screenRect[0] + self.screenRect[2]) - self.__previewThumbnailX) / 2) - (self.__previewThumbnailWidth / 2))
 		self.__previewThumbnailY = self.__listY
 		self.__gameInfoLabelX = self.__listX + self.__listWidth + 50
@@ -1135,8 +1144,8 @@ class HomeScreen(Screen):
 			if c.getGameTotal() > 0:
 				self.menu.addItem(ConsoleMenuItem(c, False, False, self.app.setScreen, "Console %s" % c.getName()))
 		self.menu.addItem(MenuItem("Settings", False, False, self.app.setScreen, "Settings"))
-		self.menu.addItem(MenuItem("Reboot"))
-		self.menu.addItem(MenuItem("Power Off"))
+		self.menu.addItem(MenuItem("Reboot", False, False, self.app.reboot))
+		self.menu.addItem(MenuItem("Power Off", False, False, self.app.shutdown))
 		self.menu.addItem(MenuItem("Exit", False, False, self.app.exit))
 		self.__thumbXGap = 20
 		self.__thumbYGap = 10
@@ -1145,7 +1154,7 @@ class HomeScreen(Screen):
 		self.__consoleTexture = None
 		self.__consoleSelected = False
 		self.__headerLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], "Welcome to PES!", self.app.titleFont, self.app.textColour))
-		self.__welcomeText = "The home screen provides you with quick access to your favourite, new additions and most recently played games."
+		self.__welcomeText = "This is the BETA version.\n\nMost features have been implemented, but there are a few minor things to finish (e.g. joystick configuraton).\n\nI hope you enjoy this new version and any feedback (good or bad) is greatly appreciated.\n\nCheers,\n\nNeil."
 		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__welcomeText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
 		self.__recentlyAddedText = "Recently Added"
 		self.__recentlyAddedLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__recentlyAddedText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
@@ -1216,15 +1225,16 @@ class HomeScreen(Screen):
 					self.__recentlyAddedThumbPanel.setGames(games)
 				else:
 					self.__recentlyAddedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyAddedLabel.y + self.__recentlyAddedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
-				self.__recentlyPlayedLabel.y = self.__recentlyAddedThumbPanel.y + self.__recentlyAddedThumbPanel.height + 50
 			else:
 				self.__recentlyAddedLabel.setText(self.__recentlyAddedText + ": None added")
-			# get recently added
+			self.__recentlyPlayedLabel.y = self.__recentlyAddedThumbPanel.y + self.__recentlyAddedThumbPanel.height + 50
+			# get recently played
 			logging.debug("HomeScreen.drawScreen: getting recently played games for %s..." % consoleName)
 			games = console.getRecentlyPlayedGames(0, self.__showThumbs)
 			if len(games) > 0:
 				if self.__recentlyPlayedThumbPanel:
 					self.__recentlyPlayedThumbPanel.setGames(games)
+					#self.__recentlyPlayedThumbPanel.y = self.__recentlyPlayedLabel.y + self.__recentlyPlayedLabel.height + self.__thumbYGap
 				else:
 					self.__recentlyPlayedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyPlayedLabel.y + self.__recentlyPlayedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
 				self.__recentlyPlayedLabel.setVisible(True)
@@ -1275,7 +1285,7 @@ class SettingsScreen(Screen):
 		self.__headerLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], self.__defaultHeaderText, self.app.titleFont, self.app.textColour))
 		logging.debug("SettingsScreen.init: initialised")
 		self.__initText = "Here you can scan for new games, set-up your joysticks as well as being able to reset PES to its default settings\n\nPlease select an item from the menu on the left."
-		self.__scanText = "Please use the menu below to select which consoles you wish to include in your search. By default all consoles are selected.\n\nWhen you are ready, please select the \"Begin Scan\" button."
+		self.__scanText = "Please use the menu below to select which consoles you wish to include in your search. By default all consoles are selected. Use the SELECT button to toggle the items in the menu.\n\nWhen you are ready, please select the \"Begin Scan\" button."
 		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__initText, self.app.bodyFont, self.app.textColour, fixedWidth=self.screenRect[2] - self.screenMargin))
 		self.__consoleList = None
 		self.__scanButton = None

@@ -135,6 +135,9 @@ if __name__ == '__main__':
 				coverartCacheLen = int(configParser.get('settings', 'coverartCacheLen'))
 			except ValueError:
 				pesExit("Error parsing config file %s: integer expected for \"coverartCacheLen\" parameter")
+			# command settings
+			shutdownCommand = configParser.get("commands", "shutdown")
+			rebootCommand = configParser.get("commands", "reboot")
 		except ConfigParser.NoOptionError, e:
 			pesExit("Error parsing config file %s: %s" % (userPesConfigFile, e.message), True)
 			
@@ -142,7 +145,7 @@ if __name__ == '__main__':
 		mkdir(coverartDir)
 		
 		logging.info("loading GUI...")
-		app = PESApp(dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour)
+		app = PESApp(dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, shutdownCommand, rebootCommand)
 		app.run()
 	except Exception, e:
 		logging.exception(e)
