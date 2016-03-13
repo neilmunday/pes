@@ -744,6 +744,47 @@ class List(UIObject):
 		if self.__showScrollbar:
 				self.__sliderY = int(((float(self.__menu.getSelectedIndex()) / float(self.__menuCount)) * float(self.__scrollbarHeight - self.__sliderHeight)) + self.__scrollbarY) + self.__sliderGap
 
+class MessageBox(UIObject):
+	
+	def __init__(self, renderer, text, font, colour, bgColour, borderColour, callback, *callbackArgs):
+		# renderer, x, y, text, font, colour, bgColour=None, fixedWidth=0, fixedHeight=0, autoScroll=False, bgAlpha=255):
+		self.__label = Label(renderer, 0, 0, text, font, colour, bgColour)
+		self.__labelMargin = 100
+		rendererWidth = c_int()
+		rendererHeight = c_int()
+		sdl2.SDL_GetRendererOutputSize(renderer, byref(rendererWidth), byref(rendererHeight))
+		width = self.__label.width + self.__labelMargin
+		height = self.__label.height * 3
+		x = int((rendererWidth.value - width) / 2.0)
+		y = int((rendererHeight.value - height) / 2.0)
+		super(MessageBox, self).__init__(renderer, x, y, width, height)
+		self.__borderColour = borderColour
+		self.__bgColour = bgColour
+		self.__label.setCoords(x + int((self.__labelMargin / 2.0)), y + self.__label.height)
+		self.__rendererWidth = rendererWidth.value
+		self.__rendererHeight = rendererHeight.value
+		self.__callback = callback
+		self.__callbackArgs = callbackArgs
+		logging.debug("MessageBox.init: initialised")
+		
+	def destroy(self):
+		logging.debug("MessageBox.destroy: destroying...")
+		self.__label.destroy()
+		
+	def draw(self):
+		if self.visible:
+			sdl2.sdlgfx.boxRGBA(self.renderer, 0, 0, self.__rendererWidth, self.__rendererHeight, self.__bgColour.r, self.__bgColour.g, self.__bgColour.b, 200)
+			sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__bgColour.r, self.__bgColour.g, self.__bgColour.b, 255)
+			self.__label.draw()
+			sdl2.sdlgfx.rectangleRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__borderColour.r, self.__borderColour.g, self.__borderColour.b, 255) # border
+			
+	def processEvent(self, event):
+		if self.visible and event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER):
+			logging.debug("MessageBox: calling callback...")
+			if self.__callbackArgs:
+				self.__callback(*self.__callbackArgs)
+			self.__callback
+
 class ProgressBar(UIObject):
 	
 	def __init__(self, renderer, x, y, width, height, colour, backgroundColour):

@@ -161,6 +161,8 @@ class PESApp(object):
 		#sdl2.SDL_DestroyTexture(self.__networkTexture)
 		self.__gamepadIcon.destroy()
 		self.__networkIcon.destroy()
+		if self.__msgBox:
+			self.__msgBox.destroy()
 		Thumbnail.destroyTextures()
 		for o in self.__uiObjects:
 			o.destroy()
@@ -377,23 +379,6 @@ class PESApp(object):
 									configParser.set(section, 'R Trig', self.getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_TRIGGERRIGHT))
 									configParser.set(section, 'X Axis', self.getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_LEFTX, both=True))
 									configParser.set(section, 'Y Axis', self.getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_LEFTY, both=True))
-									
-									#configParser.set(section, 'DPad R', js.getMupen64PlusButtonValue(JoyStick.BTN_RIGHT))
-									#configParser.set(section, 'DPad L', js.getMupen64PlusButtonValue(JoyStick.BTN_LEFT))
-									#configParser.set(section, 'DPad D', js.getMupen64PlusButtonValue(JoyStick.BTN_DOWN))
-									#configParser.set(section, 'DPad U', js.getMupen64PlusButtonValue(JoyStick.BTN_UP))
-									#configParser.set(section, 'Start', js.getMupen64PlusButtonValue(JoyStick.BTN_START))
-									#configParser.set(section, 'Z Trig', js.getMupen64PlusButtonValue(JoyStick.BTN_SHOULDER_LEFT))
-									#configParser.set(section, 'B Button', js.getMupen64PlusButtonValue(JoyStick.BTN_Y))
-									#configParser.set(section, 'A Button', js.getMupen64PlusButtonValue(JoyStick.BTN_B))
-									#configParser.set(section, 'C Button R', js.getMupen64PlusButtonValue(JoyStick.BTN_RIGHT_AXIS_RIGHT))
-									#configParser.set(section, 'C Button L', js.getMupen64PlusButtonValue(JoyStick.BTN_RIGHT_AXIS_LEFT))
-									#configParser.set(section, 'C Button D', js.getMupen64PlusButtonValue(JoyStick.BTN_RIGHT_AXIS_DOWN))
-									#configParser.set(section, 'C Button U', js.getMupen64PlusButtonValue(JoyStick.BTN_RIGHT_AXIS_UP))
-									#configParser.set(section, 'L Trig', js.getMupen64PlusButtonValue(JoyStick.BTN_SHOULDER_LEFT2))
-									#configParser.set(section, 'R Trig', js.getMupen64PlusButtonValue(JoyStick.BTN_SHOULDER_RIGHT2))
-									#configParser.set(section, 'X Axis', js.getMupen64PlusButtonValue(JoyStick.BTN_LEFT_AXIS_LEFT))
-									#configParser.set(section, 'Y Axis', js.getMupen64PlusButtonValue(JoyStick.BTN_LEFT_AXIS_UP))
 							sdl2.SDL_GameControllerClose(c)
 						counter += 1
 						if counter == 4:
@@ -410,11 +395,38 @@ class PESApp(object):
 		launchString = game.getCommand()
 		logging.debug("PESApp.playGame: launch string: %s" % launchString)
 		self.runCommand(launchString)
-		#self.exit(0)
 		
-	def reboot(self):
-		logging.info("PES is rebooting...")
-		self.runCommand(self.__rebootCommand)
+	def reboot(self, confirm=True):
+		if confirm:
+			self.showMessageBox("Are you sure?", self.reboot, False)
+		else:
+			logging.info("PES is rebooting...")
+			self.runCommand(self.__rebootCommand)
+		
+	def resetConfig(self, confirm=True):
+		if confirm:
+			self.showMessageBox("Are you sure?", self.resetConfig, False)
+		else:
+			logging.info("PES is resetting its config...")
+			for root, dirs, files in os.walk(userConfDir, topdown=False):
+				for name in files:
+					path = os.path.join(root, name)
+					logging.debug("PESApp.resetConfig: deleting file %s" % path)
+					os.remove(path)
+				for name in dirs:
+					path = os.path.join(root, name)
+					logging.debug("PESApp.resetConfig: deleting directory %s" % path)
+					os.rmdir(path)
+			self.runCommand("sleep 1")
+		
+	def resetDatabase(self, confirm=True):
+		if confirm:
+			self.showMessageBox("Are you sure?", self.resetDatabase, False)
+		else:
+			logging.info("PES is resetting its database...")
+			logging.debug("PESApp.resetDatabase: deleting %s" % userPesDb)
+			os.remove(userPesDb)
+			self.runCommand("sleep 1")
         
 	def run(self):
 		#sdl2.SDL_Init(sdl2.SDL_INIT_EVERYTHING)
@@ -506,7 +518,9 @@ class PESApp(object):
 			self.ip = getIPAddress(defaultInterface)
 			logging.debug("PESApp.run: default interface: %s, IP address: %s" % (defaultInterface, self.ip))
 		else:
-			self.__networkIcon.setVisible(False)
+			self.__networkIcon.setVisible
+			
+		self.__msgBox = None
 		
 		self.__controlPad = None
 		self.__controlPadIndex = None
@@ -570,6 +584,8 @@ class PESApp(object):
 					if self.doKeyEvents and event.type == sdl2.SDL_KEYDOWN:
 						if event.key.keysym.sym == sdl2.SDLK_BACKSPACE:
 							logging.debug("PESApp.run: trapping backspace key event")
+							if self.__msgBox and self.__msgBox.isVisible():
+								self.__msgBox.setVisible(False)
 							if self.screens[self.screenStack[-1]].menuActive:
 								# pop the screen
 								screenStackLen = len(self.screenStack)
@@ -581,6 +597,8 @@ class PESApp(object):
 								self.screens[self.screenStack[-1]].setMenuActive(True)
 						elif event.key.keysym.sym == sdl2.SDLK_HOME:
 							logging.debug("PESApp.run: trapping home key event")
+							if self.__msgBox and self.__msgBox.isVisible():
+								self.__msgBox.setVisible(False)
 							# pop all screens and return home
 							while len(self.screenStack) > 1:
 								s = self.screenStack.pop()
@@ -589,7 +607,10 @@ class PESApp(object):
 							self.screens["Home"].setMenuActive(True)
 							self.screens["Home"].menu.setSelected(0)
 							self.screens["Home"].update()
-					self.screens[self.screenStack[-1]].processEvent(event)
+					if self.__msgBox and self.__msgBox.isVisible():
+						self.__msgBox.processEvent(event)
+					else:
+						self.screens[self.screenStack[-1]].processEvent(event)
 								
 				if event.type == sdl2.SDL_KEYDOWN and event.key.keysym.sym == sdl2.SDLK_ESCAPE:
 					logging.debug("PESApp.run: trapping escape key event")
@@ -703,6 +724,9 @@ class PESApp(object):
 										#print sdl2.SDL_GameControllerMapping(c)
 								if close:
 									sdl2.SDL_GameControllerClose(c)
+									
+			if self.__msgBox and self.__msgBox.isVisible():
+				self.__msgBox.draw()
 			
 			sdl2.SDL_RenderPresent(self.renderer)
 			
@@ -729,9 +753,18 @@ class PESApp(object):
 				self.screenStack.append(screen)
 			self.screens[screen].setMenuActive(True)
 			
-	def shutdown(self):
-		logging.info("PES is shutting down...")
-		self.runCommand(self.__shutdownCommand)
+	def showMessageBox(self, text, callback, *callbackArgs):
+		if self.__msgBox:
+			self.__msgBox.destroy()
+		self.__msgBox = MessageBox(self.renderer, text, self.bodyFont, self.textColour, self.menuBackgroundColour, self.lineColour, callback, *callbackArgs)
+		self.__msgBox.setVisible(True)
+			
+	def shutdown(self, confirm=True):
+		if confirm:
+			self.showMessageBox("Are you sure?", self.shutdown, False)
+		else:
+			logging.info("PES is shutting down...")
+			self.runCommand(self.__shutdownCommand)
 			
 class PESLoadingThread(threading.Thread):
 	def __init__(self, app):
@@ -1362,8 +1395,8 @@ class SettingsScreen(Screen):
 		super(SettingsScreen, self).__init__(app, renderer, "Settings", Menu([
 			MenuItem("Update Database"),
 			MenuItem("Joystick Set-Up"),
-			MenuItem("Reset Database"),
-			MenuItem("Reset Config"),
+			MenuItem("Reset Database", False, False, app.resetDatabase),
+			MenuItem("Reset Config", False, False, app.resetConfig),
 			MenuItem("About")]),
 		menuRect, screenRect)
 		
