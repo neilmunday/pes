@@ -833,6 +833,10 @@ class Thumbnail(UIObject):
 		for k in keys:
 			del Thumbnail.__cache[k]
 		Thumbnail.__queue.clear()
+		
+	def setCoords(self, x, y):
+		super(Thumbnail, self).setCoords(x, y)
+		self.__label.setCoords(self.x, self.y + self.__thumbHeight + 1)
 			
 	def setGame(self, game):
 		if self.__gameId == game.getId():
@@ -868,6 +872,13 @@ class ThumbnailPanel(UIObject):
 		logging.debug("ThumbnailPanel.destory: destroying...")
 		for t in self.__thumbnails:
 			t.destroy()
+			
+	def setCoords(self, x, y):
+		super(ThumbnailPanel, self).setCoords(x, y)
+		currentX = self.x
+		for t in self.__thumbnails:
+			t.setCoords(currentX, self.y)
+			currentX += self.__thumbWidth + self.__gap
 			
 	def setGames(self, games):
 		self.__games = games

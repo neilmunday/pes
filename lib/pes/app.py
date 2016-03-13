@@ -203,11 +203,36 @@ class PESApp(object):
 			logging.debug("PESApp.initSurfaces: pre-loaded %s surface from %s" % (c.getName(), c.getImg()))
 			
 	@staticmethod
-	def getMupen64PlusConfigButtonValue(controller, button):
+	def getMupen64PlusConfigAxisValue(controller, axis, positive=True, both=False):
+		bind = sdl2.SDL_GameControllerGetBindForAxis(controller, axis)
+		if bind:
+			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_AXIS:
+				if both:
+					return "axis(%d-,%d+)" % (bind.value.axis, bind.value.axis)
+				if positive:
+					return "axis(%d+)" % bind.value.axis
+				return "axis(%d-)" % bind.value.axis
+			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_BUTTON:
+				return "button(%d)" % bind.value.button
+		return "\"\""
+			
+	@staticmethod
+	def getMupen64PlusConfigButtonValue(controller, button, coreEvent=False):
 		bind = sdl2.SDL_GameControllerGetBindForButton(controller, button)
 		if bind:
 			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_BUTTON:
-				return "B%d" % bind.value.button
+				if coreEvent:
+					return "B%d" % bind.value.button
+				return "button(%d)" % bind.value.button
+			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_HAT:
+				if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP:
+					return "hat(%d Up)" % bind.value.hat.hat
+				if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+					return "hat(%d Down)" % bind.value.hat.hat
+				if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+					return "hat(%d Left)" % bind.value.hat.hat
+				if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+					return "hat(%d Right)" % bind.value.hat.hat
 		return "\"\""
 	
 	@staticmethod
@@ -220,6 +245,7 @@ class PESApp(object):
 				return "%s_axis = \"+%d\"\n" % (param, bind.value.axis)
 			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_BUTTON:
 				return "%s_btn = \"%d\"\n" % (param, bind.value.button)
+				
 		if both:
 			return "%s_plus_axis = \"nul\"\n%s_minus_axis = \"nul\"\n" % (param, param)
 		return "%s = \"nul\"\n" % param
@@ -308,11 +334,71 @@ class PESApp(object):
 				configParser = ConfigParser.SafeConfigParser()
 				configParser.optionxform = str # make options case sensitive
 				configParser.read(userMupen64PlusConfFile)
-				hotkey = self.getMupen64PlusConfigButtonValue(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_BACK)
+				hotkey = self.getMupen64PlusConfigButtonValue(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_BACK, True)
 				if configParser.has_section('CoreEvents'):
-					configParser.set('CoreEvents', 'Joy Mapping Stop', 'J%d%s/%s' % (self.__controlPadIndex, hotkey, self.getMupen64PlusConfigButtonValue(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_START)))
-					configParser.set('CoreEvents', 'Joy Mapping Save State', 'J%d%s/%s' % (self.__controlPadIndex, hotkey, self.getMupen64PlusConfigButtonValue(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_A)))
-					configParser.set('CoreEvents', 'Joy Mapping Load State', 'J%d%s/%s' % (self.__controlPadIndex, hotkey, self.getMupen64PlusConfigButtonValue(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_B)))
+					configParser.set('CoreEvents', 'Joy Mapping Stop', 'J%d%s/%s' % (self.__controlPadIndex, hotkey, self.getMupen64PlusConfigButtonValue(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_START, True)))
+					configParser.set('CoreEvents', 'Joy Mapping Save State', 'J%d%s/%s' % (self.__controlPadIndex, hotkey, self.getMupen64PlusConfigButtonValue(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_A, True)))
+					configParser.set('CoreEvents', 'Joy Mapping Load State', 'J%d%s/%s' % (self.__controlPadIndex, hotkey, self.getMupen64PlusConfigButtonValue(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_B, True)))
+					
+				
+				# loop through each joystick that is connected and save to button config file
+				# note: max of 4 control pads for this emulator
+				joystickTotal = sdl2.joystick.SDL_NumJoysticks()
+				if joystickTotal > 0:
+					counter = 1
+					for i in xrange(joystickTotal):
+						if sdl2.SDL_IsGameController(i):
+							close = True
+							c = sdl2.SDL_GameControllerOpen(i)
+							if sdl2.SDL_GameControllerGetAttached(c):
+								j = sdl2.SDL_GameControllerGetJoystick(c)
+								jsName = sdl2.SDL_JoystickName(j)
+								logging.debug("PESApp.playGame: generating Mupen64Plus config for joystick %d: %s" % (i, jsName))
+								section = 'Input-SDL-Control%d' % (i + 1)
+								if configParser.has_section(section):
+									configParser.set(section, 'device', "%d" % i)
+									configParser.set(section, 'name', '"%s"' % jsName)
+									configParser.set(section, 'plugged', 'True')
+									configParser.set(section, 'mouse', 'False')
+									configParser.set(section, 'mode', '0') # this must be set to 0 for the following values to take effect
+									configParser.set(section, 'DPad R', self.getMupen64PlusConfigButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT))
+									configParser.set(section, 'DPad L', self.getMupen64PlusConfigButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT))
+									configParser.set(section, 'DPad D', self.getMupen64PlusConfigButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN))
+									configParser.set(section, 'DPad U', self.getMupen64PlusConfigButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP))
+									configParser.set(section, 'Start', self.getMupen64PlusConfigButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_START))
+									configParser.set(section, 'Z Trig', self.getMupen64PlusConfigButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_LEFTSHOULDER))
+									configParser.set(section, 'B Button', self.getMupen64PlusConfigButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_B))
+									configParser.set(section, 'A Button', self.getMupen64PlusConfigButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_A))
+									configParser.set(section, 'C Button R', self.getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_RIGHTX, positive=True))
+									configParser.set(section, 'C Button L', self.getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_RIGHTX, positive=False))
+									configParser.set(section, 'C Button D', self.getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_RIGHTY, positive=True))
+									configParser.set(section, 'C Button U', self.getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_RIGHTY, positive=False))
+									configParser.set(section, 'L Trig', self.getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_TRIGGERLEFT))
+									configParser.set(section, 'R Trig', self.getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_TRIGGERRIGHT))
+									configParser.set(section, 'X Axis', self.getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_LEFTX, both=True))
+									configParser.set(section, 'Y Axis', self.getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_LEFTY, both=True))
+									
+									#configParser.set(section, 'DPad R', js.getMupen64PlusButtonValue(JoyStick.BTN_RIGHT))
+									#configParser.set(section, 'DPad L', js.getMupen64PlusButtonValue(JoyStick.BTN_LEFT))
+									#configParser.set(section, 'DPad D', js.getMupen64PlusButtonValue(JoyStick.BTN_DOWN))
+									#configParser.set(section, 'DPad U', js.getMupen64PlusButtonValue(JoyStick.BTN_UP))
+									#configParser.set(section, 'Start', js.getMupen64PlusButtonValue(JoyStick.BTN_START))
+									#configParser.set(section, 'Z Trig', js.getMupen64PlusButtonValue(JoyStick.BTN_SHOULDER_LEFT))
+									#configParser.set(section, 'B Button', js.getMupen64PlusButtonValue(JoyStick.BTN_Y))
+									#configParser.set(section, 'A Button', js.getMupen64PlusButtonValue(JoyStick.BTN_B))
+									#configParser.set(section, 'C Button R', js.getMupen64PlusButtonValue(JoyStick.BTN_RIGHT_AXIS_RIGHT))
+									#configParser.set(section, 'C Button L', js.getMupen64PlusButtonValue(JoyStick.BTN_RIGHT_AXIS_LEFT))
+									#configParser.set(section, 'C Button D', js.getMupen64PlusButtonValue(JoyStick.BTN_RIGHT_AXIS_DOWN))
+									#configParser.set(section, 'C Button U', js.getMupen64PlusButtonValue(JoyStick.BTN_RIGHT_AXIS_UP))
+									#configParser.set(section, 'L Trig', js.getMupen64PlusButtonValue(JoyStick.BTN_SHOULDER_LEFT2))
+									#configParser.set(section, 'R Trig', js.getMupen64PlusButtonValue(JoyStick.BTN_SHOULDER_RIGHT2))
+									#configParser.set(section, 'X Axis', js.getMupen64PlusButtonValue(JoyStick.BTN_LEFT_AXIS_LEFT))
+									#configParser.set(section, 'Y Axis', js.getMupen64PlusButtonValue(JoyStick.BTN_LEFT_AXIS_UP))
+							sdl2.SDL_GameControllerClose(c)
+						counter += 1
+						if counter == 4:
+							break
+				
 				logging.debug("PESApp.playGame: writing Mupen64Plus config to %s" % userMupen64PlusConfFile)
 				with open(userMupen64PlusConfFile, 'wb') as f:
 					configParser.write(f)
@@ -903,7 +989,8 @@ class ConsoleScreen(Screen):
 		self.__recentlyPlayedThumbPanel = None
 		self.__mostPlayedThumbPanel = None
 		self.__favouriteThumbPanel = None
-		self.refresh()
+		self.refreshNeeded = True
+		#self.refresh()
 		logging.debug("ConsoleScreen.init: initialised for %s" % self.__consoleName)
 		
 	def __createMenu(self, games):
@@ -1118,6 +1205,7 @@ class ConsoleScreen(Screen):
 			else:
 				self.__recentlyPlayedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__recentlyPlayedGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
 		self.__updateFavourites()
+		self.refreshNeeded = False
 		
 	def __updateFavourites(self):
 		self.__favouriteGames = self.__console.getFavourites()
@@ -1142,7 +1230,7 @@ class HomeScreen(Screen):
 		super(HomeScreen, self).__init__(app, renderer, "Home", Menu([MenuItem("Home")]), menuRect, screenRect)
 		for c in self.app.consoles:
 			if c.getGameTotal() > 0:
-				self.menu.addItem(ConsoleMenuItem(c, False, False, self.app.setScreen, "Console %s" % c.getName()))
+				self.menu.addItem(ConsoleMenuItem(c, False, False, self.__loadConsoleScreen, c))
 		self.menu.addItem(MenuItem("Settings", False, False, self.app.setScreen, "Settings"))
 		self.menu.addItem(MenuItem("Reboot", False, False, self.app.reboot))
 		self.menu.addItem(MenuItem("Power Off", False, False, self.app.shutdown))
@@ -1179,6 +1267,11 @@ class HomeScreen(Screen):
 				self.__recentlyPlayedThumbPanel.draw()
 		else:
 			self.__descriptionLabel.draw()
+			
+	def __loadConsoleScreen(self, console):
+		screenName = "Console %s" % console.getName()
+		self.app.screens[screenName].refresh()
+		self.app.setScreen(screenName)
 
 	def processEvent(self, event):
 		super(HomeScreen, self).processEvent(event)
@@ -1234,7 +1327,7 @@ class HomeScreen(Screen):
 			if len(games) > 0:
 				if self.__recentlyPlayedThumbPanel:
 					self.__recentlyPlayedThumbPanel.setGames(games)
-					#self.__recentlyPlayedThumbPanel.y = self.__recentlyPlayedLabel.y + self.__recentlyPlayedLabel.height + self.__thumbYGap
+					self.__recentlyPlayedThumbPanel.setCoords(self.__recentlyPlayedThumbPanel.x, self.__recentlyPlayedLabel.y + self.__recentlyPlayedLabel.height + self.__thumbYGap)
 				else:
 					self.__recentlyPlayedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyPlayedLabel.y + self.__recentlyPlayedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
 				self.__recentlyPlayedLabel.setVisible(True)
