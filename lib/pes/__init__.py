@@ -25,7 +25,7 @@ import shutil
 import sys
 import logging
 
-VERSION_NUMBER = '2.0 (ALPHA)'
+VERSION_NUMBER = '2.0 (BETA 1)'
 VERSION_DATE = '2016-03'
 VERSION_AUTHOR = 'Neil Munday'
 
