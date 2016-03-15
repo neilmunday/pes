@@ -60,7 +60,11 @@ function rmSourceDir {
 }
 
 export buildDir=$HOME/pes-build
-export emulatorInstallDir="/opt/pes/emulators"
+export srcDir=$HOME/src
+export pesDir="/opt/pes"
+export pesUserDir="$HOME/pes"
+export pesBiosDir="$pesUserDir/BIOS"
+export emulatorInstallDir="$pesDir/emulators"
 export retroArchInstallDir="$emulatorInstallDir/RetroArch"
 export retroArchConfigDir="$retroArchInstallDir/etc"
 export retroArchCoresDir="$retroArchInstallDir/lib"
@@ -69,7 +73,22 @@ if [ ! -e $buildDir ]; then
 	run mkdir -p $buildDir
 fi
 
+if [ ! -e $pesDir ]; then
+	run sudo mkdir -p $pesDir
+fi
+
+if [ ! -e $srcDir ]; then
+	run mkdir $srcDir
+fi
+
 if [ ! -e $emulatorInstallDir ]; then
 	run sudo mkdir -p $emulatorInstallDir
 fi
 
+if [ ! -e $pesUserDir ]; then
+	run mkdir -p $pesUserDir
+fi
+
+if [ ! -e $pesBiosDir ]; then
+	run mkdir -p $pesBiosDir
+fi

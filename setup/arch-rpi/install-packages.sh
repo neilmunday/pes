@@ -6,7 +6,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2016 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -38,12 +38,14 @@ run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
 	libusb-compat linuxconsole libplatform \
 	python2 python2-levenshtein python2-pip python2-imaging \
 	ntp \
+	freetype2 \
 	parted \
 	rsync \
 	samba \
 	fbset mesa mesa-libgl alsa-utils \
 	crda iw  wpa_supplicant \
-	p7zip zip unzip
+	p7zip zip unzip \
+	sdl
 
 run sudo pip2 install --upgrade pip
 run sudo pip2 install reparted
