@@ -147,35 +147,38 @@ class PESApp(object):
 		
 		self.doKeyEvents = True
 		
-	def exit(self, rtn=0):
-		# tidy up
-		logging.debug("PESApp.exit: stopping screens...")
-		for s in self.screens:
-			self.screens[s].stop()
-		logging.debug("PESApp.exit: purging cached surfaces...")
-		for console, surface in self.consoleSurfaces.iteritems():
-			logging.debug("PESApp.exit: unloading surface for %s..." % console)
-			sdl2.SDL_FreeSurface(surface)
-		logging.debug("PESApp.exit: tidying up...")
-		#sdl2.SDL_DestroyTexture(self.__gamepadTexture)
-		#sdl2.SDL_DestroyTexture(self.__networkTexture)
-		self.__gamepadIcon.destroy()
-		self.__networkIcon.destroy()
-		if self.__msgBox:
-			self.__msgBox.destroy()
-		Thumbnail.destroyTextures()
-		for o in self.__uiObjects:
-			o.destroy()
-		sdl2.sdlttf.TTF_CloseFont(self.headerFont)
-		sdl2.sdlttf.TTF_CloseFont(self.bodyFont)
-		sdl2.sdlttf.TTF_CloseFont(self.menuFont)
-		sdl2.sdlttf.TTF_CloseFont(self.titleFont)
-		sdl2.sdlttf.TTF_CloseFont(self.splashFont)
-		sdl2.sdlttf.TTF_Quit()
-		sdl2.sdlimage.IMG_Quit()
-		sdl2.SDL_Quit()
-		logging.info("PESApp.exit: exiting...")
-		sys.exit(rtn)
+	def exit(self, rtn=0, confirm=False):
+		if confirm:
+			self.showMessageBox("Are you sure?", self.exit, rtn, False)
+		else:
+			# tidy up
+			logging.debug("PESApp.exit: stopping screens...")
+			for s in self.screens:
+				self.screens[s].stop()
+			logging.debug("PESApp.exit: purging cached surfaces...")
+			for console, surface in self.consoleSurfaces.iteritems():
+				logging.debug("PESApp.exit: unloading surface for %s..." % console)
+				sdl2.SDL_FreeSurface(surface)
+			logging.debug("PESApp.exit: tidying up...")
+			#sdl2.SDL_DestroyTexture(self.__gamepadTexture)
+			#sdl2.SDL_DestroyTexture(self.__networkTexture)
+			self.__gamepadIcon.destroy()
+			self.__networkIcon.destroy()
+			if self.__msgBox:
+				self.__msgBox.destroy()
+			Thumbnail.destroyTextures()
+			for o in self.__uiObjects:
+				o.destroy()
+			sdl2.sdlttf.TTF_CloseFont(self.headerFont)
+			sdl2.sdlttf.TTF_CloseFont(self.bodyFont)
+			sdl2.sdlttf.TTF_CloseFont(self.menuFont)
+			sdl2.sdlttf.TTF_CloseFont(self.titleFont)
+			sdl2.sdlttf.TTF_CloseFont(self.splashFont)
+			sdl2.sdlttf.TTF_Quit()
+			sdl2.sdlimage.IMG_Quit()
+			sdl2.SDL_Quit()
+			logging.info("PESApp.exit: exiting...")
+			sys.exit(rtn)
 		
 	def initScreens(self):
 		logging.debug("PESApp.initScreens: initialising screens...")
@@ -259,7 +262,10 @@ class PESApp(object):
 			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_BUTTON:
 				return "%s_btn = \"%d\"\n" % (param, bind.value.button)
 			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_AXIS:
-				return PESApp.getRetroArchConfigAxisValue(param, controller, button)
+				#return PESApp.getRetroArchConfigAxisValue(param, controller, bind.value.axis)
+				if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN or button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+					return "%s_axis = \"-%d\"\n" % (param, bind.value.axis)
+				return "%s_axis = \"+%d\"\n" % (param, bind.value.axis)
 			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_HAT:
 				if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP:
 					return "%s_btn = \"h%d%s\"\n" % (param, bind.value.hat.hat, "up")
@@ -607,9 +613,11 @@ class PESApp(object):
 							self.screens["Home"].setMenuActive(True)
 							self.screens["Home"].menu.setSelected(0)
 							self.screens["Home"].update()
-					if self.__msgBox and self.__msgBox.isVisible():
-						self.__msgBox.processEvent(event)
-					else:
+						if self.__msgBox and self.__msgBox.isVisible():
+							self.__msgBox.processEvent(event)
+						else:
+							self.screens[self.screenStack[-1]].processEvent(event)
+					elif self.doKeyEvents and (event.type == sdl2.SDL_JOYBUTTONUP or event.type == sdl2.SDL_JOYAXISMOTION or event.type == sdl2.SDL_JOYHATMOTION):
 						self.screens[self.screenStack[-1]].processEvent(event)
 								
 				if event.type == sdl2.SDL_KEYDOWN and event.key.keysym.sym == sdl2.SDLK_ESCAPE:
@@ -1267,7 +1275,7 @@ class HomeScreen(Screen):
 		self.menu.addItem(MenuItem("Settings", False, False, self.app.setScreen, "Settings"))
 		self.menu.addItem(MenuItem("Reboot", False, False, self.app.reboot))
 		self.menu.addItem(MenuItem("Power Off", False, False, self.app.shutdown))
-		self.menu.addItem(MenuItem("Exit", False, False, self.app.exit))
+		self.menu.addItem(MenuItem("Exit", False, False, self.app.exit, 0, True))
 		self.__thumbXGap = 20
 		self.__thumbYGap = 10
 		self.__showThumbs = 10
@@ -1388,6 +1396,61 @@ class HomeScreen(Screen):
 			elif selected.getText() == "Power Off":
 				self.__headerLabel.setText("Power Off")
 				self.__descriptionLabel.setText("Select this menu item to power off your system.")
+				
+class JoystickMap(object):
+	
+	BUTTON = 1
+	AXIS = 2
+	HAT = 3
+	
+	def __init__(self, prompt, sdlName):
+		self.__prompt = prompt
+		self.__sdlName = sdlName
+		self.reset()
+		
+	def getPrompt(self):
+		return "Press: %s" % self.__prompt
+	
+	def getInputTypeAsString(self):
+		if self.__inputType == None:
+			return "None"
+		if self.__inputType == self.BUTTON:
+			return "Button"
+		if self.__inputType == self.HAT:
+			return "Hat"
+		if self.__inputType == self.AXIS:
+			return "Axis"
+		return "Unknown!"
+	
+	def getMap(self):
+		if self.__inputType == self.BUTTON:
+			return "%s:b%s" % (self.__sdlName, self.__value)
+		if self.__inputType == self.AXIS:
+			return "%s:a%s" % (self.__sdlName, self.__value)
+		if self.__inputType == self.HAT:
+			hat, value = self.__value
+			return "%s:h%s.%s" % (self.__sdlName, hat, value)
+		return None
+	
+	def getValue(self):
+		return self.__value
+	
+	def getValueAsString(self):
+		if self.__inputType == self.HAT:
+			return "(Hat: %s %s)" % (self.__value[0], self.__value[1])
+		return "%s" % self.__value
+	
+	def getType(self):
+		return self.__inputType
+	
+	def reset(self):
+		self.__value = None
+		self.__inputType = None
+		
+	def setValue(self, inputType, value):
+		self.__inputType = inputType
+		self.__value = value
+		logging.debug("JoystickMap.setValue: name: %s, type: %s, value: %s" % (self.__sdlName, self.getInputTypeAsString(), self.getValueAsString()))
 		
 class SettingsScreen(Screen):
 	
@@ -1417,6 +1480,32 @@ class SettingsScreen(Screen):
 		self.__scanButton = None
 		self.__selectAllButton = None
 		self.__deselectAllButton = None
+		self.__jsIndex= None
+		self.__jsName = None
+		self.__jsPromptLabel = None
+		self.__jsPrompts = [
+			JoystickMap("Start", "start"),
+			JoystickMap("Select", "back"),
+			JoystickMap("Up", "dpup"),
+			JoystickMap("Down", "dpdown"),
+			JoystickMap("Left", "dpleft"),
+			JoystickMap("Right", "dpright"),
+			JoystickMap("A", "a"),
+			JoystickMap("B", "b"),
+			JoystickMap("X", "x"),
+			JoystickMap("Y", "y"),
+			JoystickMap("L1", "leftshoulder"),
+			JoystickMap("R1", "rightshoulder"),
+			JoystickMap("L2", "lefttrigger"),
+			JoystickMap("R2", "righttrigger"),
+			JoystickMap("Left Axis Vertical", "lefty"),
+			JoystickMap("Left Axis Horizontal", "leftx"),
+			JoystickMap("Right Axis Vertical", "righty"),
+			JoystickMap("Right Axis Horizontal", "rightx"),
+			JoystickMap("Guide/Home", "guide")
+		]
+		self.__jsPrompt = 0
+		self.__joysticks = []
 
 	def drawScreen(self):
 		super(SettingsScreen, self).drawScreen()
@@ -1450,6 +1539,8 @@ class SettingsScreen(Screen):
 				self.__scanButton.draw()
 				self.__selectAllButton.draw()
 				self.__deselectAllButton.draw()
+		elif selected == "Joystick Set-Up":
+			self.__jsPromptLabel.draw()
 		
 	def processEvent(self, event):
 		selected = self.menu.getSelectedItem().getText()
@@ -1496,8 +1587,26 @@ class SettingsScreen(Screen):
 					self.__headerLabel.setText(selected)
 					self.__descriptionLabel.setText("Pi Entertainment System version %s\n\nReleased: %s\n\nLicense: Licensed under version 3 of the GNU Public License (GPL)\n\nAuthor: %s\n\nContributors: Eric Smith\n\nCover art: theGamesDB.net\n\nDocumentation: http://pes.mundayweb.com\n\nFacebook: https://www.facebook.com/pientertainmentsystem\n\nHelp: pes@mundayweb.com\n\nIP Address: %s" % (VERSION_NUMBER, VERSION_DATE, VERSION_AUTHOR, self.app.ip), True)
 				elif selected == "Joystick Set-Up":
+					self.__jsIndex = None
+					self.__jsPrompt = 0
+					self.__joysticks = []
+					for p in self.__jsPrompts:
+						p.reset()
 					self.__headerLabel.setText(selected)
-					self.__descriptionLabel.setText("To be implemented.", True)
+					self.__descriptionLabel.setText("Please make sure all axis are in their reset positions and then press START on the control pad you wish to configure.\n\nYou can abort the configuration process at any point by pressing BACKSPACE or the BACK button on your TV remote.\n\nIf your joystick/control pad does not have a particular button, press START to skip it.", True)
+					if not self.__jsPromptLabel:
+						self.__jsPromptLabel = self.addUiObject(Label(self.renderer, self.__descriptionLabel.x, self.__descriptionLabel.y + self.__descriptionLabel.height + 30, self.__jsPrompts[self.__jsPrompt].getPrompt(), self.app.bodyFont, self.app.textColour, fixedWidth=self.screenRect[2] - self.screenMargin))
+					else:
+						self.__jsPromptLabel.setCoords(self.__descriptionLabel.x, self.__descriptionLabel.y + self.__descriptionLabel.height + 30)
+						self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
+						self.__jsPromptLabel.setVisible(True)
+						
+					joystickTotal = sdl2.joystick.SDL_NumJoysticks()
+					if joystickTotal > 0:
+						#logging.debug("PESApp.run: found %d control pads" % joystickTotal)
+						for i in xrange(joystickTotal):
+							js = sdl2.SDL_JoystickOpen(i)
+							self.__joysticks.append(js)
 					
 				self.__init = False
 		else:
@@ -1513,10 +1622,6 @@ class SettingsScreen(Screen):
 							self.__deselectAllButton.setFocus(False)
 						else:
 							self.__consoleList.processEvent(event)
-							#if self.__updateDatabaseMenu.getToggledCount() == 0:
-							#	self.__scanButton.setVisible(False)
-							#else:
-							#	self.__scanButton.setVisible(True)
 							self.__scanButton.processEvent(event)
 							self.__selectAllButton.processEvent(event)
 							self.__deselectAllButton.processEvent(event)
@@ -1542,6 +1647,61 @@ class SettingsScreen(Screen):
 								elif self.__deselectAllButton.hasFocus():
 									self.__deselectAllButton.setFocus(False)
 									self.__selectAllButton.setFocus(True)
+				elif selected == "Joystick Set-Up":
+					if self.__jsPrompt < len(self.__jsPrompts):
+						# waiting for a joystick to configure
+						if event.type == sdl2.SDL_JOYBUTTONUP:
+							if self.__jsPrompt == 0:
+								self.__jsIndex = event.jbutton.which
+								self.__jsName = sdl2.SDL_JoystickName(self.__joysticks[self.__jsIndex])
+								self.__descriptionLabel.setText("Configuring joystick #%d, %s\n\nIf you joystick/control pad does not have the button/axis below, please press START to skip it." % (self.__jsIndex, self.__jsName))
+								logging.debug("SettingsScreen.processEvent: configuring joystick at %d (%s)" % (self.__jsIndex, self.__jsName))
+								self.__jsPrompts[self.__jsPrompt].setValue(JoystickMap.BUTTON, event.jbutton.button)
+								self.__jsPrompt += 1
+								self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
+							elif self.__jsIndex == event.jbutton.which:
+								if event.jbutton.button != self.__jsPrompts[0].getValue():
+									self.__jsPrompts[self.__jsPrompt].setValue(JoystickMap.BUTTON, event.jbutton.button)
+								else:
+									logging.debug("SettingsScreen.processEvent: skipping button %s" % self.__jsPrompts[self.__jsPrompt].getPrompt())
+								self.__jsPrompt += 1
+								if self.__jsPrompt < len(self.__jsPrompts):
+									self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
+						elif event.type == sdl2.SDL_JOYHATMOTION and self.__jsIndex == event.jhat.which and self.__jsPrompt > 0:
+							self.__jsPrompts[self.__jsPrompt].setValue(JoystickMap.HAT, (event.jhat.hat, event.jhat.value))
+							self.__jsPrompt += 1
+							if self.__jsPrompt < len(self.__jsPrompts):
+								self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
+						elif event.type == sdl2.SDL_JOYAXISMOTION and self.__jsIndex == event.jhat.which and self.__jsPrompt > 0 and (event.jaxis.value < JOYSTICK_AXIS_MIN or event.jaxis.value > JOYSTICK_AXIS_MAX):
+							self.__jsPrompts[self.__jsPrompt].setValue(JoystickMap.AXIS, event.jaxis.axis)
+							self.__jsPrompt += 1
+							if self.__jsPrompt < len(self.__jsPrompts):
+								self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
+								
+						if self.__jsPrompt == len(self.__jsPrompts):
+							logging.debug("SettingsScreen.processEvent: joystick configuration complete!")
+							self.__descriptionLabel.setText("Configuration complete. Please press the BACK button to return to the previous menu.")
+							self.__jsPromptLabel.setVisible(False)
+							
+							jsGUID = getJoystickGUIDString(sdl2.SDL_JoystickGetDeviceGUID(self.__jsIndex))
+							logging.debug("SettingsScreen.processEvent: creating SDL2 controller mapping using GUID: %s" % jsGUID)
+							# remove commas from the name
+							jsName = self.__jsName.replace(",", " ")
+							jsMap = [jsGUID, jsName]
+							for p in self.__jsPrompts:
+								m = p.getMap()
+								if m:
+									jsMap.append(m)
+							jsMapStr = ','.join(jsMap)
+							logging.debug("SettingsScreen.processEvent: map: %s" % jsMapStr)
+							
+							for j in self.__joysticks:
+								sdl2.SDL_JoystickClose(j)
+								
+							if sdl2.SDL_GameControllerAddMapping(jsMapStr) != 1:
+								logging.error("SettingsScreen.processEvent: SDL_GameControllerAddMapping failed for joystick %d, %s" % (self.__jsIndex, self.__jsName))
+							else:
+								logging.debug("SettingsScreen.processEvent: mapping loaded OK!")
 
 		if self.menuActive: # this will be true if parent method trapped a backspace event
 			if event.type == sdl2.SDL_KEYDOWN:
