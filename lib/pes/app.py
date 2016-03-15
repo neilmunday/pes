@@ -25,6 +25,7 @@ from datetime import datetime
 from pes import *
 from pes.data import *
 from pes.dbupdate import *
+from pes.gamecontrollerdb import GameControllerDb
 from pes.ui import *
 import pes.event
 from pes.util import *
@@ -146,6 +147,7 @@ class PESApp(object):
 		self.__footerHeight = 0
 		
 		self.doKeyEvents = True
+		self.doJsToKeyEvents = True
 		
 	def exit(self, rtn=0, confirm=False):
 		if confirm:
@@ -263,7 +265,7 @@ class PESApp(object):
 				return "%s_btn = \"%d\"\n" % (param, bind.value.button)
 			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_AXIS:
 				#return PESApp.getRetroArchConfigAxisValue(param, controller, bind.value.axis)
-				if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN or button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+				if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP or button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT:
 					return "%s_axis = \"-%d\"\n" % (param, bind.value.axis)
 				return "%s_axis = \"+%d\"\n" % (param, bind.value.axis)
 			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_HAT:
@@ -530,6 +532,7 @@ class PESApp(object):
 		
 		self.__controlPad = None
 		self.__controlPadIndex = None
+		self.__dpadAsAxis = False
 		tick = sdl2.timer.SDL_GetTicks()
 		downTick = tick
 		
@@ -537,34 +540,58 @@ class PESApp(object):
 			events = sdl2.ext.get_events()
 			for event in events:
 				
-				if (event.type == sdl2.SDL_CONTROLLERBUTTONDOWN or event.type == sdl2.SDL_CONTROLLERBUTTONUP) and self.__controlPad and event.cbutton.which == self.__controlPadIndex:
-					if event.type == sdl2.SDL_CONTROLLERBUTTONDOWN:
-						logging.debug("PESApp.run: player 1 button \"%s\" pressed" % sdl2.SDL_GameControllerGetStringForButton(event.cbutton.button))
-						downTick = sdl2.timer.SDL_GetTicks() + (self.__CONTROL_PAD_BUTTON_REPEAT * 2)
-						e = mapControlPadButtonEvent(event, sdl2.SDL_KEYDOWN)
-						if e:
-							sdl2.SDL_PushEvent(e)
-					elif event.type == sdl2.SDL_CONTROLLERBUTTONUP:
-						e = mapControlPadButtonEvent(event, sdl2.SDL_KEYUP)
-						if e:
-							sdl2.SDL_PushEvent(e)
-				elif event.type == sdl2.SDL_CONTROLLERAXISMOTION and self.__controlPad and event.cbutton.which == self.__controlPadIndex:
-					if event.caxis.value < JOYSTICK_AXIS_MIN or event.caxis.value > JOYSTICK_AXIS_MAX:
-						logging.debug("PESApp.run: player 1 axis \"%s\" activated" % sdl2.SDL_GameControllerGetStringForAxis(event.caxis.axis))
-						downTick = sdl2.timer.SDL_GetTicks() + (self.__CONTROL_PAD_BUTTON_REPEAT * 2)
-						e = mapControlPadAxisEvent(event, sdl2.SDL_KEYDOWN)
-						if e:
-							sdl2.SDL_PushEvent(e)
-					else:
-						e = mapControlPadAxisEvent(event, sdl2.SDL_KEYUP)
-						if e:
-							sdl2.SDL_PushEvent(e)
-				
-				# device add/remove isn't reliable at the moment so don't use it for now
-				#if event.type == sdl2.SDL_CONTROLLERDEVICEADDED:
-				#	print "ADDED %d" % event.cdevice.which
-				#elif event.type == sdl2.SDL_CONTROLLERDEVICEREMOVED:
-				#	print "REMOVED %d" % event.cdevice.which
+				if self.doJsToKeyEvents:
+					if (event.type == sdl2.SDL_CONTROLLERBUTTONDOWN or event.type == sdl2.SDL_CONTROLLERBUTTONUP) and self.__controlPad and event.cbutton.which == self.__controlPadIndex and (not self.__dpadAsAxis or (self.__dpadAsAxis and event.cbutton.button != sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP and event.cbutton.button != sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN and event.cbutton.button != sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT and event.cbutton.button != sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT)):
+						if event.type == sdl2.SDL_CONTROLLERBUTTONDOWN:
+							logging.debug("PESApp.run: player 1 button \"%s\" pressed" % sdl2.SDL_GameControllerGetStringForButton(event.cbutton.button))
+							downTick = sdl2.timer.SDL_GetTicks() + (self.__CONTROL_PAD_BUTTON_REPEAT * 2)
+							e = mapControlPadButtonEvent(event, sdl2.SDL_KEYDOWN)
+							if e:
+								sdl2.SDL_PushEvent(e)
+						elif event.type == sdl2.SDL_CONTROLLERBUTTONUP:
+							e = mapControlPadButtonEvent(event, sdl2.SDL_KEYUP)
+							if e:
+								sdl2.SDL_PushEvent(e)
+					elif event.type == sdl2.SDL_CONTROLLERAXISMOTION and self.__controlPad and event.cbutton.which == self.__controlPadIndex:
+						if event.caxis.value < JOYSTICK_AXIS_MIN or event.caxis.value > JOYSTICK_AXIS_MAX:
+							logging.debug("PESApp.run: player 1 axis \"%s\" activated" % sdl2.SDL_GameControllerGetStringForAxis(event.caxis.axis))
+							downTick = sdl2.timer.SDL_GetTicks() + (self.__CONTROL_PAD_BUTTON_REPEAT * 2)
+							e = mapControlPadAxisEvent(event, sdl2.SDL_KEYDOWN)
+							if e:
+								sdl2.SDL_PushEvent(e)
+						else:
+							e = mapControlPadAxisEvent(event, sdl2.SDL_KEYUP)
+							if e:
+								sdl2.SDL_PushEvent(e)
+					elif event.type == sdl2.SDL_JOYAXISMOTION and self.__controlPad and self.__controlPadIndex == event.jaxis.which:
+						if self.__dpadAsAxis:
+							# and so begins some really horrible code to work around the SDL2 game controller API mapping axis to dpad buttons
+							for b in [sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN, sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT]:
+								bind = sdl2.SDL_GameControllerGetBindForButton(c, b)
+								if bind:
+									if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_AXIS:
+										if bind.value.axis == event.jaxis.axis:
+											btn = b
+											if event.jaxis.value < JOYSTICK_AXIS_MIN:
+												if b == sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+													btn = sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP
+												else:
+													btn = sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT
+											key = mapButtonToKey(btn)
+											if event.jaxis.value < JOYSTICK_AXIS_MIN or event.jaxis.value > JOYSTICK_AXIS_MAX:
+												downTick = sdl2.timer.SDL_GetTicks() + (self.__CONTROL_PAD_BUTTON_REPEAT * 2)
+												if key:
+													e = sdl2.SDL_Event()
+													e.type = sdl2.SDL_KEYDOWN
+													e.key.keysym.sym = key
+													sdl2.SDL_PushEvent(e)
+											else:
+												if key:
+													e = sdl2.SDL_Event()
+													e.type = sdl2.SDL_KEYUP
+													e.key.keysym.sym = key
+													sdl2.SDL_PushEvent(e)
+											break
 
 				if event.type == pes.event.EVENT_TYPE:
 					(t, d1, d2) = pes.event.decodePesEvent(event)
@@ -617,7 +644,7 @@ class PESApp(object):
 							self.__msgBox.processEvent(event)
 						else:
 							self.screens[self.screenStack[-1]].processEvent(event)
-					elif self.doKeyEvents and (event.type == sdl2.SDL_JOYBUTTONUP or event.type == sdl2.SDL_JOYAXISMOTION or event.type == sdl2.SDL_JOYHATMOTION):
+					elif self.doKeyEvents and (event.type == sdl2.SDL_KEYUP or event.type == sdl2.SDL_JOYBUTTONUP or event.type == sdl2.SDL_JOYAXISMOTION or event.type == sdl2.SDL_JOYHATMOTION):
 						self.screens[self.screenStack[-1]].processEvent(event)
 								
 				if event.type == sdl2.SDL_KEYDOWN and event.key.keysym.sym == sdl2.SDLK_ESCAPE:
@@ -685,19 +712,38 @@ class PESApp(object):
 					self.__controlPad = None
 					self.__controlPadIndex = None
 					self.__gamepadIcon.setVisible(False)
-				else:
+				elif self.doJsToKeyEvents:
 					# is the user holding down a button?
 					# note: we only care about directional buttons
-					for b in [sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN, sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP]:
-						if sdl2.SDL_GameControllerGetButton(self.__controlPad, b):
-							if sdl2.timer.SDL_GetTicks() - downTick > self.__CONTROL_PAD_BUTTON_REPEAT:
-								downTick = sdl2.timer.SDL_GetTicks()
-								key = mapButtonToKey(b)
-								if key:
-									e = sdl2.SDL_Event()
-									e.type = sdl2.SDL_KEYDOWN
-									e.key.keysym.sym = key
-									sdl2.SDL_PushEvent(e)
+					if self.__dpadAsAxis:
+						bind = sdl2.SDL_GameControllerGetBindForButton(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN)
+						if bind and bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_AXIS:
+							js = sdl2.SDL_GameControllerGetJoystick(self.__controlPad)
+							axisValue = sdl2.SDL_JoystickGetAxis(js, bind.value.axis)
+							if axisValue < JOYSTICK_AXIS_MIN or axisValue > JOYSTICK_AXIS_MAX:
+								if sdl2.timer.SDL_GetTicks() - downTick > self.__CONTROL_PAD_BUTTON_REPEAT:
+									downTick = sdl2.timer.SDL_GetTicks()
+									btn = sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN
+									if axisValue < JOYSTICK_AXIS_MIN:
+										btn = sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP
+									key = mapButtonToKey(btn)
+									if key:
+										e = sdl2.SDL_Event()
+										e.type = sdl2.SDL_KEYDOWN
+										e.key.keysym.sym = key
+										sdl2.SDL_PushEvent(e)
+					else:
+						for b in [sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN, sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP]:
+							if sdl2.SDL_GameControllerGetButton(self.__controlPad, b):
+								if sdl2.timer.SDL_GetTicks() - downTick > self.__CONTROL_PAD_BUTTON_REPEAT:
+									downTick = sdl2.timer.SDL_GetTicks()
+									key = mapButtonToKey(b)
+									if key:
+										e = sdl2.SDL_Event()
+										e.type = sdl2.SDL_KEYDOWN
+										e.key.keysym.sym = key
+										sdl2.SDL_PushEvent(e)
+					
 					# is the user holding down an axis?
 					# note: at the moment we only care about the left axis in the Y plane
 					for a in [sdl2.SDL_CONTROLLER_AXIS_LEFTY]:
@@ -725,8 +771,9 @@ class PESApp(object):
 									#logging.debug("PESApp.run: %s is attached at %d" % (sdl2.SDL_GameControllerNameForIndex(i), i))
 									if self.__controlPad == None:
 										logging.debug("PESApp.run: switching player 1 to control pad #%d: %s (%s)" % (i, sdl2.SDL_GameControllerNameForIndex(i), getJoystickGUIDString(sdl2.SDL_JoystickGetDeviceGUID(i))))
-										self.__controlPad = c
 										self.__controlPadIndex = i
+										self.__controlPad = c
+										self.updateControlPad(self.__controlPadIndex)
 										close = False
 										self.__gamepadIcon.setVisible(True)
 										#print sdl2.SDL_GameControllerMapping(c)
@@ -773,6 +820,17 @@ class PESApp(object):
 		else:
 			logging.info("PES is shutting down...")
 			self.runCommand(self.__shutdownCommand)
+			
+	def updateControlPad(self, jsIndex):
+		if jsIndex == self.__controlPadIndex:
+			# hack for instances where a dpad is an axis
+			bind = sdl2.SDL_GameControllerGetBindForButton(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP)
+			if bind:			
+				if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_AXIS:
+					self.__dpadAsAxis = True
+					logging.debug("PESApp.run: enabling dpad as axis hack")
+				else:
+					self.__dpadAsAxis = False
 			
 class PESLoadingThread(threading.Thread):
 	def __init__(self, app):
@@ -1283,7 +1341,7 @@ class HomeScreen(Screen):
 		self.__consoleTexture = None
 		self.__consoleSelected = False
 		self.__headerLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], "Welcome to PES!", self.app.titleFont, self.app.textColour))
-		self.__welcomeText = "This is the BETA version.\n\nMost features have been implemented, but there are a few minor things to finish (e.g. joystick configuraton).\n\nI hope you enjoy this new version and any feedback (good or bad) is greatly appreciated.\n\nCheers,\n\nNeil."
+		self.__welcomeText = "This is the PES 2.0 BETA.\n\nI hope you enjoy this new version and any feedback (good or bad) is greatly appreciated.\n\nCheers,\n\nNeil."
 		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__welcomeText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
 		self.__recentlyAddedText = "Recently Added"
 		self.__recentlyAddedLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__recentlyAddedText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
@@ -1397,7 +1455,7 @@ class HomeScreen(Screen):
 				self.__headerLabel.setText("Power Off")
 				self.__descriptionLabel.setText("Select this menu item to power off your system.")
 				
-class JoystickMap(object):
+class JoystickPromptMap(object):
 	
 	BUTTON = 1
 	AXIS = 2
@@ -1450,7 +1508,7 @@ class JoystickMap(object):
 	def setValue(self, inputType, value):
 		self.__inputType = inputType
 		self.__value = value
-		logging.debug("JoystickMap.setValue: name: %s, type: %s, value: %s" % (self.__sdlName, self.getInputTypeAsString(), self.getValueAsString()))
+		logging.debug("JoystickPromptMap.setValue: name: %s, type: %s, value: %s" % (self.__sdlName, self.getInputTypeAsString(), self.getValueAsString()))
 		
 class SettingsScreen(Screen):
 	
@@ -1484,28 +1542,34 @@ class SettingsScreen(Screen):
 		self.__jsName = None
 		self.__jsPromptLabel = None
 		self.__jsPrompts = [
-			JoystickMap("Start", "start"),
-			JoystickMap("Select", "back"),
-			JoystickMap("Up", "dpup"),
-			JoystickMap("Down", "dpdown"),
-			JoystickMap("Left", "dpleft"),
-			JoystickMap("Right", "dpright"),
-			JoystickMap("A", "a"),
-			JoystickMap("B", "b"),
-			JoystickMap("X", "x"),
-			JoystickMap("Y", "y"),
-			JoystickMap("L1", "leftshoulder"),
-			JoystickMap("R1", "rightshoulder"),
-			JoystickMap("L2", "lefttrigger"),
-			JoystickMap("R2", "righttrigger"),
-			JoystickMap("Left Axis Vertical", "lefty"),
-			JoystickMap("Left Axis Horizontal", "leftx"),
-			JoystickMap("Right Axis Vertical", "righty"),
-			JoystickMap("Right Axis Horizontal", "rightx"),
-			JoystickMap("Guide/Home", "guide")
+			JoystickPromptMap("Start", "start"),
+			JoystickPromptMap("Select", "back"),
+			JoystickPromptMap("Up", "dpup"),
+			JoystickPromptMap("Down", "dpdown"),
+			JoystickPromptMap("Left", "dpleft"),
+			JoystickPromptMap("Right", "dpright"),
+			JoystickPromptMap("A", "a"),
+			JoystickPromptMap("B", "b"),
+			JoystickPromptMap("X", "x"),
+			JoystickPromptMap("Y", "y"),
+			JoystickPromptMap("L1", "leftshoulder"),
+			JoystickPromptMap("R1", "rightshoulder"),
+			JoystickPromptMap("L2", "lefttrigger"),
+			JoystickPromptMap("R2", "righttrigger"),
+			JoystickPromptMap("Left Axis Vertical", "lefty"),
+			JoystickPromptMap("Left Axis Horizontal", "leftx"),
+			JoystickPromptMap("Right Axis Vertical", "righty"),
+			JoystickPromptMap("Right Axis Horizontal", "rightx"),
+			JoystickPromptMap("Guide/Home", "guide")
 		]
+		self.__jsPromptLen = len(self.__jsPrompts)
 		self.__jsPrompt = 0
 		self.__joysticks = []
+		self.__ignoreJsEvents = True
+		self.__jsTimerTick = 0
+		self.__jsTimerLabel = None
+		self.__jsTimeOut = 10
+		self.__jsTimeRemaining = self.__jsTimeOut
 
 	def drawScreen(self):
 		super(SettingsScreen, self).drawScreen()
@@ -1540,7 +1604,24 @@ class SettingsScreen(Screen):
 				self.__selectAllButton.draw()
 				self.__deselectAllButton.draw()
 		elif selected == "Joystick Set-Up":
+			if self.__jsTimeRemaining > -1 and self.__jsPrompt < self.__jsPromptLen:
+				tick = sdl2.SDL_GetTicks()
+				if tick - self.__jsTimerTick > 1000:
+					self.__jsTimerTick = tick
+					self.__jsTimeRemaining -= 1
+					
+					self.__jsTimerLabel.setText("Timeout in: %ds" % self.__jsTimeRemaining)
+					
+					if self.__jsTimeRemaining == 0:
+						# trigger back event
+						e = sdl2.SDL_Event()
+						e.type = sdl2.SDL_KEYDOWN
+						e.key.keysym.sym = sdl2.SDLK_BACKSPACE
+						sdl2.SDL_PushEvent(e)
+						self.__jsTimeRemaining = -1
+			
 			self.__jsPromptLabel.draw()
+			self.__jsTimerLabel.draw()
 		
 	def processEvent(self, event):
 		selected = self.menu.getSelectedItem().getText()
@@ -1587,7 +1668,9 @@ class SettingsScreen(Screen):
 					self.__headerLabel.setText(selected)
 					self.__descriptionLabel.setText("Pi Entertainment System version %s\n\nReleased: %s\n\nLicense: Licensed under version 3 of the GNU Public License (GPL)\n\nAuthor: %s\n\nContributors: Eric Smith\n\nCover art: theGamesDB.net\n\nDocumentation: http://pes.mundayweb.com\n\nFacebook: https://www.facebook.com/pientertainmentsystem\n\nHelp: pes@mundayweb.com\n\nIP Address: %s" % (VERSION_NUMBER, VERSION_DATE, VERSION_AUTHOR, self.app.ip), True)
 				elif selected == "Joystick Set-Up":
+					self.app.doJsToKeyEvents = False
 					self.__jsIndex = None
+					self.__jsTimeRemaining = self.__jsTimeOut
 					self.__jsPrompt = 0
 					self.__joysticks = []
 					for p in self.__jsPrompts:
@@ -1596,10 +1679,14 @@ class SettingsScreen(Screen):
 					self.__descriptionLabel.setText("Please make sure all axis are in their reset positions and then press START on the control pad you wish to configure.\n\nYou can abort the configuration process at any point by pressing BACKSPACE or the BACK button on your TV remote.\n\nIf your joystick/control pad does not have a particular button, press START to skip it.", True)
 					if not self.__jsPromptLabel:
 						self.__jsPromptLabel = self.addUiObject(Label(self.renderer, self.__descriptionLabel.x, self.__descriptionLabel.y + self.__descriptionLabel.height + 30, self.__jsPrompts[self.__jsPrompt].getPrompt(), self.app.bodyFont, self.app.textColour, fixedWidth=self.screenRect[2] - self.screenMargin))
+						self.__jsTimerLabel = self.addUiObject(Label(self.renderer, self.__jsPromptLabel.x, self.__jsPromptLabel.y + self.__jsPromptLabel.height + 10, "Timeout in: %ds" % self.__jsTimeRemaining, self.app.bodyFont, self.app.textColour, fixedWidth=self.screenRect[2] - self.screenMargin))
 					else:
 						self.__jsPromptLabel.setCoords(self.__descriptionLabel.x, self.__descriptionLabel.y + self.__descriptionLabel.height + 30)
 						self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
 						self.__jsPromptLabel.setVisible(True)
+						self.__jsTimerLabel.setText("Timeout in: %ds" % self.__jsTimeRemaining)
+						self.__jsTimerLabel.setCoords(self.__jsPromptLabel.x, self.__jsPromptLabel.y + self.__jsPromptLabel.height + 10)
+						self.__jsTimerLabel.setVisible(True)
 						
 					joystickTotal = sdl2.joystick.SDL_NumJoysticks()
 					if joystickTotal > 0:
@@ -1648,40 +1735,49 @@ class SettingsScreen(Screen):
 									self.__deselectAllButton.setFocus(False)
 									self.__selectAllButton.setFocus(True)
 				elif selected == "Joystick Set-Up":
-					if self.__jsPrompt < len(self.__jsPrompts):
+					if self.__ignoreJsEvents:
+						if event.type == sdl2.SDL_JOYBUTTONUP or event.type == sdl2.SDL_JOYHATMOTION or event.type == sdl2.SDL_JOYAXISMOTION:
+							self.__ignoreJsEvents = False
+					elif self.__jsPrompt < self.__jsPromptLen:
 						# waiting for a joystick to configure
 						if event.type == sdl2.SDL_JOYBUTTONUP:
+							self.__jsTimeRemaining = self.__jsTimeOut
 							if self.__jsPrompt == 0:
 								self.__jsIndex = event.jbutton.which
 								self.__jsName = sdl2.SDL_JoystickName(self.__joysticks[self.__jsIndex])
 								self.__descriptionLabel.setText("Configuring joystick #%d, %s\n\nIf you joystick/control pad does not have the button/axis below, please press START to skip it." % (self.__jsIndex, self.__jsName))
 								logging.debug("SettingsScreen.processEvent: configuring joystick at %d (%s)" % (self.__jsIndex, self.__jsName))
-								self.__jsPrompts[self.__jsPrompt].setValue(JoystickMap.BUTTON, event.jbutton.button)
+								self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.BUTTON, event.jbutton.button)
 								self.__jsPrompt += 1
 								self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
 							elif self.__jsIndex == event.jbutton.which:
 								if event.jbutton.button != self.__jsPrompts[0].getValue():
-									self.__jsPrompts[self.__jsPrompt].setValue(JoystickMap.BUTTON, event.jbutton.button)
+									self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.BUTTON, event.jbutton.button)
 								else:
 									logging.debug("SettingsScreen.processEvent: skipping button %s" % self.__jsPrompts[self.__jsPrompt].getPrompt())
 								self.__jsPrompt += 1
-								if self.__jsPrompt < len(self.__jsPrompts):
+								if self.__jsPrompt < self.__jsPromptLen:
 									self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
 						elif event.type == sdl2.SDL_JOYHATMOTION and self.__jsIndex == event.jhat.which and self.__jsPrompt > 0:
-							self.__jsPrompts[self.__jsPrompt].setValue(JoystickMap.HAT, (event.jhat.hat, event.jhat.value))
+							self.__jsTimeRemaining = self.__jsTimeOut
+							self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.HAT, (event.jhat.hat, event.jhat.value))
 							self.__jsPrompt += 1
-							if self.__jsPrompt < len(self.__jsPrompts):
+							if self.__jsPrompt < self.__jsPromptLen:
 								self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
-						elif event.type == sdl2.SDL_JOYAXISMOTION and self.__jsIndex == event.jhat.which and self.__jsPrompt > 0 and (event.jaxis.value < JOYSTICK_AXIS_MIN or event.jaxis.value > JOYSTICK_AXIS_MAX):
-							self.__jsPrompts[self.__jsPrompt].setValue(JoystickMap.AXIS, event.jaxis.axis)
+						elif event.type == sdl2.SDL_JOYAXISMOTION and self.__jsIndex == event.jaxis.which and self.__jsPrompt > 0 and (event.jaxis.value < JOYSTICK_AXIS_MIN or event.jaxis.value > JOYSTICK_AXIS_MAX):
+							self.__jsTimeRemaining = self.__jsTimeOut
+							self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.AXIS, event.jaxis.axis)
 							self.__jsPrompt += 1
-							if self.__jsPrompt < len(self.__jsPrompts):
+							if self.__jsPrompt < self.__jsPromptLen:
 								self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
 								
-						if self.__jsPrompt == len(self.__jsPrompts):
+						if self.__jsPrompt == self.__jsPromptLen:
 							logging.debug("SettingsScreen.processEvent: joystick configuration complete!")
-							self.__descriptionLabel.setText("Configuration complete. Please press the BACK button to return to the previous menu.")
 							self.__jsPromptLabel.setVisible(False)
+							self.__jsTimerLabel.setVisible(False)
+							self.__ignoreJsEvents = True
+							self.app.doJsToKeyEvents = True
+							errors = []
 							
 							jsGUID = getJoystickGUIDString(sdl2.SDL_JoystickGetDeviceGUID(self.__jsIndex))
 							logging.debug("SettingsScreen.processEvent: creating SDL2 controller mapping using GUID: %s" % jsGUID)
@@ -1698,10 +1794,28 @@ class SettingsScreen(Screen):
 							for j in self.__joysticks:
 								sdl2.SDL_JoystickClose(j)
 								
-							if sdl2.SDL_GameControllerAddMapping(jsMapStr) != 1:
-								logging.error("SettingsScreen.processEvent: SDL_GameControllerAddMapping failed for joystick %d, %s" % (self.__jsIndex, self.__jsName))
-							else:
+							rtn = sdl2.SDL_GameControllerAddMapping(jsMapStr)
+							if  rtn == 0 or rtn == 1:
 								logging.debug("SettingsScreen.processEvent: mapping loaded OK!")
+								try:
+									db = GameControllerDb(userGameControllerFile)
+									db.load()
+									if db.add(jsMapStr):
+										db.save()
+									else:
+										errors.append("Unable to save control pad mapping to file!")
+										logging.error("SettingsScreen.processEvent: unable to add mapping to %s" % userGameControllerFile)
+								except IOError, e:
+									logging.error(e)
+							else:
+								errors.append("Could not add SDL2 mapping for control pad!")
+								logging.error("SettingsScreen.processEvent: SDL_GameControllerAddMapping failed for joystick %d, %s" % (self.__jsIndex, self.__jsName))
+								
+							if len(errors) == 0:
+								self.app.updateControlPad(self.__jsIndex)
+								self.__descriptionLabel.setText("Configuration complete. Please press the BACK button to return to the previous menu.")
+							else:
+								self.__descriptionLabel.setText("Configuration failed with the following errors:\n\n%s" % "\n".join(errors))
 
 		if self.menuActive: # this will be true if parent method trapped a backspace event
 			if event.type == sdl2.SDL_KEYDOWN:
@@ -1710,6 +1824,8 @@ class SettingsScreen(Screen):
 					self.__init = True
 					self.__headerLabel.setText(self.__defaultHeaderText)
 					self.__descriptionLabel.setText(self.__initText, True)
+					self.__ignoreJsEvents = True
+					self.app.doJsToKeyEvents = True
 
 	def startScan(self):
 		logging.debug("SettingsScreen.startScan: beginning scan...")
