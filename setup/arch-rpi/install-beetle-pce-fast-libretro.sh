@@ -6,7 +6,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2016 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -40,6 +40,10 @@ run git clone git://github.com/libretro/beetle-pce-fast-libretro
 checkDir beetle-pce-fast-libretro
 cd beetle-pce-fast-libretro
 checkFile Makefile
+
+export CFLAGS="-mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
+export CXXFLAGS=$CFLAGS
+
 run make
 checkFile mednafen_pce_fast_libretro.so
-run cp mednafen_pce_fast_libretro.so $retroArchCoresDir
+run sudo cp mednafen_pce_fast_libretro.so $retroArchCoresDir

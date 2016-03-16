@@ -40,4 +40,8 @@ checkDir "fuse-libretro"
 cd fuse-libretro
 run make -f Makefile.libretro
 checkFile fuse_libretro.so
-run cp fuse_libretro.so $retroArchCoresDir/
+
+export CFLAGS="-mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
+export CXXFLAGS=$CFLAGS
+
+run sudo cp fuse_libretro.so $retroArchCoresDir/

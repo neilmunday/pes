@@ -43,6 +43,10 @@ cd gambatte-libretro
 checkDir libgambatte
 cd libgambatte
 checkFile Makefile.libretro
+
+export CFLAGS="-mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
+export CXXFLAGS=$CFLAGS
+
 run make -f Makefile.libretro
 checkFile gambatte_libretro.so
-run cp gambatte_libretro.so $retroArchCoresDir
+run sudo cp gambatte_libretro.so $retroArchCoresDir

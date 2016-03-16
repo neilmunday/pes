@@ -44,7 +44,11 @@ checkDir "fceu-next"
 cd fceu-next
 checkDir "fceumm-code"
 cd fceumm-code
+
+export CFLAGS="-mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
+export CXXFLAGS=$CFLAGS
+
 run make -f Makefile.libretro
 checkFile "fceumm_libretro.so"
-run cp fceumm_libretro.so $retroArchCoresDir
+run sudo cp fceumm_libretro.so $retroArchCoresDir
 

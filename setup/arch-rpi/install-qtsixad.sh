@@ -6,7 +6,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2016 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -31,15 +31,15 @@ fi
 
 source $setupDir/functions.sh
 
-qtsixaTar=$baseDir/src/QtSixA-1.5.1-src.tar.gz
+qtsixaTar=$srcDir/QtSixA-1.5.1-src.tar.gz
 qtsixaDir=$buildDir/QtSixA-1.5.1
-sixadPatchDir=$baseDir/src/sixad-patches
+sixadPatchDir=`realpath ../../src/sixad-patches`
 
 checkDir $sixadPatchDir
 
 header "Downloading sixad..."
 
-run cd $baseDir/src
+run cd $srcDir
 
 if [ ! -e $qtsixaTar ]; then
 	echo "Downloading QTSixA..."
@@ -63,7 +63,7 @@ for p in $sixadPatchDir/*.patch; do
 	patch < $p
 done
 
-run make
+run make -j
 run sudo cp -v bins/* /usr/sbin/
 run sudo cp -v sixad /usr/sbin/
 run sudo chmod 0755 /usr/sbin/sixad

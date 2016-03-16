@@ -6,7 +6,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2016 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -40,6 +40,10 @@ run git clone git://github.com/libretro/libretro-fba
 checkDir libretro-fba
 cd libretro-fba
 checkFile makefile.libretro
-run make -f makefile.libretro platform=rpi profile=performance
-checkFile fb_alpha_libretro.so
-run cp fb_alpha_libretro.so $retroArchCoresDir
+
+export CFLAGS="-mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
+export CXXFLAGS=$CFLAGS
+
+run make -f makefile.libretro profile=performance
+checkFile fb_libretro.so
+run sudo cp fb_libretro.so $retroArchCoresDir

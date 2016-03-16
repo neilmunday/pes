@@ -40,6 +40,10 @@ header "Downloading MegaDrive/Master System/Game Gear emulator - Genesis-Plus-GX
 run git clone https://github.com/ekeeke/Genesis-Plus-GX.git
 checkDir "Genesis-Plus-GX"
 cd "Genesis-Plus-GX"
+
+export CFLAGS="-mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
+export CXXFLAGS=$CFLAGS
+
 run make -f Makefile.libretro
 checkFile genesis_plus_gx_libretro.so
-run cp genesis_plus_gx_libretro.so $retroArchCoresDir
+run sudo cp genesis_plus_gx_libretro.so $retroArchCoresDir

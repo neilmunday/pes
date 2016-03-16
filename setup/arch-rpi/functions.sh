@@ -4,7 +4,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2016 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -59,19 +59,36 @@ function rmSourceDir {
 	fi
 }
 
-export userDir=/home/pi
-export baseDir=$userDir/pes
-export buildDir=$baseDir/build
-export emulatorInstallDir="$baseDir/emulators"
+export buildDir=$HOME/pes-build
+export srcDir=$HOME/src
+export pesDir="/opt/pes"
+export pesUserDir="$HOME/pes"
+export pesBiosDir="$pesUserDir/BIOS"
+export emulatorInstallDir="$pesDir/emulators"
 export retroArchInstallDir="$emulatorInstallDir/RetroArch"
 export retroArchConfigDir="$retroArchInstallDir/etc"
 export retroArchCoresDir="$retroArchInstallDir/lib"
 
 if [ ! -e $buildDir ]; then
-	run mkdir $buildDir
+	run mkdir -p $buildDir
+fi
+
+if [ ! -e $pesDir ]; then
+	run sudo mkdir -p $pesDir
+fi
+
+if [ ! -e $srcDir ]; then
+	run mkdir $srcDir
 fi
 
 if [ ! -e $emulatorInstallDir ]; then
-	run mkdir $emulatorInstallDir
+	run sudo mkdir -p $emulatorInstallDir
 fi
 
+if [ ! -e $pesUserDir ]; then
+	run mkdir -p $pesUserDir
+fi
+
+if [ ! -e $pesBiosDir ]; then
+	run mkdir -p $pesBiosDir
+fi

@@ -40,6 +40,10 @@ run git clone git://github.com/libretro/stella-libretro
 checkDir stella-libretro
 cd stella-libretro
 checkFile Makefile
+
+export CFLAGS="-mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
+export CXXFLAGS=$CFLAGS
+
 run make
 checkFile stella_libretro.so
-run cp  stella_libretro.so $retroArchCoresDir
+run sudo cp  stella_libretro.so $retroArchCoresDir
