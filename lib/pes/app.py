@@ -1106,6 +1106,9 @@ class ConsoleScreen(Screen):
 			self.__previewThumbnail = self.addUiObject(Thumbnail(self.renderer, self.__previewThumbnailX, self.__previewThumbnailY, self.__previewThumbnailWidth, self.__previewThumbnailHeight, game, self.app.bodyFont, self.app.textColour, False))
 		
 	def drawScreen(self):
+		if self.refreshNeeded:
+			self.refresh()
+		
 		if self.__consoleTexture == None:
 			self.__consoleTexture = sdl2.SDL_CreateTextureFromSurface(self.renderer, self.app.consoleSurfaces[self.__consoleName])
 			sdl2.SDL_SetTextureAlphaMod(self.__consoleTexture, CONSOLE_TEXTURE_ALPHA)
