@@ -38,6 +38,8 @@ import urllib
 import urllib2
 import time
 import multiprocessing
+
+URL_TIMEOUT = 10
 	
 class ConsoleTask(object):
 	
@@ -128,7 +130,7 @@ class ConsoleTask(object):
 					try:
 						request = urllib2.Request("%sGetGamesList.php" % url, urllib.urlencode(obj), headers=headers)
 						fullUrl = '%s?%s' % (request.get_full_url(), request.get_data())
-						response = urllib2.urlopen(request)
+						response = urllib2.urlopen(request, timeout=URL_TIMEOUT)
 						urlLoaded = True
 					except urllib2.URLError, e:
 						logging.error(e)
@@ -166,7 +168,7 @@ class ConsoleTask(object):
 					gameUrl = "%sGetGame.php" % url
 					try:
 						request = urllib2.Request(gameUrl, urllib.urlencode({"id": gameApiId}), headers=headers)
-						response = urllib2.urlopen(request)
+						response = urllib2.urlopen(request, timeout=URL_TIMEOUT)
 						urlLoaded = True
 					except urllib2.URLError, e:
 						logging.error(e)
@@ -205,7 +207,7 @@ class ConsoleTask(object):
 										extension = imgUrl[imgUrl.rfind('.'):]
 										thumbPath =  console.getImgCacheDir() + os.sep + name.replace('/', '_') + extension
 										request = urllib2.Request(imgUrl, headers=headers)
-										response = urllib2.urlopen(request).read()
+										response = urllib2.urlopen(request, timeout=URL_TIMEOUT).read()
 										output = open(thumbPath, 'wb')
 										output.write(response)
 										output.close()
@@ -402,7 +404,7 @@ class UpdateDbThread(Thread):
 			try:
 				# get API name for this console
 				request = urllib2.Request("%sGetPlatform.php" % url, urllib.urlencode({ 'id':  c.getApiId() }), headers=headers)
-				response = urllib2.urlopen(request)
+				response = urllib2.urlopen(request, timeout=URL_TIMEOUT)
 				urlLoaded = True
 				xmlData = ElementTree.parse(response)
 				consoleApiName = xmlData.find('Platform/Platform').text
