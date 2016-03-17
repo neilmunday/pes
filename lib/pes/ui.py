@@ -797,9 +797,10 @@ class ProgressBar(UIObject):
 	def draw(self):
 		if self.visible:
 			margin = 3
-			w = int(self.width * (self.__progress / 100.0))
 			sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__backgroundColour.r, self.__backgroundColour.g, self.__backgroundColour.b, 255)
-			sdl2.sdlgfx.boxRGBA(self.renderer, self.x + margin, self.y + margin, self.x + w - margin, self.y + self.height - margin, self.__colour.r, self.__colour.g, self.__colour.b, 255)
+			if self.__progress > 0:
+				w = int(self.width * (self.__progress / 100.0))
+				sdl2.sdlgfx.boxRGBA(self.renderer, self.x + margin, self.y + margin, self.x + w - margin, self.y + self.height - margin, self.__colour.r, self.__colour.g, self.__colour.b, 255)
 	
 	def setProgress(self, p):
 		if p > 100:
