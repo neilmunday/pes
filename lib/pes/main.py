@@ -103,11 +103,13 @@ if __name__ == '__main__':
 		headerBackgroundColour = None
 		lineColour = None
 		textColour = None
+		cecEnabled = False
 		
 		userHome = os.path.expanduser('~')
 		
 		try:
 			# pes settings
+			cecEnabled = configParser.getboolean('settings', 'hdmi-cec')
 			fontFile = configParser.get('settings', 'fontFile').replace('%%BASE%%', baseDir)
 			romsDir = configParser.get('settings', 'romsDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
 			coverartDir = configParser.get('settings', 'coverartDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
@@ -144,8 +146,48 @@ if __name__ == '__main__':
 		mkdir(romsDir)
 		mkdir(coverartDir)
 		
-		logging.info("loading GUI...")
+		if cecEnabled:
+			cecEnabled = False
+			try:
+				import cec
+				logging.info("CEC module enabled")
+				cecEnabled = True
+			except ImportError, e:
+				logging.info("CEC module not found, disabling CEC functions")
+		else:
+			logging.debug("CEC disabled in pes.ini")
+		
 		app = PESApp(dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, shutdownCommand, rebootCommand)
+		
+		if cecEnabled:
+			# set-up CEC
+			try:
+				logging.debug("creating CEC config...")
+				cecconfig = cec.libcec_configuration()
+				cecconfig.strDeviceName   = "PES"
+				cecconfig.bActivateSource = 0
+				cecconfig.deviceTypes.Add(cec.CEC_DEVICE_TYPE_RECORDING_DEVICE)
+				cecconfig.clientVersion = cec.LIBCEC_VERSION_CURRENT
+				logging.debug("adding CEC callback...")
+				cecconfig.SetKeyPressCallback(app.processCecEvent)
+				lib = cec.ICECAdapter.Create(cecconfig)
+				logging.debug("looking for CEC adapters...")
+				adapters = lib.DetectAdapters()
+				adapterCount = len(adapters)
+				if adapterCount == 0:
+					logging.warning("could not find any CEC adapters!")
+				else:
+					logging.debug("found %d CEC adapters, attempting to open first adapter..." % adapterCount)
+					if lib.Open(adapters[0].strComName):
+						logging.info("CEC adapter opened")
+					else:
+						logging.error("unable to open CEC adapter!")
+			except Exception, e:
+				cecEnabled = False
+				logging.error("CEC module initilisation failed, disabling CEC functions")
+				logging.error(e)
+		
+		logging.info("loading GUI...")
 		app.run()
 	except Exception, e:
 		logging.exception(e)

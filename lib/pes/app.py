@@ -53,6 +53,10 @@ import threading
 import time
 import urllib
 import urllib2
+try:
+	import cec
+except ImportError:
+	pass
 
 CONSOLE_TEXTURE_ALPHA = 50
 JOYSTICK_AXIS_MIN = -32000
@@ -87,6 +91,29 @@ def mapButtonToKey(button):
 	if button == sdl2.SDL_CONTROLLER_BUTTON_GUIDE:
 		return sdl2.SDLK_HOME
 	return None
+
+def mapRemoteButtonEvent(button):
+	key = None
+	if button == cec.CEC_USER_CONTROL_CODE_UP:
+		key = sdl2.SDLK_UP
+	elif button == cec.CEC_USER_CONTROL_CODE_DOWN:
+		key = sdl2.SDLK_DOWN
+	elif button == cec.CEC_USER_CONTROL_CODE_LEFT:
+		key = sdl2.SDLK_LEFT
+	elif button == cec.CEC_USER_CONTROL_CODE_RIGHT:
+		key = sdl2.SDLK_RIGHT
+	elif button == cec.CEC_USER_CONTROL_CODE_SELECT:
+		key = sdl2.SDLK_RETURN
+	elif button == cec.CEC_USER_CONTROL_CODE_UP:
+		key = sdl2.SDLK_UP
+	elif button == cec.CEC_USER_CONTROL_CODE_AN_RETURN:
+		key = sdl2.SDLK_BACKSPACE
+	else:
+		return
+	e = sdl2.SDL_Event()
+	e.type = sdl2.SDL_KEYDOWN
+	e.key.keysym.sym = key
+	return e
 
 def mapControlPadAxisEvent(event, eventType):
 	key = mapAxisToKey(event.caxis.axis, event.caxis.value)
@@ -131,7 +158,7 @@ class PESApp(object):
 		
 		self.coverartCacheLen = coverartCacheLen
 		self.consoles = []
-		self.consoleSurfaces = None
+		self.consoleSurfaces = {}
 		self.__uiObjects = [] # list of UI objects created so we can destroy them upon exit
 		
 		self.lineColour = sdl2.SDL_Color(lineColour[0], lineColour[1], lineColour[2])
@@ -145,8 +172,7 @@ class PESApp(object):
 		
 		self.__headerHeight = 30
 		self.__footerHeight = 0
-		
-		self.doKeyEvents = True
+
 		self.doJsToKeyEvents = True
 		
 	def exit(self, rtn=0, confirm=False):
@@ -181,33 +207,6 @@ class PESApp(object):
 			sdl2.SDL_Quit()
 			logging.info("PESApp.exit: exiting...")
 			sys.exit(rtn)
-		
-	def initScreens(self):
-		logging.debug("PESApp.initScreens: initialising screens...")
-		self.screens["Home"] = HomeScreen(self, self.renderer, self.menuRect, self.screenRect)
-		self.screens["Settings"] = SettingsScreen(self, self.renderer, self.menuRect, self.screenRect)
-		consoleScreens = 0
-		for c in self.consoles:
-			if c.getGameTotal() > 0:
-				self.screens["Console %s" % c.getName()] = ConsoleScreen(self, self.renderer, self.menuRect, self.screenRect, c)
-				consoleScreens += 1
-		logging.debug("PESApp.initScreens: initialised %d screens of which %d are console screens" % (len(self.screens), consoleScreens))
-		self.screenStack = ["Home"]
-	
-	def initSurfaces(self):
-		
-		if self.consoleSurfaces != None:
-			return
-		
-		self.consoleSurfaces = {}
-		logging.debug("PESApp.initSurfaces: pre-loading console images...")
-		for c in self.consoles:
-			surface = sdl2.sdlimage.IMG_Load(c.getImg())
-			if surface == None:
-				logging.error("PESApp.initSurfaces: failed to load image: %s" % c.getImg())
-				self.exit(1)
-			self.consoleSurfaces[c.getName()] = surface
-			logging.debug("PESApp.initSurfaces: pre-loaded %s surface from %s" % (c.getName(), c.getImg()))
 			
 	@staticmethod
 	def getMupen64PlusConfigAxisValue(controller, axis, positive=True, both=False):
@@ -278,6 +277,33 @@ class PESApp(object):
 				if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
 					return "%s_btn = \"h%d%s\"\n" % (param, bind.value.hat.hat, "right")
 		return "%s = \"nul\"\n" % param
+	
+	def initScreens(self):
+		logging.debug("PESApp.initScreens: initialising screens...")
+		self.screens["Home"] = HomeScreen(self, self.renderer, self.menuRect, self.screenRect)
+		self.screens["Settings"] = SettingsScreen(self, self.renderer, self.menuRect, self.screenRect)
+		consoleScreens = 0
+		for c in self.consoles:
+			if c.getGameTotal() > 0:
+				self.screens["Console %s" % c.getName()] = ConsoleScreen(self, self.renderer, self.menuRect, self.screenRect, c)
+				consoleScreens += 1
+		logging.debug("PESApp.initScreens: initialised %d screens of which %d are console screens" % (len(self.screens), consoleScreens))
+		self.screenStack = ["Home"]
+	
+	def initSurfaces(self, refreshConsoles=False):
+		logging.debug("PESApp.initSurfaces: pre-loading console images...")
+		for c in self.consoles:
+			if refreshConsoles:
+				c.refresh()
+			consoleName = c.getName()
+			if c.getGameTotal() > 0 and consoleName not in self.consoleSurfaces:
+				image = c.getImg()
+				surface = sdl2.sdlimage.IMG_Load(image)
+				if surface == None:
+					logging.error("PESApp.initSurfaces: failed to load image: %s" % image)
+					self.exit(1)
+				self.consoleSurfaces[consoleName] = surface
+				logging.debug("PESApp.initSurfaces: pre-loaded %s surface from %s" % (consoleName, image))
 			
 	def playGame(self, game):
 		emulator = game.getConsole().getEmulator()
@@ -403,7 +429,14 @@ class PESApp(object):
 		launchString = game.getCommand()
 		logging.debug("PESApp.playGame: launch string: %s" % launchString)
 		self.runCommand(launchString)
-		
+	
+	def processCecEvent(self, btn, dur):
+		if dur > 0:
+			logging.debug("PESApp.processCecEvent")
+			e = mapRemoteButtonEvent(btn)
+			if e:
+				sdl2.SDL_PushEvent(e)
+	
 	def reboot(self, confirm=True):
 		if confirm:
 			self.showMessageBox("Are you sure?", self.reboot, False)
@@ -597,8 +630,8 @@ class PESApp(object):
 					(t, d1, d2) = pes.event.decodePesEvent(event)
 					logging.debug("PESApp.run: trapping PES Event")
 					if not loading and t == pes.event.EVENT_DB_UPDATE:
+						self.initSurfaces(True) # calls refresh method of all consoles
 						for c in self.consoles:
-							c.refresh()
 							screenName = "Console %s" % c.getName()
 							if c.getGameTotal() > 0:
 								if screenName in self.screens:
@@ -614,7 +647,7 @@ class PESApp(object):
 				
 				if not loading:
 					# keyboard events
-					if self.doKeyEvents and event.type == sdl2.SDL_KEYDOWN:
+					if event.type == sdl2.SDL_KEYDOWN:
 						if event.key.keysym.sym == sdl2.SDLK_BACKSPACE:
 							logging.debug("PESApp.run: trapping backspace key event")
 							if self.__msgBox and self.__msgBox.isVisible():
@@ -633,18 +666,20 @@ class PESApp(object):
 							if self.__msgBox and self.__msgBox.isVisible():
 								self.__msgBox.setVisible(False)
 							# pop all screens and return home
-							while len(self.screenStack) > 1:
-								s = self.screenStack.pop()
-								self.screens[s].setMenuActive(False)
-							self.setScreen("Home", False)
-							self.screens["Home"].setMenuActive(True)
-							self.screens["Home"].menu.setSelected(0)
-							self.screens["Home"].update()
+							if not self.screens[self.screenStack[-1]].isBusy():
+								while len(self.screenStack) > 1:
+									s = self.screenStack.pop()
+									self.screens[s].setMenuActive(False)
+									self.screens[s].processEvent(event)
+								self.setScreen("Home", False)
+								self.screens["Home"].setMenuActive(True)
+								self.screens["Home"].menu.setSelected(0)
+								self.screens["Home"].update()
 						if self.__msgBox and self.__msgBox.isVisible():
 							self.__msgBox.processEvent(event)
 						else:
 							self.screens[self.screenStack[-1]].processEvent(event)
-					elif self.doKeyEvents and (event.type == sdl2.SDL_KEYUP or event.type == sdl2.SDL_JOYBUTTONUP or event.type == sdl2.SDL_JOYAXISMOTION or event.type == sdl2.SDL_JOYHATMOTION):
+					elif event.type == sdl2.SDL_KEYUP or event.type == sdl2.SDL_JOYBUTTONUP or event.type == sdl2.SDL_JOYAXISMOTION or event.type == sdl2.SDL_JOYHATMOTION:
 						self.screens[self.screenStack[-1]].processEvent(event)
 								
 				if event.type == sdl2.SDL_KEYDOWN and event.key.keysym.sym == sdl2.SDLK_ESCAPE:
@@ -997,6 +1032,9 @@ class Screen(object):
 	
 	def drawScreen(self):
 		sdl2.sdlgfx.boxRGBA(self.renderer, self.screenRect[0], self.screenRect[1], self.screenRect[0] + self.screenRect[2], self.screenRect[1] + self.screenRect[3], self.app.backgroundColour.r, self.app.backgroundColour.g, self.app.backgroundColour.b, 255)
+		
+	def isBusy(self):
+		return False
 	
 	def processEvent(self, event):
 		if self.menuActive and event.type == sdl2.SDL_KEYDOWN:
@@ -1020,7 +1058,7 @@ class Screen(object):
 	
 	def setMenuActive(self, active):
 		self.menuActive = active
-		self.__menuList.setFocus(True)
+		self.__menuList.setFocus(active)
 		logging.debug("Screen.setMenuActive: \"%s\" activate state is now: %s" % (self.title, self.menuActive))
 		
 	def stop(self):
@@ -1573,6 +1611,7 @@ class SettingsScreen(Screen):
 		self.__jsTimerLabel = None
 		self.__jsTimeOut = 10
 		self.__jsTimeRemaining = self.__jsTimeOut
+		self.__isBusy = False
 
 	def drawScreen(self):
 		super(SettingsScreen, self).drawScreen()
@@ -1596,11 +1635,11 @@ class SettingsScreen(Screen):
 					self.__scanProgressBar.setProgress(self.__updateDbThread.getProgress())
 					self.__scanProgressBar.draw()
 				elif self.__updateDbThread.done:
-					self.app.doKeyEvents = True
 					interruptedStr = ""
 					if self.__updateDbThread.interrupted:
 						interruptedStr = "(scan interrupted)"
 					self.__descriptionLabel.setText("Scan completed in %s %s\n\nAdded: %d\n\nUpdated: %d\n\nDeleted: %d\n\nPress BACK to return to the previous screen." % (self.__updateDbThread.getElapsed(), interruptedStr, self.__updateDbThread.added, self.__updateDbThread.updated, self.__updateDbThread.deleted), True)
+					self.__isBusy = False
 			else:
 				self.__consoleList.draw()
 				self.__scanButton.draw()
@@ -1625,6 +1664,9 @@ class SettingsScreen(Screen):
 			
 			self.__jsPromptLabel.draw()
 			self.__jsTimerLabel.draw()
+			
+	def isBusy(self):
+		return self.__isBusy
 		
 	def processEvent(self, event):
 		selected = self.menu.getSelectedItem().getText()
@@ -1632,11 +1674,11 @@ class SettingsScreen(Screen):
 		
 		# don't pass up the event if a db scan is in progress
 		if event.type == sdl2.SDL_KEYDOWN and selected == "Update Database" and self.__updateDbThread != None:
-			if event.key.keysym.sym == sdl2.SDLK_BACKSPACE:
+			if event.key.keysym.sym == sdl2.SDLK_BACKSPACE or event.key.keysym.sym == sdl2.SDLK_HOME:
 				if self.__updateDbThread.started and not self.__updateDbThread.done:
 					self.setMenuActive(False)
 					self.__updateDbThread.stop()
-				elif selected == "Update Database" and self.__updateDbThread.done:
+				elif self.__updateDbThread.done:
 					self.setMenuActive(False)
 					self.__updateDbThread = None
 					self.__descriptionLabel.setText(self.__scanText, True)
@@ -1644,7 +1686,8 @@ class SettingsScreen(Screen):
 					self.__consoleList.setFocus(True)
 					self.__updateDatabaseMenu.toggleAll(True)
 					self.__updateDatabaseMenu.setSelected(0)
-					#self.__consoleList.scrollTop()
+					if event.key.keysym.sym == sdl2.SDLK_HOME:
+						self.__reset()
 			return
 		
 		super(SettingsScreen, self).processEvent(event)
@@ -1824,15 +1867,18 @@ class SettingsScreen(Screen):
 			if event.type == sdl2.SDL_KEYDOWN:
 				if event.key.keysym.sym == sdl2.SDLK_BACKSPACE:
 					logging.debug("SettingsScreen.processEvent: trapping backspace event")
-					self.__init = True
-					self.__headerLabel.setText(self.__defaultHeaderText)
-					self.__descriptionLabel.setText(self.__initText, True)
-					self.__ignoreJsEvents = True
-					self.app.doJsToKeyEvents = True
+					self.__reset()
+					
+	def __reset(self):
+		self.__init = True
+		self.__headerLabel.setText(self.__defaultHeaderText)
+		self.__descriptionLabel.setText(self.__initText, True)
+		self.__ignoreJsEvents = True
+		self.app.doJsToKeyEvents = True
 
 	def startScan(self):
 		logging.debug("SettingsScreen.startScan: beginning scan...")
-		self.app.doKeyEvents = False
+		self.__isBusy = True
 		if self.__scanProgressBar == None:
 			self.__scanProgressBar = ProgressBar(self.renderer, self.screenRect[0] + self.screenMargin, self.__descriptionLabel.y + self.__descriptionLabel.height + 10, self.screenRect[2] - (self.screenMargin * 2), 40, self.app.lineColour, self.app.menuBackgroundColour)
 		else:
