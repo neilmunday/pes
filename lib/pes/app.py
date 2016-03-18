@@ -1611,6 +1611,12 @@ class SettingsScreen(Screen):
 		self.__jsTimerLabel = None
 		self.__jsTimeOut = 10
 		self.__jsTimeRemaining = self.__jsTimeOut
+		self.__jsInitialAxis = []
+		self.__jsLastButton = None
+		self.__jsLastAxis = None
+		self.__jsLastHat = None
+		self.__jsLastHatValue = None
+		self.__jsLastEventTick = 0
 		self.__isBusy = False
 
 	def drawScreen(self):
@@ -1648,6 +1654,7 @@ class SettingsScreen(Screen):
 		elif selected == "Joystick Set-Up":
 			if self.__jsTimeRemaining > -1 and self.__jsPrompt < self.__jsPromptLen:
 				tick = sdl2.SDL_GetTicks()
+				poll = self.__jsPrompt > 0
 				if tick - self.__jsTimerTick > 1000:
 					self.__jsTimerTick = tick
 					self.__jsTimeRemaining -= 1
@@ -1661,6 +1668,135 @@ class SettingsScreen(Screen):
 						e.key.keysym.sym = sdl2.SDLK_BACKSPACE
 						sdl2.SDL_PushEvent(e)
 						self.__jsTimeRemaining = -1
+						poll = False
+				
+				if poll:
+					# check buttons
+					value = None
+					js = self.__joysticks[self.__jsIndex]
+					for i in xrange(sdl2.SDL_JoystickNumButtons(js)):
+						if sdl2.SDL_JoystickGetButton(js, i) == 1 and i != self.__jsLastButton:
+							value = i
+							self.__jsLastButton = value
+							self.__jsLastEventTick = sdl2.SDL_GetTicks()
+							break
+			
+					if value != None:
+						self.__jsTimeRemaining = self.__jsTimeOut
+						btnOk = True
+						# have we already used this button value?
+						for p in self.__jsPrompts:
+							if p.getType() == JoystickPromptMap.BUTTON and p.getValue() == value:
+								logging.warning("SettingsScreen.draw: this button has already been assigned")
+								btnOk = False
+								break
+							
+						if btnOk:
+							self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.BUTTON, value)
+							self.__jsPrompt += 1
+							if self.__jsPrompt < self.__jsPromptLen:
+								self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
+					
+					else:
+						# do hats
+						for i in xrange(sdl2.SDL_JoystickNumHats(js)):
+							hvalue = sdl2.SDL_JoystickGetHat(js, i)
+							if hvalue != sdl2.SDL_HAT_CENTERED and (i != self.__jsLastHat or (i == self.__jsLastHat and hvalue != self.__jsLastHatValue)):
+								value = hvalue
+								self.__jsLastHat = i
+								self.__jsLastHatValue = hvalue
+								self.__jsLastEventTick = sdl2.SDL_GetTicks()
+								break
+							
+						if value != None:
+							self.__jsTimeRemaining = self.__jsTimeOut
+							hatOk = True
+							# have we already assigned this hat?
+							for p in self.__jsPrompts:
+								if p.getType() == JoystickPromptMap.HAT:
+									h, v = p.getValue()
+									if h == self.__jsLastHat and v == value:
+										logging.warning("SettingsScreen.draw: this hat has already been assigned")
+										hatOk = False
+										break
+						
+							if hatOk:
+								self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.HAT, (self.__jsLastHat, value))
+								self.__jsPrompt += 1
+								if self.__jsPrompt < self.__jsPromptLen:
+									self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
+						
+						elif sdl2.SDL_GetTicks() - self.__jsLastEventTick > 1000:
+							# check axis
+							for i in xrange(sdl2.SDL_JoystickNumAxes(js)):
+								avalue = sdl2.SDL_JoystickGetAxis(js, i)
+								if self.__jsLastAxis != i and (avalue < JOYSTICK_AXIS_MIN or avalue > JOYSTICK_AXIS_MAX) and avalue != self.__jsInitialAxis[i]:
+									value = i
+									self.__jsLastAxis = value
+									self.__jsLastEventTick = sdl2.SDL_GetTicks()
+									break
+								
+							if value != None:
+								self.__jsTimeRemaining = self.__jsTimeOut
+								axisOk = True
+								# have we already used this axis value?
+								for p in self.__jsPrompts:
+									if p.getType() == JoystickPromptMap.AXIS and p.getValue() == value:
+										logging.warning("SettingsScreen.draw: this axis has already been assigned")
+										axisOk = False
+										break
+									
+								if axisOk:
+									self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.AXIS, value)
+									self.__jsPrompt += 1
+									if self.__jsPrompt < self.__jsPromptLen:
+										self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
+									
+					if self.__jsPrompt == self.__jsPromptLen:
+						logging.debug("SettingsScreen.draw: joystick configuration complete!")
+						self.__jsPromptLabel.setVisible(False)
+						self.__jsTimerLabel.setVisible(False)
+						self.__ignoreJsEvents = True
+						self.app.doJsToKeyEvents = True
+						errors = []
+						
+						jsGUID = getJoystickGUIDString(sdl2.SDL_JoystickGetDeviceGUID(self.__jsIndex))
+						logging.debug("SettingsScreen.draw: creating SDL2 controller mapping using GUID: %s" % jsGUID)
+						# remove commas from the name
+						jsName = self.__jsName.replace(",", " ")
+						jsMap = [jsGUID, jsName]
+						for p in self.__jsPrompts:
+							m = p.getMap()
+							if m:
+								jsMap.append(m)
+						jsMapStr = ','.join(jsMap)
+						logging.debug("SettingsScreen.draw: map: %s" % jsMapStr)
+						
+						for j in self.__joysticks:
+							sdl2.SDL_JoystickClose(j)
+							
+						rtn = sdl2.SDL_GameControllerAddMapping(jsMapStr)
+						if  rtn == 0 or rtn == 1:
+							logging.debug("SettingsScreen.draw: mapping loaded OK!")
+							try:
+								db = GameControllerDb(userGameControllerFile)
+								db.load()
+								if db.add(jsMapStr):
+									db.save()
+								else:
+									errors.append("Unable to save control pad mapping to file!")
+									logging.error("SettingsScreen.draw: unable to add mapping to %s" % userGameControllerFile)
+							except IOError, e:
+								logging.error(e)
+						else:
+							errors.append("Could not add SDL2 mapping for control pad!")
+							logging.error("SettingsScreen.draw: SDL_GameControllerAddMapping failed for joystick %d, %s" % (self.__jsIndex, self.__jsName))
+							
+						if len(errors) == 0:
+							self.app.updateControlPad(self.__jsIndex)
+							self.__descriptionLabel.setText("Configuration complete. Please press the BACK button to return to the previous menu.")
+						else:
+							self.__descriptionLabel.setText("Configuration failed with the following errors:\n\n%s" % "\n".join(errors))
 			
 			self.__jsPromptLabel.draw()
 			self.__jsTimerLabel.draw()
@@ -1716,9 +1852,11 @@ class SettingsScreen(Screen):
 				elif selected == "Joystick Set-Up":
 					self.app.doJsToKeyEvents = False
 					self.__jsIndex = None
+					self.__jsFirstPass = True
 					self.__jsTimeRemaining = self.__jsTimeOut
 					self.__jsPrompt = 0
 					self.__joysticks = []
+					self.__jsInitialAxis = []
 					for p in self.__jsPrompts:
 						p.reset()
 					self.__headerLabel.setText(selected)
@@ -1782,86 +1920,25 @@ class SettingsScreen(Screen):
 									self.__selectAllButton.setFocus(True)
 				elif selected == "Joystick Set-Up":
 					if self.__ignoreJsEvents:
-						if event.type == sdl2.SDL_JOYBUTTONUP or event.type == sdl2.SDL_JOYHATMOTION or event.type == sdl2.SDL_JOYAXISMOTION:
+						# don't accept an axis movement as the first input, only accept a button or hat
+						if event.type == sdl2.SDL_JOYBUTTONUP or event.type == sdl2.SDL_JOYHATMOTION or (event.type == sdl2.SDL_KEYUP and (event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER)):
 							self.__ignoreJsEvents = False
-					elif self.__jsPrompt < self.__jsPromptLen:
-						# waiting for a joystick to configure
-						if event.type == sdl2.SDL_JOYBUTTONUP:
-							self.__jsTimeRemaining = self.__jsTimeOut
-							if self.__jsPrompt == 0:
-								self.__jsIndex = event.jbutton.which
-								self.__jsName = sdl2.SDL_JoystickName(self.__joysticks[self.__jsIndex])
-								self.__descriptionLabel.setText("Configuring joystick #%d, %s\n\nIf you joystick/control pad does not have the button/axis below, please press START to skip it." % (self.__jsIndex, self.__jsName))
-								logging.debug("SettingsScreen.processEvent: configuring joystick at %d (%s)" % (self.__jsIndex, self.__jsName))
-								self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.BUTTON, event.jbutton.button)
-								self.__jsPrompt += 1
-								self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
-							elif self.__jsIndex == event.jbutton.which:
-								if event.jbutton.button != self.__jsPrompts[0].getValue():
-									self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.BUTTON, event.jbutton.button)
-								else:
-									logging.debug("SettingsScreen.processEvent: skipping button %s" % self.__jsPrompts[self.__jsPrompt].getPrompt())
-								self.__jsPrompt += 1
-								if self.__jsPrompt < self.__jsPromptLen:
-									self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
-						elif event.type == sdl2.SDL_JOYHATMOTION and self.__jsIndex == event.jhat.which and self.__jsPrompt > 0:
-							self.__jsTimeRemaining = self.__jsTimeOut
-							self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.HAT, (event.jhat.hat, event.jhat.value))
-							self.__jsPrompt += 1
-							if self.__jsPrompt < self.__jsPromptLen:
-								self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
-						elif event.type == sdl2.SDL_JOYAXISMOTION and self.__jsIndex == event.jaxis.which and self.__jsPrompt > 0 and (event.jaxis.value < JOYSTICK_AXIS_MIN or event.jaxis.value > JOYSTICK_AXIS_MAX):
-							self.__jsTimeRemaining = self.__jsTimeOut
-							self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.AXIS, event.jaxis.axis)
-							self.__jsPrompt += 1
-							if self.__jsPrompt < self.__jsPromptLen:
-								self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
-								
-						if self.__jsPrompt == self.__jsPromptLen:
-							logging.debug("SettingsScreen.processEvent: joystick configuration complete!")
-							self.__jsPromptLabel.setVisible(False)
-							self.__jsTimerLabel.setVisible(False)
-							self.__ignoreJsEvents = True
-							self.app.doJsToKeyEvents = True
-							errors = []
-							
-							jsGUID = getJoystickGUIDString(sdl2.SDL_JoystickGetDeviceGUID(self.__jsIndex))
-							logging.debug("SettingsScreen.processEvent: creating SDL2 controller mapping using GUID: %s" % jsGUID)
-							# remove commas from the name
-							jsName = self.__jsName.replace(",", " ")
-							jsMap = [jsGUID, jsName]
-							for p in self.__jsPrompts:
-								m = p.getMap()
-								if m:
-									jsMap.append(m)
-							jsMapStr = ','.join(jsMap)
-							logging.debug("SettingsScreen.processEvent: map: %s" % jsMapStr)
-							
-							for j in self.__joysticks:
-								sdl2.SDL_JoystickClose(j)
-								
-							rtn = sdl2.SDL_GameControllerAddMapping(jsMapStr)
-							if  rtn == 0 or rtn == 1:
-								logging.debug("SettingsScreen.processEvent: mapping loaded OK!")
-								try:
-									db = GameControllerDb(userGameControllerFile)
-									db.load()
-									if db.add(jsMapStr):
-										db.save()
-									else:
-										errors.append("Unable to save control pad mapping to file!")
-										logging.error("SettingsScreen.processEvent: unable to add mapping to %s" % userGameControllerFile)
-								except IOError, e:
-									logging.error(e)
+					elif event.type == sdl2.SDL_JOYBUTTONUP and self.__jsPrompt == 0:
+						self.__jsIndex = event.jbutton.which
+						self.__jsName = sdl2.SDL_JoystickName(self.__joysticks[self.__jsIndex])
+						for i in xrange(sdl2.SDL_JoystickNumAxes(self.__joysticks[self.__jsIndex])):
+							value = sdl2.SDL_JoystickGetAxis(self.__joysticks[self.__jsIndex], i)
+							logging.debug("SettingsScreen.processEvent: inital value for axis %d is: %d" % (i, value))
+							if value > JOYSTICK_AXIS_MAX or value < JOYSTICK_AXIS_MIN:
+								self.__jsInitialAxis.append(value)
 							else:
-								errors.append("Could not add SDL2 mapping for control pad!")
-								logging.error("SettingsScreen.processEvent: SDL_GameControllerAddMapping failed for joystick %d, %s" % (self.__jsIndex, self.__jsName))
-								
-							if len(errors) == 0:
-								self.app.updateControlPad(self.__jsIndex)
-								self.__descriptionLabel.setText("Configuration complete. Please press the BACK button to return to the previous menu.")
-							else:
-								self.__descriptionLabel.setText("Configuration failed with the following errors:\n\n%s" % "\n".join(errors))
+								self.__jsInitialAxis.append(0)
+						self.__descriptionLabel.setText("Configuring joystick #%d, %s\n\nIf you joystick/control pad does not have the button/axis below, please press START to skip it." % (self.__jsIndex, self.__jsName))
+						logging.debug("SettingsScreen.processEvent: configuring joystick at %d (%s)" % (self.__jsIndex, self.__jsName))
+						self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.BUTTON, event.jbutton.button)
+						self.__jsPrompt += 1
+						self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
+						self.__jsTimeRemaining = self.__jsTimeOut
 
 		if self.menuActive: # this will be true if parent method trapped a backspace event
 			if event.type == sdl2.SDL_KEYDOWN:
