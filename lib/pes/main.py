@@ -86,6 +86,7 @@ if __name__ == '__main__':
 		checkFile(userGameControllerFile)
 		checkFile(gamepadImageFile)
 		checkFile(networkImageFile)
+		checkFile(remoteImageFile)
 		
 		logging.info("loading settings...")
 		checkFile(userPesConfigFile)

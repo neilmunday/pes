@@ -615,7 +615,7 @@ class List(UIObject):
 					
 	def processMenuEvent(self, menu, eventType, item):
 		if eventType == Menu.LISTEN_ITEM_ADDED:
-			logging.debug("List.processMenuEvent: item added")
+			logging.debug("List.processMenuEvent: item added: %s" % item.getText())
 			self.__menuCount = self.__menu.getCount()
 			self.__visibleMenuItems = int(self.height / self.__fontHeight)
 			if self.__visibleMenuItems > self.__menuCount:

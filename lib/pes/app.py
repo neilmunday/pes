@@ -38,6 +38,7 @@ import logging
 import math
 import ConfigParser
 import pes.event
+import re
 import sdl2
 import sdl2.ext
 import sdl2.sdlimage
@@ -136,6 +137,8 @@ def mapControlPadButtonEvent(event, eventType):
 class PESApp(object):
 	
 	__CONTROL_PAD_BUTTON_REPEAT = 150 # delay in ms between firing events for button holds
+	__ICON_WIDTH = 32
+	__ICON_HEIGHT = 32
 	
 	def __del__(self):
 		logging.debug("PESApp.del: deleting object")
@@ -188,9 +191,8 @@ class PESApp(object):
 				logging.debug("PESApp.exit: unloading surface for %s..." % console)
 				sdl2.SDL_FreeSurface(surface)
 			logging.debug("PESApp.exit: tidying up...")
-			#sdl2.SDL_DestroyTexture(self.__gamepadTexture)
-			#sdl2.SDL_DestroyTexture(self.__networkTexture)
 			self.__gamepadIcon.destroy()
+			self.__remoteIcon.destroy()
 			self.__networkIcon.destroy()
 			if self.__msgBox:
 				self.__msgBox.destroy()
@@ -376,7 +378,6 @@ class PESApp(object):
 					configParser.set('CoreEvents', 'Joy Mapping Save State', 'J%d%s/%s' % (self.__controlPadIndex, hotkey, self.getMupen64PlusConfigButtonValue(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_A, True)))
 					configParser.set('CoreEvents', 'Joy Mapping Load State', 'J%d%s/%s' % (self.__controlPadIndex, hotkey, self.getMupen64PlusConfigButtonValue(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_B, True)))
 					
-				
 				# loop through each joystick that is connected and save to button config file
 				# note: max of 4 control pads for this emulator
 				joystickTotal = sdl2.joystick.SDL_NumJoysticks()
@@ -421,6 +422,25 @@ class PESApp(object):
 				logging.debug("PESApp.playGame: writing Mupen64Plus config to %s" % userMupen64PlusConfFile)
 				with open(userMupen64PlusConfFile, 'wb') as f:
 					configParser.write(f)
+				
+				widthRe = re.compile("((window|framebuffer)[ ]+width[ ]*)=[ ]*[0-9]+")
+				heightRe = re.compile("((window|framebuffer)[ ]+height[ ]*)=[ ]*[0-9]+")
+				# now update gles2n64.conf file to use current resolution
+				output = ""
+				with open(userGles2n64ConfFile, 'r') as f:
+					for line in f:
+						result = re.sub(widthRe, r"\1=%d" % self.__dimensions[0], line)
+						if result != line:
+							output += result
+						else:
+							result = re.sub(heightRe, r"\1=%d" % self.__dimensions[1], line)
+							if result != line:
+								output += result
+							else:
+								output += line
+				logging.debug("PESApp.playGame: writing gles2n64 config to %s" % userGles2n64ConfFile)
+				with open(userGles2n64ConfFile, 'w') as f:
+					f.write(output)
 		
 		logging.info("loading game: %s" % game.getName())
 		game.setPlayCount()
@@ -549,10 +569,13 @@ class PESApp(object):
 		# load joystick database
 		sdl2.SDL_GameControllerAddMappingsFromFile(userGameControllerFile)
 		
-		self.__gamepadIcon = Icon(self.renderer, dateLabel.x, dateLabel.y, 32, 32, gamepadImageFile)
+		self.__gamepadIcon = Icon(self.renderer, dateLabel.x, dateLabel.y, self.__ICON_WIDTH, self.__ICON_HEIGHT, gamepadImageFile)
 		self.__gamepadIcon.setVisible(False)
 		
-		self.__networkIcon = Icon(self.renderer, dateLabel.x - 42, dateLabel.y, 32, 32, networkImageFile)
+		self.__remoteIcon = Icon(self.renderer, dateLabel.x, dateLabel.y, self.__ICON_WIDTH, self.__ICON_HEIGHT, remoteImageFile)
+		self.__remoteIcon.setVisible(cecEnabled)
+		
+		self.__networkIcon = Icon(self.renderer, dateLabel.x - 42, dateLabel.y, self.__ICON_WIDTH, self.__ICON_HEIGHT, networkImageFile)
 		self.ip = None
 		defaultInterface = getDefaultInterface()
 		if defaultInterface:
@@ -726,17 +749,21 @@ class PESApp(object):
 				dateLabel.setText(now.strftime("%H:%M:%S %d/%m/%Y"))
 				dateLabel.draw()
 				
-				#iconX = dateLabel.x - 10
+				iconX = dateLabel.x - 42
 				
 				if self.__networkIcon.visible:
+					self.__networkIcon.x = iconX
 					self.__networkIcon.draw()
+					iconX -= 37
 					
 				if self.__gamepadIcon.visible:
-					if self.__networkIcon.visible:
-						self.__gamepadIcon.x = self.__networkIcon.x - 37
-					else:
-						self.__gamepadIcon.x = dateLabel.x - 42
+					self.__gamepadIcon.x = iconX
 					self.__gamepadIcon.draw()
+					iconX -= 37
+					
+				if self.__remoteIcon.visible:
+					self.__remoteIcon.x = iconX
+					self.__remoteIcon.draw()
 				
 				sdl2.sdlgfx.rectangleRGBA(self.renderer, 0, self.__headerHeight, self.__dimensions[0], self.__headerHeight, self.lineColour.r, self.lineColour.g, self.lineColour.b, 255) # header line
 				
@@ -1501,6 +1528,8 @@ class JoystickPromptMap(object):
 	BUTTON = 1
 	AXIS = 2
 	HAT = 3
+	AXIS_POSITIVE = 1
+	AXIS_NEGATIVE = -1
 	
 	def __init__(self, prompt, sdlName):
 		self.__prompt = prompt
@@ -1525,7 +1554,8 @@ class JoystickPromptMap(object):
 		if self.__inputType == self.BUTTON:
 			return "%s:b%s" % (self.__sdlName, self.__value)
 		if self.__inputType == self.AXIS:
-			return "%s:a%s" % (self.__sdlName, self.__value)
+			axis, value = self.__value
+			return "%s:a%s" % (self.__sdlName, axis)
 		if self.__inputType == self.HAT:
 			hat, value = self.__value
 			return "%s:h%s.%s" % (self.__sdlName, hat, value)
@@ -1536,7 +1566,9 @@ class JoystickPromptMap(object):
 	
 	def getValueAsString(self):
 		if self.__inputType == self.HAT:
-			return "(Hat: %s %s)" % (self.__value[0], self.__value[1])
+			return "(Hat: %d %d)" % (self.__value[0], self.__value[1])
+		if self.__inputType == self.AXIS:
+			return "(Axis: %d %d)" % (self.__value[0], self.__value[1])
 		return "%s" % self.__value
 	
 	def getType(self):
@@ -1675,7 +1707,7 @@ class SettingsScreen(Screen):
 					value = None
 					js = self.__joysticks[self.__jsIndex]
 					for i in xrange(sdl2.SDL_JoystickNumButtons(js)):
-						if sdl2.SDL_JoystickGetButton(js, i) == 1 and i != self.__jsLastButton:
+						if sdl2.SDL_JoystickGetButton(js, i) == 1 and sdl2.SDL_GetTicks() - self.__jsLastEventTick > 500:
 							value = i
 							self.__jsLastButton = value
 							self.__jsLastEventTick = sdl2.SDL_GetTicks()
@@ -1683,25 +1715,33 @@ class SettingsScreen(Screen):
 			
 					if value != None:
 						self.__jsTimeRemaining = self.__jsTimeOut
-						btnOk = True
-						# have we already used this button value?
-						for p in self.__jsPrompts:
-							if p.getType() == JoystickPromptMap.BUTTON and p.getValue() == value:
-								logging.warning("SettingsScreen.draw: this button has already been assigned")
-								btnOk = False
-								break
-							
-						if btnOk:
-							self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.BUTTON, value)
+						
+						if value == self.__jsPrompts[0].getValue():
+							logging.debug("SettingsScreen.draw: skipping button %s" % self.__jsPrompts[self.__jsPrompt].getPrompt())
 							self.__jsPrompt += 1
 							if self.__jsPrompt < self.__jsPromptLen:
 								self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
+						else:
+							btnOk = True
+							# have we already used this button value?
+							for p in self.__jsPrompts:
+								if p.getType() == JoystickPromptMap.BUTTON and p.getValue() == value:
+									logging.warning("SettingsScreen.draw: this button has already been assigned")
+									btnOk = False
+									break
+								
+							if btnOk:
+								self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.BUTTON, value)
+								self.__jsPrompt += 1
+								if self.__jsPrompt < self.__jsPromptLen:
+									self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
 					
 					else:
 						# do hats
 						for i in xrange(sdl2.SDL_JoystickNumHats(js)):
 							hvalue = sdl2.SDL_JoystickGetHat(js, i)
-							if hvalue != sdl2.SDL_HAT_CENTERED and (i != self.__jsLastHat or (i == self.__jsLastHat and hvalue != self.__jsLastHatValue)):
+							# ignore diagonal hat buttons
+							if sdl2.SDL_GetTicks() - self.__jsLastEventTick > 500 and hvalue != sdl2.SDL_HAT_CENTERED and hvalue != sdl2.SDL_HAT_RIGHTUP and hvalue != sdl2.SDL_HAT_RIGHTDOWN and hvalue != sdl2.SDL_HAT_LEFTUP and hvalue != sdl2.SDL_HAT_LEFTDOWN and (i != self.__jsLastHat or (i == self.__jsLastHat and hvalue != self.__jsLastHatValue)):
 								value = hvalue
 								self.__jsLastHat = i
 								self.__jsLastHatValue = hvalue
@@ -1726,11 +1766,11 @@ class SettingsScreen(Screen):
 								if self.__jsPrompt < self.__jsPromptLen:
 									self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
 						
-						elif sdl2.SDL_GetTicks() - self.__jsLastEventTick > 1000:
+						elif sdl2.SDL_GetTicks() - self.__jsLastEventTick > 750:
 							# check axis
 							for i in xrange(sdl2.SDL_JoystickNumAxes(js)):
 								avalue = sdl2.SDL_JoystickGetAxis(js, i)
-								if self.__jsLastAxis != i and (avalue < JOYSTICK_AXIS_MIN or avalue > JOYSTICK_AXIS_MAX) and avalue != self.__jsInitialAxis[i]:
+								if (avalue < JOYSTICK_AXIS_MIN or avalue > JOYSTICK_AXIS_MAX) and avalue != self.__jsInitialAxis[i]:
 									value = i
 									self.__jsLastAxis = value
 									self.__jsLastEventTick = sdl2.SDL_GetTicks()
@@ -1741,13 +1781,19 @@ class SettingsScreen(Screen):
 								axisOk = True
 								# have we already used this axis value?
 								for p in self.__jsPrompts:
-									if p.getType() == JoystickPromptMap.AXIS and p.getValue() == value:
-										logging.warning("SettingsScreen.draw: this axis has already been assigned")
-										axisOk = False
-										break
+									if p.getType() == JoystickPromptMap.AXIS:
+										a, v = p.getValue()
+										if a == value and ((avalue < JOYSTICK_AXIS_MIN and v == JoystickPromptMap.AXIS_NEGATIVE) or (avalue > JOYSTICK_AXIS_MAX and v == JoystickPromptMap.AXIS_POSITIVE)):
+											logging.warning("SettingsScreen.draw: this axis has already been assigned")
+											axisOk = False
+											break
 									
 								if axisOk:
-									self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.AXIS, value)
+									if avalue < JOYSTICK_AXIS_MIN:
+										self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.AXIS, (value, JoystickPromptMap.AXIS_NEGATIVE))
+									else:
+										self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.AXIS, (value, JoystickPromptMap.AXIS_POSITIVE))
+										
 									self.__jsPrompt += 1
 									if self.__jsPrompt < self.__jsPromptLen:
 										self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
