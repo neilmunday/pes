@@ -132,7 +132,8 @@ class ConsoleTask(object):
 						fullUrl = '%s?%s' % (request.get_full_url(), request.get_data())
 						response = urllib2.urlopen(request, timeout=URL_TIMEOUT)
 						urlLoaded = True
-					except urllib2.URLError, e:
+					#except (urllib2.HTTPError, urllib2.URLError) as e:
+					except Exception as e:
 						logging.error(e)
 						logging.error("Failed to process: %s" % filename)
 
@@ -170,7 +171,8 @@ class ConsoleTask(object):
 						request = urllib2.Request(gameUrl, urllib.urlencode({"id": gameApiId}), headers=headers)
 						response = urllib2.urlopen(request, timeout=URL_TIMEOUT)
 						urlLoaded = True
-					except urllib2.URLError, e:
+					#except (urllib2.HTTPError, urllib2.URLError) as e:
+					except Exception as e:
 						logging.error(e)
 						logging.error("Failed URL was: %s" % gameUrl)
 
@@ -212,7 +214,8 @@ class ConsoleTask(object):
 										output.write(response)
 										output.close()
 										imageSaved = True
-									except urllib2.URLError, e:
+									#except (urllib2.HTTPError, urllib2.URLError) as e:
+									except Exception as e:
 										logging.error(e)
 										logging.error("Failed to process url: %s" % imgUrl)
 
@@ -408,7 +411,8 @@ class UpdateDbThread(Thread):
 				urlLoaded = True
 				xmlData = ElementTree.parse(response)
 				consoleApiName = xmlData.find('Platform/Platform').text
-			except urllib2.URLError, e:
+			#except (urllib2.HTTPError, urllib2.URLError) as e:
+			except Exception as e:
 				logging.error(e)
 				logging.error("UpdateDbThread.run: not get console API name for: %s" % consoleName)
 			
