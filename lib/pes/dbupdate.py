@@ -410,7 +410,10 @@ class UpdateDbThread(Thread):
 				consoleApiName = xmlData.find('Platform/Platform').text
 			except urllib2.URLError, e:
 				logging.error(e)
-				logging.error("Could not get console API name for: %s" % consoleName)
+				logging.error("UpdateDbThread.run: not get console API name for: %s" % consoleName)
+			
+			if not urlLoaded:
+				logging.warning("UpdateDbThread.run: Could not get console API name for: %s" % consoleName)
 				
 			files = glob.glob("%s%s*" % (c.getRomDir(), os.sep))
 			fileTotal = len(files)
@@ -421,7 +424,7 @@ class UpdateDbThread(Thread):
 					self.__tasks.put(ConsoleTask(f, consoleApiName, c))
 					self.romTotal += 1
 					
-		logging.debug("UpdateDbThread.run: added %d roms to the queue" % self.romTotal)
+		logging.debug("UpdateDbThread.run: added %d ROMs to the queue" % self.romTotal)
 		
 		for i in xrange(self.consumerTotal):
 			self.__tasks.put(None)

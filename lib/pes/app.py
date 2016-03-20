@@ -667,7 +667,7 @@ class PESApp(object):
 											break
 
 				if screenSaverActive:
-					if event.type == sdl2.SDL_KEYUP:
+					if event.type == sdl2.SDL_KEYDOWN:
 						screenSaverActive = False
 						screenSaverTick = sdl2.timer.SDL_GetTicks()
 				else:
