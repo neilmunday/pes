@@ -52,3 +52,4 @@ userGameControllerFile = os.path.join(userPesConfDir, 'gamecontrollerdb.txt')
 userPesDb = os.path.join(userDir, 'pes.db')
 scriptFile = os.path.join(userDir, 'commands.sh')
 cecEnabled = False
+screenSaverTimeout = 0

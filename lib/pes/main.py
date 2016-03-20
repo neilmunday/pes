@@ -105,6 +105,7 @@ if __name__ == '__main__':
 		lineColour = None
 		textColour = None
 		cecEnabled = False
+		screenSaverTimeout = 0
 		
 		userHome = os.path.expanduser('~')
 		
@@ -115,6 +116,7 @@ if __name__ == '__main__':
 			romsDir = configParser.get('settings', 'romsDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
 			coverartDir = configParser.get('settings', 'coverartDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
 			biosDir = configParser.get('settings', 'biosDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
+			screenSaverTimeout = configParser.getint('settings', 'screenSaverTimeout')
 			mkdir(romsDir)
 			mkdir(coverartDir)
 			mkdir(biosDir)
@@ -130,18 +132,14 @@ if __name__ == '__main__':
 			menuSelectedTextColour = processColour(configParser.get("colours", "menuSelectedText").split(','))
 			textColour = processColour(configParser.get("colours", "text").split(','))
 			# coverart settings
-			try:
-				coverartSize = float(configParser.get('settings', 'coverartSize'))
-			except ValueError:
-				pesExit("Error parsing config file %s: float expected for \"coverartSize\" parameter")
-			try:
-				coverartCacheLen = int(configParser.get('settings', 'coverartCacheLen'))
-			except ValueError:
-				pesExit("Error parsing config file %s: integer expected for \"coverartCacheLen\" parameter")
+			coverartSize = configParser.getfloat('settings', 'coverartSize')
+			coverartCacheLen = configParser.getint('settings', 'coverartCacheLen')
 			# command settings
 			shutdownCommand = configParser.get("commands", "shutdown")
 			rebootCommand = configParser.get("commands", "reboot")
 		except ConfigParser.NoOptionError, e:
+			pesExit("Error parsing config file %s: %s" % (userPesConfigFile, e.message), True)
+		except ValueError, e:
 			pesExit("Error parsing config file %s: %s" % (userPesConfigFile, e.message), True)
 			
 		mkdir(romsDir)
@@ -188,6 +186,8 @@ if __name__ == '__main__':
 				logging.error("CEC module initilisation failed, disabling CEC functions")
 				logging.error(e)
 		
+		app.setCecEnabled(cecEnabled)
+		app.setScreenSaverTimeout(screenSaverTimeout)
 		logging.info("loading GUI...")
 		app.run()
 	except Exception, e:

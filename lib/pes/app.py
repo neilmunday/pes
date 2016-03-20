@@ -38,6 +38,7 @@ import logging
 import math
 import ConfigParser
 import pes.event
+import random
 import re
 import sdl2
 import sdl2.ext
@@ -177,6 +178,8 @@ class PESApp(object):
 		self.__footerHeight = 0
 
 		self.doJsToKeyEvents = True
+		self.__screenSaverTimeout = screenSaverTimeout
+		self.__cecEnabled = False
 		
 	def exit(self, rtn=0, confirm=False):
 		if confirm:
@@ -194,6 +197,8 @@ class PESApp(object):
 			self.__gamepadIcon.destroy()
 			self.__remoteIcon.destroy()
 			self.__networkIcon.destroy()
+			if self.__screenSaverLabel:
+				self.__screenSaverLabel.destroy()
 			if self.__msgBox:
 				self.__msgBox.destroy()
 			Thumbnail.destroyTextures()
@@ -573,7 +578,7 @@ class PESApp(object):
 		self.__gamepadIcon.setVisible(False)
 		
 		self.__remoteIcon = Icon(self.renderer, dateLabel.x, dateLabel.y, self.__ICON_WIDTH, self.__ICON_HEIGHT, remoteImageFile)
-		self.__remoteIcon.setVisible(cecEnabled)
+		self.__remoteIcon.setVisible(self.__cecEnabled)
 		
 		self.__networkIcon = Icon(self.renderer, dateLabel.x - 42, dateLabel.y, self.__ICON_WIDTH, self.__ICON_HEIGHT, networkImageFile)
 		self.ip = None
@@ -589,10 +594,22 @@ class PESApp(object):
 		self.__controlPad = None
 		self.__controlPadIndex = None
 		self.__dpadAsAxis = False
-		tick = sdl2.timer.SDL_GetTicks()
-		downTick = tick
+		joystickTick = sdl2.timer.SDL_GetTicks()
+		downTick = joystickTick
+		screenSaverTick = joystickTick
+		screenSaverActive = False
+		self.__screenSaverLabel = None
 		
 		while running:
+			
+			if self.__screenSaverTimeout > 0 and not screenSaverActive and sdl2.timer.SDL_GetTicks() - screenSaverTick  > self.__screenSaverTimeout * 60000: # milliseconds per minute
+				logging.debug("PESApp.run: activating screen saver")
+				screenSaverActive = True
+				screenSaverLastTick = screenSaverTick
+				if self.__screenSaverLabel == None:
+					self.__screenSaverLabel = Label(self.renderer, 0, 0, "Pi Entertainment System", self.splashFont, self.textColour)
+				self.__screenSaverLabel.setCoords(random.randint(0, self.__dimensions[0] - self.__screenSaverLabel.width), random.randint(0, self.__dimensions[1] - self.__screenSaverLabel.height))
+			
 			events = sdl2.ext.get_events()
 			for event in events:
 				
@@ -649,61 +666,66 @@ class PESApp(object):
 													sdl2.SDL_PushEvent(e)
 											break
 
-				if event.type == pes.event.EVENT_TYPE:
-					(t, d1, d2) = pes.event.decodePesEvent(event)
-					logging.debug("PESApp.run: trapping PES Event")
-					if not loading and t == pes.event.EVENT_DB_UPDATE:
-						self.initSurfaces(True) # calls refresh method of all consoles
-						for c in self.consoles:
-							screenName = "Console %s" % c.getName()
-							if c.getGameTotal() > 0:
-								if screenName in self.screens:
-									self.screens[screenName].refresh()
+				if screenSaverActive:
+					if event.type == sdl2.SDL_KEYUP:
+						screenSaverActive = False
+						screenSaverTick = sdl2.timer.SDL_GetTicks()
+				else:
+					if event.type == pes.event.EVENT_TYPE:
+						(t, d1, d2) = pes.event.decodePesEvent(event)
+						logging.debug("PESApp.run: trapping PES Event")
+						if not loading and t == pes.event.EVENT_DB_UPDATE:
+							self.initSurfaces(True) # calls refresh method of all consoles
+							for c in self.consoles:
+								screenName = "Console %s" % c.getName()
+								if c.getGameTotal() > 0:
+									if screenName in self.screens:
+										self.screens[screenName].refresh()
+									else:
+										logging.debug("PESApp.run adding ConsoleScreen for %s following database update" % c.getName())
+										self.screens[screenName] = ConsoleScreen(self, self.renderer, self.menuRect, self.screenRect, c)
+									
+							self.screens["Home"].refreshMenu()
+							Thumbnail.destroyTextures()
+						elif t == pes.event.EVENT_RESOURCES_LOADED:
+							pass
+						
+					if not loading:
+						# keyboard events
+						if event.type == sdl2.SDL_KEYDOWN:
+							if event.key.keysym.sym == sdl2.SDLK_BACKSPACE:
+								logging.debug("PESApp.run: trapping backspace key event")
+								if self.__msgBox and self.__msgBox.isVisible():
+									self.__msgBox.setVisible(False)
+								if self.screens[self.screenStack[-1]].menuActive:
+									# pop the screen
+									screenStackLen = len(self.screenStack)
+									logging.debug("PESApp.run: popping screen stack, current length: %d" % screenStackLen)
+									if screenStackLen > 1:
+										self.screenStack.pop()
+										self.setScreen(self.screenStack[-1], False)
 								else:
-									logging.debug("PESApp.run adding ConsoleScreen for %s following database update" % c.getName())
-									self.screens[screenName] = ConsoleScreen(self, self.renderer, self.menuRect, self.screenRect, c)
-								
-						self.screens["Home"].refreshMenu()
-						Thumbnail.destroyTextures()
-					elif t == pes.event.EVENT_RESOURCES_LOADED:
-						pass
-				
-				if not loading:
-					# keyboard events
-					if event.type == sdl2.SDL_KEYDOWN:
-						if event.key.keysym.sym == sdl2.SDLK_BACKSPACE:
-							logging.debug("PESApp.run: trapping backspace key event")
+									self.screens[self.screenStack[-1]].setMenuActive(True)
+							elif event.key.keysym.sym == sdl2.SDLK_HOME:
+								logging.debug("PESApp.run: trapping home key event")
+								if self.__msgBox and self.__msgBox.isVisible():
+									self.__msgBox.setVisible(False)
+								# pop all screens and return home
+								if not self.screens[self.screenStack[-1]].isBusy():
+									while len(self.screenStack) > 1:
+										s = self.screenStack.pop()
+										self.screens[s].setMenuActive(False)
+										self.screens[s].processEvent(event)
+									self.setScreen("Home", False)
+									self.screens["Home"].setMenuActive(True)
+									self.screens["Home"].menu.setSelected(0)
+									self.screens["Home"].update()
 							if self.__msgBox and self.__msgBox.isVisible():
-								self.__msgBox.setVisible(False)
-							if self.screens[self.screenStack[-1]].menuActive:
-								# pop the screen
-								screenStackLen = len(self.screenStack)
-								logging.debug("PESApp.run: popping screen stack, current length: %d" % screenStackLen)
-								if screenStackLen > 1:
-									self.screenStack.pop()
-									self.setScreen(self.screenStack[-1], False)
+								self.__msgBox.processEvent(event)
 							else:
-								self.screens[self.screenStack[-1]].setMenuActive(True)
-						elif event.key.keysym.sym == sdl2.SDLK_HOME:
-							logging.debug("PESApp.run: trapping home key event")
-							if self.__msgBox and self.__msgBox.isVisible():
-								self.__msgBox.setVisible(False)
-							# pop all screens and return home
-							if not self.screens[self.screenStack[-1]].isBusy():
-								while len(self.screenStack) > 1:
-									s = self.screenStack.pop()
-									self.screens[s].setMenuActive(False)
-									self.screens[s].processEvent(event)
-								self.setScreen("Home", False)
-								self.screens["Home"].setMenuActive(True)
-								self.screens["Home"].menu.setSelected(0)
-								self.screens["Home"].update()
-						if self.__msgBox and self.__msgBox.isVisible():
-							self.__msgBox.processEvent(event)
-						else:
+								self.screens[self.screenStack[-1]].processEvent(event)
+						elif event.type == sdl2.SDL_KEYUP or event.type == sdl2.SDL_JOYBUTTONUP or event.type == sdl2.SDL_JOYAXISMOTION or event.type == sdl2.SDL_JOYHATMOTION:
 							self.screens[self.screenStack[-1]].processEvent(event)
-					elif event.type == sdl2.SDL_KEYUP or event.type == sdl2.SDL_JOYBUTTONUP or event.type == sdl2.SDL_JOYAXISMOTION or event.type == sdl2.SDL_JOYHATMOTION:
-						self.screens[self.screenStack[-1]].processEvent(event)
 								
 				if event.type == sdl2.SDL_KEYDOWN and event.key.keysym.sym == sdl2.SDLK_ESCAPE:
 					logging.debug("PESApp.run: trapping escape key event")
@@ -714,19 +736,18 @@ class PESApp(object):
 				if event.type == sdl2.SDL_QUIT:
 					running = False
 					break
-				
-			sdl2.SDL_SetRenderDrawColor(self.renderer, self.backgroundColour.r, self.backgroundColour.g, self.backgroundColour.b, 255)
-			sdl2.SDL_RenderClear(self.renderer)
 			
 			if loading:
+				sdl2.SDL_SetRenderDrawColor(self.renderer, self.backgroundColour.r, self.backgroundColour.g, self.backgroundColour.b, 255)
+				sdl2.SDL_RenderClear(self.renderer)
 				if not loadingThread.started:
 					loadingThread.start()
-				tick = sdl2.timer.SDL_GetTicks()
-				if splashTextureAlpha < 255 and tick - lastTick > 100:
+				joystickTick = sdl2.timer.SDL_GetTicks()
+				if splashTextureAlpha < 255 and joystickTick - lastTick > 100:
 					splashTextureAlpha += 25
 					if splashTextureAlpha > 255:
 						splashTextureAlpha = 255
-					lastTick = tick
+					lastTick = joystickTick
 				splashLabel.setAlpha(splashTextureAlpha)
 				splashLabel.draw()
 				if loadingThread.done and splashTextureAlpha >= 255:
@@ -739,7 +760,18 @@ class PESApp(object):
 					if statusLabel.setText(loadingThread.status):
 						statusLabel.x = int((self.__dimensions[0] - statusLabel.width) / 2)
 					statusLabel.draw()
+			elif screenSaverActive:
+				sdl2.SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 255)
+				sdl2.SDL_RenderClear(self.renderer)
+				# x, y, text, font, colour, bgColour=None, fixedWidth=0, fixedHeight=0, autoScroll=False, bgAlpha=255
+				if sdl2.SDL_GetTicks() - screenSaverLastTick > 10000: # move label every 10s
+					logging.debug("PESApp.run: moving screen saver label")
+					screenSaverLastTick = sdl2.SDL_GetTicks()
+					self.__screenSaverLabel.setCoords(random.randint(0, self.__dimensions[0] - self.__screenSaverLabel.width), random.randint(0, self.__dimensions[1] - self.__screenSaverLabel.height))
+				self.__screenSaverLabel.draw()
 			else:
+				sdl2.SDL_SetRenderDrawColor(self.renderer, self.backgroundColour.r, self.backgroundColour.g, self.backgroundColour.b, 255)
+				sdl2.SDL_RenderClear(self.renderer)
 				sdl2.sdlgfx.boxRGBA(self.renderer, 0, 0, self.__dimensions[0], self.__headerHeight, self.headerBackgroundColour.r, self.headerBackgroundColour.g, self.headerBackgroundColour.b, 255) # header bg
 				headerLabel.draw()
 				
@@ -766,7 +798,8 @@ class PESApp(object):
 					self.__remoteIcon.draw()
 				
 				sdl2.sdlgfx.rectangleRGBA(self.renderer, 0, self.__headerHeight, self.__dimensions[0], self.__headerHeight, self.lineColour.r, self.lineColour.g, self.lineColour.b, 255) # header line
-				
+			
+			if not loading:
 				# detect joysticks
 				if self.__controlPad and not sdl2.SDL_GameControllerGetAttached(self.__controlPad):
 					logging.debug("PESApp.run: player 1 control pad no longer attached!")
@@ -820,7 +853,7 @@ class PESApp(object):
 									e.key.keysym.sym = key
 									sdl2.SDL_PushEvent(e)
 				
-				if sdl2.timer.SDL_GetTicks() - tick > 1000:
+				if sdl2.timer.SDL_GetTicks() - joystickTick > 1000:
 					tick = sdl2.timer.SDL_GetTicks()
 					joystickTotal = sdl2.joystick.SDL_NumJoysticks()
 					if joystickTotal > 0:
@@ -838,6 +871,9 @@ class PESApp(object):
 										self.updateControlPad(self.__controlPadIndex)
 										close = False
 										self.__gamepadIcon.setVisible(True)
+										if screenSaverActive:
+											screenSaverActive = False
+											screenSaverTick = sdl2.timer.SDL_GetTicks()
 										#print sdl2.SDL_GameControllerMapping(c)
 								if close:
 									sdl2.SDL_GameControllerClose(c)
@@ -860,6 +896,9 @@ class PESApp(object):
 			f.write("exec %s%sbin%spes %s\n" % (baseDir, os.sep, os.sep, ' '.join(sys.argv[1:])))
 		self.exit(0)
 		
+	def setCecEnabled(self, enabled):
+		self.__cecEnabled = enabled
+		
 	def setScreen(self, screen, doAppend=True):
 		if not screen in self.screens:
 			logging.warning("PESApp.setScreen: invalid screen selection \"%s\"" % screen)
@@ -869,6 +908,9 @@ class PESApp(object):
 			if doAppend:
 				self.screenStack.append(screen)
 			self.screens[screen].setMenuActive(True)
+			
+	def setScreenSaverTimeout(self, t):
+		self.__screenSaverTimeout = t
 			
 	def showMessageBox(self, text, callback, *callbackArgs):
 		if self.__msgBox:
