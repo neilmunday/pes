@@ -6,7 +6,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2016 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -50,16 +50,10 @@ if [ ! -e ~/.bash_pes ]; then
 	echo -e "\t\tsudo /opt/sbin/make_rom_partition.py -v -d /dev/mmcblk0" >> ~/.bash_pes
 	echo -e "\t\tsudo systemctl restart smbd.service" >> ~/.bash_pes
 	echo -e "\tfi" >> ~/.bash_pes
-	echo -e "\techo \"Giving time for network interface to start...\"" >> ~/.bash_pes
-	echo -e "\tfor i in \`seq 1 10\`; do" >> ~/.bash_pes
-	echo -e "\t\ts=\$((10-i))" >> ~/.bash_pes
-	echo -e "\t\techo -e -n \"Waiting for \${s}s \\\r\"" >> ~/.bash_pes
-	echo -e "\t\tsleep 1" >> ~/.bash_pes
-	echo -e "\tdone" >> ~/.bash_pes
 	echo -e "\techo \"Truncating log file...\"" >> ~/.bash_pes
-	echo -e "\t> $baseDir/log/pes.log" >> ~/.bash_pes
+	echo -e "\t> ~/pes/log/pes.log" >> ~/.bash_pes
     echo -e "\techo \"Starting PES...\"" >> ~/.bash_pes
-	echo -e "\t~/pes/bin/pes.sh -l $baseDir/log/pes.log" >> ~/.bash_pes
+	echo -e "\t~/pes/bin/pes.sh -l ~/pes/log/pes.log" >> ~/.bash_pes
 	echo "fi" >> ~/.bash_pes
 fi
 
