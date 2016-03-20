@@ -33,7 +33,6 @@ source $setupDir/functions.sh
 
 romDir=$pesUserDir/roms
 coverartDir=$pesUserDir/coverart
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 header "Clean Image"
 
@@ -84,7 +83,7 @@ if [ "$response" == "y" ]; then
 	run sudo rm -fv $pesUserDir/log/*
 	echo ""
 	echo "Removing unnecessary packages..."
-	run sudo $DIR/remove-packages.sh
+	run sudo $setupDir/remove-packages.sh
 	echo ""
 	echo "Deleting root bash history..."
 	run sudo rm -fv /root/.bash_history
@@ -105,4 +104,3 @@ if [ "$response" == "y" ]; then
 else
 	echo "No changes made"
 fi
-
