@@ -40,6 +40,6 @@ checkDir "fuse-libretro"
 cd fuse-libretro
 export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -O3"
 export CXXFLAGS=$CFLAGS
-run make -f Makefile.libretro -j
+run make -f Makefile.libretro
 checkFile fuse_libretro.so
-run cp fuse_libretro.so $retroArchCoresDir/
+run sudo cp fuse_libretro.so $retroArchCoresDir/
