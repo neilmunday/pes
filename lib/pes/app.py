@@ -61,8 +61,8 @@ except ImportError:
 	pass
 
 CONSOLE_TEXTURE_ALPHA = 50
-JOYSTICK_AXIS_MIN = -32000
-JOYSTICK_AXIS_MAX = 32000
+JOYSTICK_AXIS_MIN = -32700
+JOYSTICK_AXIS_MAX = 32700
 
 def mapAxisToKey(axis, value):
 	if axis == sdl2.SDL_CONTROLLER_AXIS_LEFTY:
@@ -468,6 +468,13 @@ class PESApp(object):
 		else:
 			logging.info("PES is rebooting...")
 			self.runCommand(self.__rebootCommand)
+			
+	def reload(self, confirm=True):
+		if confirm:
+			self.showMessageBox("Are you sure?", self.reload, False)
+		else:
+			logging.info("PES is reloading...")
+			self.runCommand("sleep 1")
 		
 	def resetConfig(self, confirm=True):
 		if confirm:
@@ -665,30 +672,35 @@ class PESApp(object):
 													e.key.keysym.sym = key
 													sdl2.SDL_PushEvent(e)
 											break
+										
+				if event.type == pes.event.EVENT_TYPE:
+					(t, d1, d2) = pes.event.decodePesEvent(event)
+					logging.debug("PESApp.run: trapping PES Event")
+					if not loading and t == pes.event.EVENT_DB_UPDATE:
+						self.initSurfaces(True) # calls refresh method of all consoles
+						for c in self.consoles:
+							screenName = "Console %s" % c.getName()
+							if c.getGameTotal() > 0:
+								if screenName in self.screens:
+									self.screens[screenName].refresh()
+								else:
+									logging.debug("PESApp.run adding ConsoleScreen for %s following database update" % c.getName())
+									self.screens[screenName] = ConsoleScreen(self, self.renderer, self.menuRect, self.screenRect, c)
+								
+						self.screens["Home"].refreshMenu()
+						Thumbnail.destroyTextures()
+						
+						if screenSaverActive:
+							screenSaverActive = False
+							screenSaverTick = sdl2.timer.SDL_GetTicks()
+					elif t == pes.event.EVENT_RESOURCES_LOADED:
+						pass
 
 				if screenSaverActive:
 					if event.type == sdl2.SDL_KEYDOWN:
 						screenSaverActive = False
 						screenSaverTick = sdl2.timer.SDL_GetTicks()
 				else:
-					if event.type == pes.event.EVENT_TYPE:
-						(t, d1, d2) = pes.event.decodePesEvent(event)
-						logging.debug("PESApp.run: trapping PES Event")
-						if not loading and t == pes.event.EVENT_DB_UPDATE:
-							self.initSurfaces(True) # calls refresh method of all consoles
-							for c in self.consoles:
-								screenName = "Console %s" % c.getName()
-								if c.getGameTotal() > 0:
-									if screenName in self.screens:
-										self.screens[screenName].refresh()
-									else:
-										logging.debug("PESApp.run adding ConsoleScreen for %s following database update" % c.getName())
-										self.screens[screenName] = ConsoleScreen(self, self.renderer, self.menuRect, self.screenRect, c)
-									
-							self.screens["Home"].refreshMenu()
-							Thumbnail.destroyTextures()
-						elif t == pes.event.EVENT_RESOURCES_LOADED:
-							pass
 						
 					if not loading:
 						# keyboard events
@@ -1441,6 +1453,7 @@ class HomeScreen(Screen):
 			if c.getGameTotal() > 0:
 				self.menu.addItem(ConsoleMenuItem(c, False, False, self.__loadConsoleScreen, c))
 		self.menu.addItem(MenuItem("Settings", False, False, self.app.setScreen, "Settings"))
+		self.menu.addItem(MenuItem("Reload", False, False, self.app.reload))
 		self.menu.addItem(MenuItem("Reboot", False, False, self.app.reboot))
 		self.menu.addItem(MenuItem("Power Off", False, False, self.app.shutdown))
 		self.menu.addItem(MenuItem("Exit", False, False, self.app.exit, 0, True))
