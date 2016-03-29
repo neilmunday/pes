@@ -907,7 +907,7 @@ class PESApp(object):
 	def runCommand(self, command):
 		logging.debug("PESApp.runCommand: about to write to: %s" % scriptFile)
 		logging.debug("PESApp.runCommand: command: %s" % command)
-		execLog = "%s%sexec.log" % (userLogDir, os.sep)
+		execLog = os.path.join(userLogDir, "exec.log")
 		with open(scriptFile, 'w') as f:
 			f.write("echo running %s\n" % command)
 			f.write("echo see %s for console output\n" % execLog)
@@ -1182,10 +1182,10 @@ class ConsoleScreen(Screen):
 	
 	def __init__(self, app, renderer, menuRect, screenRect, console):
 		super(ConsoleScreen, self).__init__(app, renderer, console.getName(), Menu([
-			MenuItem("Recently Played"),
-			MenuItem("Recently Added"),
 			MenuItem("Favourites"),
+			MenuItem("Recently Played"),
 			MenuItem("Most Played"),
+			MenuItem("Recently Added"),
 			MenuItem("All")
 		]),
 		menuRect, screenRect)

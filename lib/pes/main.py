@@ -137,7 +137,7 @@ if __name__ == '__main__':
 			# command settings
 			shutdownCommand = configParser.get("commands", "shutdown")
 			rebootCommand = configParser.get("commands", "reboot")
-			timezonesCommand = configParser.get("commands", "listTimezones")
+			listTimezonesCommand = configParser.get("commands", "listTimezones")
 			setTimezoneCommand = configParser.get("commands", "setTimezone")
 			getTimezoneCommand = configParser.get("commands", "getTimezone")
 		except ConfigParser.NoOptionError, e:
@@ -159,7 +159,7 @@ if __name__ == '__main__':
 		else:
 			logging.debug("CEC disabled in pes.ini")
 		
-		app = PESApp(dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, shutdownCommand, rebootCommand, timezonesCommand, getTimezoneCommand, setTimezoneCommand)
+		app = PESApp(dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, shutdownCommand, rebootCommand, listTimezonesCommand, getTimezoneCommand, setTimezoneCommand)
 		
 		if cecEnabled:
 			# set-up CEC
