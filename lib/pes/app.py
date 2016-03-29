@@ -31,6 +31,7 @@ import pes.event
 from pes.util import *
 from PIL import Image
 from collections import OrderedDict
+from subprocess import Popen, PIPE
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element, SubElement
 import glob
@@ -148,11 +149,16 @@ class PESApp(object):
 			sdl2.video.SDL_DestroyWindow(self.__window)
 			self.__window = None
 
-	def __init__(self, dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, shutdownCommmand, rebootCommand):
+	def __init__(self, dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, shutdownCommmand, rebootCommand, listTimezonesCommand, getTimezoneCommand, setTimezoneCommand):
 		super(PESApp, self).__init__()
 		self.__dimensions = dimensions
 		self.__shutdownCommand = shutdownCommmand
 		self.__rebootCommand = rebootCommand
+		self.listTimezonesCommand = listTimezonesCommand
+		self.getTimezoneCommand = getTimezoneCommand
+		self.setTimezoneCommand = setTimezoneCommand
+		self.timezones = []
+		self.currentTimezone = None
 		self.fontFile = fontFile
 		self.romsDir = romsDir
 		self.coverartDir = coverartDir
@@ -316,6 +322,7 @@ class PESApp(object):
 		emulator = game.getConsole().getEmulator()
 		logging.debug("PESApp.playGame: emulator is %s" % emulator)
 		if emulator == "RetroArch":
+			# note: RetroArch uses a SNES control pad button layout, SDL2 uses XBOX 360 layout!
 			# check joystick configs
 			joystickTotal = sdl2.joystick.SDL_NumJoysticks()
 			if joystickTotal > 0:
@@ -337,10 +344,10 @@ class PESApp(object):
 								f.write("input_product_id = \"%s\"\n" % productId)
 								f.write("input_driver = \"udev\"\n")
 								# buttons
-								f.write(self.getRetroArchConfigButtonValue("input_a", c, sdl2.SDL_CONTROLLER_BUTTON_A))
-								f.write(self.getRetroArchConfigButtonValue("input_b", c, sdl2.SDL_CONTROLLER_BUTTON_B))
-								f.write(self.getRetroArchConfigButtonValue("input_x", c, sdl2.SDL_CONTROLLER_BUTTON_X))
-								f.write(self.getRetroArchConfigButtonValue("input_y", c, sdl2.SDL_CONTROLLER_BUTTON_Y))
+								f.write(self.getRetroArchConfigButtonValue("input_a", c, sdl2.SDL_CONTROLLER_BUTTON_B))
+								f.write(self.getRetroArchConfigButtonValue("input_b", c, sdl2.SDL_CONTROLLER_BUTTON_A))
+								f.write(self.getRetroArchConfigButtonValue("input_x", c, sdl2.SDL_CONTROLLER_BUTTON_Y))
+								f.write(self.getRetroArchConfigButtonValue("input_y", c, sdl2.SDL_CONTROLLER_BUTTON_X))
 								f.write(self.getRetroArchConfigButtonValue("input_start", c, sdl2.SDL_CONTROLLER_BUTTON_START))
 								f.write(self.getRetroArchConfigButtonValue("input_select", c, sdl2.SDL_CONTROLLER_BUTTON_BACK))
 								# shoulder buttons
@@ -975,7 +982,7 @@ class PESLoadingThread(threading.Thread):
 			cur.execute('CREATE TABLE IF NOT EXISTS `games_catalogue` (`short_name` TEXT, `full_name` TEXT)')
 			cur.execute('CREATE INDEX IF NOT EXISTS "games_catalogue_index" on games_catalogue (short_name ASC)')
 			
-			self.progress = 20
+			self.progress = 16
 			
 			# is the games catalogue populated?
 			cur.execute('SELECT COUNT(*) AS `total` FROM `games_catalogue`')
@@ -997,7 +1004,7 @@ class PESLoadingThread(threading.Thread):
 					else:
 						logging.error("PESLoadingThread.run: games catalogue section \"%s\" has no \"full_name\" option!" % section)
 					i += 1.0
-					self.progress = 20 + (20 * (i / sectionTotal))
+					self.progress = 16 + (16 * (i / sectionTotal))
 						
 			con.commit()
 		except sqlite3.Error, e:
@@ -1006,7 +1013,7 @@ class PESLoadingThread(threading.Thread):
 			if con:
 				con.close()
 				
-		self.progress = 40
+		self.progress = 32
 		self.status = "Loading consoles..."
 		
 		# load consoles
@@ -1055,14 +1062,36 @@ class PESLoadingThread(threading.Thread):
 					console.save()
 				self.app.consoles.append(console)
 				i += 1
-				self.progress = 40 + (20 * (i / supportedConsoleTotal))
+				self.progress = 32 + (16 * (i / supportedConsoleTotal))
 			except ConfigParser.NoOptionError, e:
 				logging.error('PESLoadingThread.run: error parsing config file %s: %s' % (userConsolesConfigFile, e.message))
 				self.done = True
 				self.app.exit(1)
 				return
+		
+		
+		self.progress = 48
+		self.status = "Loading timezone info..."
+		process = Popen(self.app.listTimezonesCommand, stdout=PIPE, stderr=PIPE, shell=True)
+		stdout, stderr = process.communicate()
+		if process.returncode != 0:
+			logging.error("PESLoadingThread.run: could not get time zones")
+			logging.error(stderr)
+		else:
+			for l in stdout.split("\n")[:-1]:
+				self.app.timezones.append(l)
+			logging.debug("PESLoadingThread.run: loaded %d timezones" % len(self.app.timezones))
+				
+			process = Popen(self.app.getTimezoneCommand, stdout=PIPE, stderr=PIPE, shell=True)
+			stdout, stderr = process.communicate()
+			if process.returncode != 0:
+				logging.error("PESLoadingThread.run: could not get current time zone!")
+				logging.error(stderr)
+			else:
+				self.app.currentTimezone = stdout[:-1]
+				logging.debug("PESLoadingThread.run: current timezone is: %s" % self.app.currentTimezone)
 			
-		self.progress = 60
+		self.progress = 64
 		self.status = "Loading surfaces..."
 		self.app.initSurfaces()
 		self.progress = 80
@@ -1643,11 +1672,15 @@ class SettingsScreen(Screen):
 	def __init__(self, app, renderer, menuRect, screenRect):
 		super(SettingsScreen, self).__init__(app, renderer, "Settings", Menu([
 			MenuItem("Update Database"),
-			MenuItem("Joystick Set-Up"),
-			MenuItem("Reset Database", False, False, app.resetDatabase),
-			MenuItem("Reset Config", False, False, app.resetConfig),
-			MenuItem("About")]),
+			MenuItem("Joystick Set-Up")]),
 		menuRect, screenRect)
+		
+		if self.app.currentTimezone != None:
+			self.menu.addItem(MenuItem("Timezone"))
+		
+		self.menu.addItem(MenuItem("Reset Database", False, False, app.resetDatabase))
+		self.menu.addItem(MenuItem("Reset Config", False, False, app.resetConfig))
+		self.menu.addItem(MenuItem("About"))
 		
 		self.__init = True
 		self.__updateDatabaseMenu = Menu([])
@@ -1705,6 +1738,7 @@ class SettingsScreen(Screen):
 		self.__jsLastHatValue = None
 		self.__jsLastEventTick = 0
 		self.__isBusy = False
+		self.__timezoneList = None
 
 	def drawScreen(self):
 		super(SettingsScreen, self).drawScreen()
@@ -1738,6 +1772,9 @@ class SettingsScreen(Screen):
 				self.__scanButton.draw()
 				self.__selectAllButton.draw()
 				self.__deselectAllButton.draw()
+		elif selected == "Timezone":
+			self.__descriptionLabel.draw()
+			self.__timezoneList.draw()
 		elif selected == "Joystick Set-Up":
 			if self.__jsTimeRemaining > -1 and self.__jsPrompt < self.__jsPromptLen:
 				tick = sdl2.SDL_GetTicks()
@@ -1947,6 +1984,16 @@ class SettingsScreen(Screen):
 						self.__selectAllButton = self.addUiObject(Button(self.renderer, self.__scanButton.x, self.__scanButton.y + self.__scanButton.height + 10, 150, 50, "Select All", self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__updateDatabaseMenu.toggleAll, True))
 						self.__deselectAllButton = self.addUiObject(Button(self.renderer, self.__scanButton.x, self.__selectAllButton.y + self.__selectAllButton.height + 10, 150, 50, "Deselect All", self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__updateDatabaseMenu.toggleAll, False))
 					self.__scanButton.setFocus(False)
+				elif selected == "Timezone":
+					self.__descriptionLabel.setText("You can change the current timezone from \"%s\" by selecting one from the list below." % self.app.currentTimezone, True)
+					if self.__timezoneList == None:
+						menuItems = []
+						for t in self.app.timezones:
+							menuItems.append(MenuItem(t, False, False, self.__setTimezone, t))
+						timezoneMenu = Menu(menuItems)
+						timezoneListY = self.__descriptionLabel.y + self.__descriptionLabel.height + 10
+						self.__timezoneList = self.addUiObject(List(self.renderer, self.__descriptionLabel.x + self.__toggleMargin, timezoneListY, 300, self.screenRect[3] - timezoneListY, timezoneMenu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, drawBackground=True))
+					self.__timezoneList.setFocus(True)
 				elif selected == "About":
 					self.__headerLabel.setText(selected)
 					self.__descriptionLabel.setText("Pi Entertainment System version %s\n\nReleased: %s\n\nLicense: Licensed under version 3 of the GNU Public License (GPL)\n\nAuthor: %s\n\nContributors: Eric Smith\n\nCover art: theGamesDB.net\n\nDocumentation: http://pes.mundayweb.com\n\nFacebook: https://www.facebook.com/pientertainmentsystem\n\nHelp: pes@mundayweb.com\n\nIP Address: %s" % (VERSION_NUMBER, VERSION_DATE, VERSION_AUTHOR, self.app.ip), True)
@@ -2019,6 +2066,8 @@ class SettingsScreen(Screen):
 								elif self.__deselectAllButton.hasFocus():
 									self.__deselectAllButton.setFocus(False)
 									self.__selectAllButton.setFocus(True)
+				elif selected == "Timezone":
+					self.__timezoneList.processEvent(event)
 				elif selected == "Joystick Set-Up":
 					if self.__ignoreJsEvents:
 						# don't accept an axis movement as the first input, only accept a button or hat
@@ -2053,6 +2102,17 @@ class SettingsScreen(Screen):
 		self.__descriptionLabel.setText(self.__initText, True)
 		self.__ignoreJsEvents = True
 		self.app.doJsToKeyEvents = True
+		
+	def __setTimezone(self, timezone):
+		process = Popen("%s %s" % (self.app.setTimezoneCommand, timezone), stdout=PIPE, stderr=PIPE, shell=True)
+		stdout, stderr = process.communicate()
+		if process.returncode != 0:
+			logging.error("SettingsScreen.__setTimezone: failed to set timezone: %s" % stderr)
+			self.app.showMessageBox("Failed to set timezone!", None, None)
+			return
+		self.app.currentTimezone = timezone
+		self.__descriptionLabel.setText("You can change the current timezone from \"%s\" by selecting one from the list below." % self.app.currentTimezone, True)
+		self.app.showMessageBox("Timezone changed successfully", None, None)
 
 	def startScan(self):
 		logging.debug("SettingsScreen.startScan: beginning scan...")

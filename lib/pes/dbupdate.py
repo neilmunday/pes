@@ -403,30 +403,37 @@ class UpdateDbThread(Thread):
 			finally:
 				if con:
 					con.close()
-
-			try:
-				# get API name for this console
-				request = urllib2.Request("%sGetPlatform.php" % url, urllib.urlencode({ 'id':  c.getApiId() }), headers=headers)
-				response = urllib2.urlopen(request, timeout=URL_TIMEOUT)
-				urlLoaded = True
-				xmlData = ElementTree.parse(response)
-				consoleApiName = xmlData.find('Platform/Platform').text
-			#except (urllib2.HTTPError, urllib2.URLError) as e:
-			except Exception as e:
-				logging.error(e)
-				logging.error("UpdateDbThread.run: not get console API name for: %s" % consoleName)
-			
-			if not urlLoaded:
-				logging.warning("UpdateDbThread.run: Could not get console API name for: %s" % consoleName)
 				
 			files = glob.glob("%s%s*" % (c.getRomDir(), os.sep))
 			fileTotal = len(files)
 			extensions = c.getExtensions()
 
+			romFiles = []
+
 			for f in files:
 				if os.path.isfile(f) and self.__extensionOk(extensions, f):
-					self.__tasks.put(ConsoleTask(f, consoleApiName, c))
+					#self.__tasks.put(ConsoleTask(f, consoleApiName, c))
+					romFiles.append(f)
 					self.romTotal += 1
+					
+			if len(romFiles) > 0:
+				try:
+					# get API name for this console
+					request = urllib2.Request("%sGetPlatform.php" % url, urllib.urlencode({ 'id':  c.getApiId() }), headers=headers)
+					response = urllib2.urlopen(request, timeout=URL_TIMEOUT)
+					urlLoaded = True
+					xmlData = ElementTree.parse(response)
+					consoleApiName = xmlData.find('Platform/Platform').text
+				#except (urllib2.HTTPError, urllib2.URLError) as e:
+				except Exception as e:
+					logging.error(e)
+					logging.error("UpdateDbThread.run: not get console API name for: %s" % consoleName)
+				
+				if not urlLoaded:
+					logging.warning("UpdateDbThread.run: Could not get console API name for: %s" % consoleName)
+					
+				for f in romFiles:
+					self.__tasks.put(ConsoleTask(f, consoleApiName, c))
 					
 		logging.debug("UpdateDbThread.run: added %d ROMs to the queue" % self.romTotal)
 		

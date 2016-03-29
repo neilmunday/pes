@@ -780,10 +780,12 @@ class MessageBox(UIObject):
 			
 	def processEvent(self, event):
 		if self.visible and event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER):
-			logging.debug("MessageBox: calling callback...")
-			if self.__callbackArgs:
-				self.__callback(*self.__callbackArgs)
-			self.__callback
+			if self.__callback:
+				logging.debug("MessageBox: calling callback...")
+				if self.__callbackArgs:
+					self.__callback(*self.__callbackArgs)
+				self.__callback
+			self.visible = False
 
 class ProgressBar(UIObject):
 	
