@@ -44,4 +44,4 @@ export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -O3"
 export CXXFLAGS=$CFLAGS
 make -f Makefile.libretro -j
 checkFile genesis_plus_gx_libretro.so
-run cp genesis_plus_gx_libretro.so $retroArchCoresDir
+run sudo cp genesis_plus_gx_libretro.so $retroArchCoresDir
