@@ -369,7 +369,11 @@ class PESApp(object):
 								f.write(self.getRetroArchConfigAxisValue("input_r_x", c, sdl2.SDL_CONTROLLER_AXIS_RIGHTX, True))
 								f.write(self.getRetroArchConfigAxisValue("input_r_y", c, sdl2.SDL_CONTROLLER_AXIS_RIGHTY, True))
 								# hot key buttons
-								f.write(self.getRetroArchConfigButtonValue("input_enable_hotkey", c, sdl2.SDL_CONTROLLER_BUTTON_BACK))
+								bind = sdl2.SDL_GameControllerGetBindForButton(c, sdl2.SDL_CONTROLLER_BUTTON_GUIDE)
+								if bind:
+									f.write(self.getRetroArchConfigButtonValue("input_enable_hotkey", c, sdl2.SDL_CONTROLLER_BUTTON_GUIDE))
+								else:
+									f.write(self.getRetroArchConfigButtonValue("input_enable_hotkey", c, sdl2.SDL_CONTROLLER_BUTTON_BACK))
 								f.write(self.getRetroArchConfigButtonValue("input_exit_emulator", c, sdl2.SDL_CONTROLLER_BUTTON_START))
 								f.write(self.getRetroArchConfigButtonValue("input_save_state", c, sdl2.SDL_CONTROLLER_BUTTON_A))
 								f.write(self.getRetroArchConfigButtonValue("input_load_state", c, sdl2.SDL_CONTROLLER_BUTTON_B))
@@ -384,7 +388,11 @@ class PESApp(object):
 				configParser = ConfigParser.SafeConfigParser()
 				configParser.optionxform = str # make options case sensitive
 				configParser.read(userMupen64PlusConfFile)
-				hotkey = self.getMupen64PlusConfigButtonValue(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_BACK, True)
+				bind = sdl2.SDL_GameControllerGetBindForButton(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_GUIDE)
+				if bind:
+					hotkey = self.getMupen64PlusConfigButtonValue(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_GUIDE, True)
+				else:
+					hotkey = self.getMupen64PlusConfigButtonValue(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_BACK, True)
 				if configParser.has_section('CoreEvents'):
 					configParser.set('CoreEvents', 'Joy Mapping Stop', 'J%d%s/%s' % (self.__controlPadIndex, hotkey, self.getMupen64PlusConfigButtonValue(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_START, True)))
 					configParser.set('CoreEvents', 'Joy Mapping Save State', 'J%d%s/%s' % (self.__controlPadIndex, hotkey, self.getMupen64PlusConfigButtonValue(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_A, True)))
