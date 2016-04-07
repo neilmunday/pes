@@ -31,37 +31,19 @@ fi
 
 source $setupDir/functions.sh
 
-qtsixaTar=$srcDir/QtSixA-1.5.1-src.tar.gz
-qtsixaDir=$buildDir/QtSixA-1.5.1
-sixadPatchDir=`realpath ../../src/sixad-patches`
+cd $buildDir
 
-checkDir $sixadPatchDir
+rmSourceDir "qtsixa"
 
-header "Downloading sixad..."
+header "Downloading qtsixad"
 
-run cd $srcDir
+run git clone git://github.com/falkTX/qtsixa
 
-if [ ! -e $qtsixaTar ]; then
-	echo "Downloading QTSixA..."
-	run wget http://sourceforge.net/projects/qtsixa/files/QtSixA%201.5.1/QtSixA-1.5.1-src.tar.gz
-fi
-
-checkFile $qtsixaTar
-
-if [ -e $qtsixaDir ]; then
-	echo "Removing previously used source..."
-	run rm -rvf $qtsixaDir
-fi
-run cd $buildDir
-run tar xvfz $qtsixaTar
-run cd $qtsixaDir/sixad
-
-header "Patching sixad..."
-
-for p in $sixadPatchDir/*.patch; do
-	echo "Applying patch ${p}..."
-	patch < $p
-done
+checkDir "qtsixa"
+cd qtsixa
+checkDir "sixad"
+cd sixad
+run sed -i -r "s/GASIA_GAMEPAD_HACKS = false/GASIA_GAMEPAD_HACKS = true/" Makefile
 
 run make -j
 run sudo cp -v bins/* /usr/sbin/
@@ -74,6 +56,7 @@ run sudo bash -c "cat > /etc/systemd/system/sixad.service" << 'EOF'
 [Unit]
 Description=sixad daemon
 After=sys-subsystem-bluetooth-devices-hci0.device
+Requires=sys-subsystem-bluetooth-devices-hci0.device
 
 [Service]
 ExecStart=/usr/bin/nohup /usr/sbin/sixad --start
@@ -83,9 +66,10 @@ WantedBy=multi-user.target
 EOF
 
 run sudo systemctl enable sixad.service
+run sudo systemctl start sixad.service
 
 header "Installing pairing utility..."
-run cd $qtsixaDir/utils
+run cd ../utils
 run gcc -lusb -o sixpair sixpair.c
 run sudo cp sixpair /usr/sbin/sixpair
 
