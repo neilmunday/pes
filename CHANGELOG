@@ -11,7 +11,8 @@ Date: 2015-12-04
 Brand new version of PES with a new GUI that is based on PySDL 2.0!
 
 	- ROM scanning is now up to 5x faster thanks to a parallel (multi processor) approach
-	- New GUI!
+	- New GUI with various features!
+	- Added PS3 GASIA support
 
 ----------------------------
 PES 1.5.2
