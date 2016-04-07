@@ -843,21 +843,19 @@ class Thumbnail(UIObject):
 	def __addToCache(gameId, texture):
 		Thumbnail.__cache[gameId] = texture
 		Thumbnail.__queue.append(gameId)
-		if len(Thumbnail.__queue) > Thumbnail.CACHE_LEN:
+		cacheLength = len(Thumbnail.__queue)
+		if cacheLength > Thumbnail.CACHE_LEN:
 			logging.debug("Thumbnail.__addToCache: cache length %d exceeded, removing item from cache to make room..." % Thumbnail.CACHE_LEN)
 			gameId = Thumbnail.__queue.popleft()
 			sdl2.SDL_DestroyTexture(Thumbnail.__cache[gameId])
 			del Thumbnail.__cache[gameId]
-		
+		else:
+			logging.debug("Thumbnail.__addToCache: cache length: %d" % cacheLength)
+	
 	def draw(self):
 		if self.visible:
 			super(Thumbnail, self).draw()
-			if self.__gameId not in Thumbnail.__cache:
-				logging.debug("Thumbnail.draw: loading texture for %s" % self.__game.getName())
-				self.__coverartTexture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, self.__coverart)
-				self.__addToCache(self.__gameId, self.__coverartTexture)
-			else:
-				self.__coverartTexture = Thumbnail.__cache[self.__gameId]
+			self.loadTexture()
 			sdl2.SDL_RenderCopy(self.renderer, self.__coverartTexture, None, sdl2.SDL_Rect(self.x, self.y, self.__thumbWidth, self.__thumbHeight))
 			# render text underneath
 			if self.__label:
@@ -877,6 +875,14 @@ class Thumbnail(UIObject):
 		for k in keys:
 			del Thumbnail.__cache[k]
 		Thumbnail.__queue.clear()
+		
+	def loadTexture(self):
+		if self.__gameId not in Thumbnail.__cache:
+			logging.debug("Thumbnail.draw: loading texture for %s" % self.__game.getName())
+			self.__coverartTexture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, self.__coverart)
+			self.__addToCache(self.__gameId, self.__coverartTexture)
+		else:
+			self.__coverartTexture = Thumbnail.__cache[self.__gameId]
 		
 	def setCoords(self, x, y):
 		super(Thumbnail, self).setCoords(x, y)
@@ -916,6 +922,11 @@ class ThumbnailPanel(UIObject):
 		logging.debug("ThumbnailPanel.destory: destroying...")
 		for t in self.__thumbnails:
 			t.destroy()
+			
+	def loadTextures(self):
+		logging.debug("ThumbnailPanel.loadTextures: loading %d textures..."  % len(self.__thumbnails))
+		for t in self.__thumbnails:
+			t.loadTexture()
 			
 	def setCoords(self, x, y):
 		super(ThumbnailPanel, self).setCoords(x, y)
