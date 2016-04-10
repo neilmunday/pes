@@ -127,6 +127,9 @@ class Menu(object):
 			return
 		raise ValueError("Menu.setSelected: invalid value for i: %s" % i)
 	
+	def sort(self):
+		self.__items = sorted(self.__items, key=lambda item: item.getText())
+	
 	def toggleAll(self, toggle):
 		for i in self.__items:
 			if i.isToggable():
@@ -209,6 +212,13 @@ class GameMenuItem(MenuItem):
 	
 	def __repr__(self):
 		return "<GameMenuItem: text: %s >" % self.__game.getName()
+	
+class RAMenuItem(MenuItem):
+	
+	def __init__(self, gameDict, selected = False, callback = None, *callbackArgs):
+		percent = (float(gameDict["NumAchieved"]) / float(gameDict["NumPossibleAchievements"])) * 100.0
+		super(RAMenuItem, self).__init__("%s (%s) %.1f%%" % (gameDict["Title"], gameDict["ConsoleName"], percent), selected, False, callback, *callbackArgs)
+		self.__gameDict = gameDict
 
 class UIObject(object):
 	

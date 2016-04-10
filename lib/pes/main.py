@@ -109,6 +109,10 @@ if __name__ == '__main__':
 		
 		userHome = os.path.expanduser('~')
 		
+		retroAchievementsUserName = None
+		retroAchievementsPassword = None
+		retroAchievementsApiKey = None
+		
 		try:
 			# pes settings
 			cecEnabled = configParser.getboolean('settings', 'hdmi-cec')
@@ -140,6 +144,11 @@ if __name__ == '__main__':
 			listTimezonesCommand = configParser.get("commands", "listTimezones")
 			setTimezoneCommand = configParser.get("commands", "setTimezone")
 			getTimezoneCommand = configParser.get("commands", "getTimezone")
+			# RetroAchievements settings
+			if configParser.has_section("RetroAchievements"):
+				retroAchievementsUserName = configParser.get("RetroAchievements", "username")
+				retroAchievementsPassword = configParser.get("RetroAchievements", "password")
+				retroAchievementsApiKey = configParser.get("RetroAchievements", "apiKey")
 		except ConfigParser.NoOptionError, e:
 			pesExit("Error parsing config file %s: %s" % (userPesConfigFile, e.message), True)
 		except ValueError, e:
@@ -191,6 +200,10 @@ if __name__ == '__main__':
 		
 		app.setCecEnabled(cecEnabled)
 		app.setScreenSaverTimeout(screenSaverTimeout)
+		
+		if retroAchievementsApiKey != None and retroAchievementsUserName != None and retroAchievementsPassword != None and len(retroAchievementsUserName) > 0 and len(retroAchievementsPassword) > 0 and len(retroAchievementsApiKey) > 0:
+			app.setRetroAchievements(retroAchievementsUserName, retroAchievementsPassword, retroAchievementsApiKey)
+		
 		logging.info("loading GUI...")
 		app.run()
 	except Exception, e:
