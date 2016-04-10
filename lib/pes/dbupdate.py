@@ -122,14 +122,11 @@ class ConsoleTask(object):
 				if consoleApiName != None:
 					# now grab thumbnail
 					obj = { 'name': '%s' % name, 'platform': consoleApiName }
-					data = urllib.urlencode(obj)
 					urlLoaded = False
 					nameLower = name.lower()
-					fullUrl = ''
 
 					try:
 						request = urllib2.Request("%sGetGamesList.php" % url, urllib.urlencode(obj), headers=headers)
-						fullUrl = '%s?%s' % (request.get_full_url(), request.get_data())
 						response = urllib2.urlopen(request, timeout=URL_TIMEOUT)
 						urlLoaded = True
 					#except (urllib2.HTTPError, urllib2.URLError) as e:
