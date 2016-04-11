@@ -56,7 +56,6 @@ class ConsoleTask(object):
 	def __execute(self, query, fetch=False):
 		row = None
 		con = None
-		row = None
 		with self.lock:
 			try:
 				con = sqlite3.connect(userPesDb)
