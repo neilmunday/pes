@@ -170,6 +170,8 @@ class Record(object):
 			query = 'INSERT INTO `%s` (' % self.__table
 			endQuery = ''
 			for f in writableFields:
+				if not f in self.__properties:
+					self.__properties[f] = "NULL"
 				query += '`%s`' % f
 				endQuery += self.convertValue(self.__properties[f])
 				if i < total - 1:
@@ -203,13 +205,39 @@ class Record(object):
 		self.__properties[field] = value
 		if not field in self.__dirtyFields:
 			self.__dirtyFields.append(field)
+			
+class AchievementUser(Record):
+	
+	def __init__(self, db, userId):
+		super(AchievementUser, self).__init__(db, 'achievements_user', ['user_id', 'user_name', 'rank', 'total_points', 'total_truepoints'], 'user_id', userId)
+		
+	def getName(self):
+		return self.getProperty('user_name')
+	
+	def getRank(self):
+		return int(self.getProperty('rank'))
+	
+	def getTotalPoints(self):
+		return int(self.getProperty('total_points'))
+	
+	def getTotalTruePoints(self):
+		return int(self.getProperty('total_truepoints'))
+	
+	def setName(self, name):
+		self.setProperty('user_name', name)
+		
+	def setTotalPoints(self, points):
+		self.setProperty('total_points', int(points))
+		
+	def setTotalTruePoints(self, points):
+		self.setProperty('total_truepoints', int(points))
 
 class Console(Record):
 
-	def __init__(self, name, consoleId, apiId, extensions, romDir, command, db, consoleImg, noCoverArtImg, imgCacheDir, emulator):
-		super(Console, self).__init__(db, 'consoles', ['console_id', 'name'], 'console_id', consoleId, True)
+	def __init__(self, name, consoleId, thegamesdbApiId, extensions, romDir, command, db, consoleImg, noCoverArtImg, imgCacheDir, emulator):
+		super(Console, self).__init__(db, 'consoles', ['console_id', 'name', 'thegamesdb_api_id', 'achievement_api_id'], 'console_id', consoleId, True)
 		self.setProperty('name', name)
-		self.__apiId = apiId
+		self.setProperty('thegamesdb_api_id', thegamesdbApiId)
 		self.__extensions = extensions
 		self.__romDir = romDir
 		self.__consoleImg = consoleImg
@@ -220,13 +248,14 @@ class Console(Record):
 		self.__imgCacheDir = imgCacheDir
 		self.__gameTotal = None
 		self.__ignoreRoms = []
+		self.__achievementApiId = None
 		
 	def addIgnoreRom(self, rom):
 		if rom not in self.__ignoreRoms:
 			self.__ignoreRoms.append(rom)
-		
-	def getApiId(self):
-		return self.__apiId
+			
+	def getAchievementApiId(self):
+		return self.__achievementApiId
 
 	def getCommand(self, game):
 		return self.__command.replace('%%GAME%%', "\"%s\"" % game.getPath()).replace('%%USERCONFDIR%%', userConfDir)
@@ -349,6 +378,9 @@ class Console(Record):
 
 	def getRomDir(self):
 		return self.__romDir
+	
+	def getTheGamesDbApiId(self):
+		return self.getProperty('thegamesdb_api_id')
 		
 	def ignoreRom(self, rom):
 		return rom in self.__ignoreRoms
@@ -370,6 +402,9 @@ class Console(Record):
 			games.append((row['game_id'], row['name']))
 		self.disconnect()
 		return games
+	
+	def setAchievementApiId(self, apiId):
+		self.setProperty('achievement_api_id', apiId)
 
 class Game(Record):
 

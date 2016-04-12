@@ -119,10 +119,12 @@ if __name__ == '__main__':
 			fontFile = configParser.get('settings', 'fontFile').replace('%%BASE%%', baseDir)
 			romsDir = configParser.get('settings', 'romsDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
 			coverartDir = configParser.get('settings', 'coverartDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
+			badgeDir = configParser.get('settings', 'badgeDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
 			biosDir = configParser.get('settings', 'biosDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
 			screenSaverTimeout = configParser.getint('settings', 'screenSaverTimeout')
 			mkdir(romsDir)
 			mkdir(coverartDir)
+			mkdir(badgeDir)
 			mkdir(biosDir)
 			checkFile(fontFile)
 			# colour settings
@@ -155,7 +157,6 @@ if __name__ == '__main__':
 			pesExit("Error parsing config file %s: %s" % (userPesConfigFile, e.message), True)
 			
 		mkdir(romsDir)
-		mkdir(coverartDir)
 		
 		if cecEnabled:
 			cecEnabled = False
@@ -168,7 +169,7 @@ if __name__ == '__main__':
 		else:
 			logging.debug("CEC disabled in pes.ini")
 		
-		app = PESApp(dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, shutdownCommand, rebootCommand, listTimezonesCommand, getTimezoneCommand, setTimezoneCommand)
+		app = PESApp(dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, badgeDir, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, shutdownCommand, rebootCommand, listTimezonesCommand, getTimezoneCommand, setTimezoneCommand)
 		
 		if cecEnabled:
 			# set-up CEC

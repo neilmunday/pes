@@ -376,7 +376,6 @@ class UpdateDbThread(Thread):
 		con = None
 		cur = None
 		
-		logging.debug("UpdateDbThread.run: getting console API names...")
 		for c in self.consoles:
 			consoleName = c.getName()
 			consoleId = c.getId()
@@ -415,7 +414,7 @@ class UpdateDbThread(Thread):
 			if len(romFiles) > 0:
 				try:
 					# get API name for this console
-					request = urllib2.Request("%sGetPlatform.php" % url, urllib.urlencode({ 'id':  c.getApiId() }), headers=headers)
+					request = urllib2.Request("%sGetPlatform.php" % url, urllib.urlencode({ 'id':  c.getTheGamesDbApiId() }), headers=headers)
 					response = urllib2.urlopen(request, timeout=URL_TIMEOUT)
 					urlLoaded = True
 					xmlData = ElementTree.parse(response)
