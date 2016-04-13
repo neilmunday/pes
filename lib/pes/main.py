@@ -137,6 +137,7 @@ if __name__ == '__main__':
 			menuTextColour = processColour(configParser.get("colours", "menuText").split(','))
 			menuSelectedTextColour = processColour(configParser.get("colours", "menuSelectedText").split(','))
 			textColour = processColour(configParser.get("colours", "text").split(','))
+			lightBackgroundColour = processColour(configParser.get("colours", "lightBackground").split(','))
 			# coverart settings
 			coverartSize = configParser.getfloat('settings', 'coverartSize')
 			coverartCacheLen = configParser.getint('settings', 'coverartCacheLen')
@@ -169,7 +170,7 @@ if __name__ == '__main__':
 		else:
 			logging.debug("CEC disabled in pes.ini")
 		
-		app = PESApp(dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, badgeDir, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, shutdownCommand, rebootCommand, listTimezonesCommand, getTimezoneCommand, setTimezoneCommand)
+		app = PESApp(dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, badgeDir, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, lightBackgroundColour, shutdownCommand, rebootCommand, listTimezonesCommand, getTimezoneCommand, setTimezoneCommand)
 		
 		if cecEnabled:
 			# set-up CEC

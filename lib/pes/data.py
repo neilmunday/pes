@@ -217,6 +217,18 @@ class AchievementUser(Record):
 	def getRank(self):
 		return int(self.getProperty('rank'))
 	
+	def getRecentBadges(self, count):
+		self.connect()
+		cur = self.doQuery('SELECT `achievements_badges`.`badge_id`, `date_earned` FROM `achievements_earned`, `achievements_badges` WHERE `achievements_earned`.`badge_id` = `achievements_badges`.`badge_id` AND `user_id` = %d ORDER BY `date_earned` DESC LIMIT 0,%d;' % (self.getProperty('user_id'), count))
+		badges = []
+		while True:
+			row = cur.fetchone()
+			if row == None:
+				break
+			badges.append(Badge(self.getDb(), int(row['badge_id']), False, int(row['date_earned'])))
+		self.disconnect()
+		return badges
+	
 	def getTotalPoints(self):
 		return int(self.getProperty('total_points'))
 	
@@ -231,6 +243,48 @@ class AchievementUser(Record):
 		
 	def setTotalTruePoints(self, points):
 		self.setProperty('total_truepoints', int(points))
+		
+class Badge(Record):
+	def __init__(self, db, badgeId, locked, dateEarned=None):
+		super(Badge, self).__init__(db, 'achievements_badges', ['badge_id', 'title', 'game_id', 'description', 'points', 'badge_path', 'badge_locked_path'], 'badge_id', badgeId, True)
+		self.__isLocked = locked
+		self.__dateEarned = dateEarned
+		
+	def getDateEarned(self, fmt=None):
+		if self.__isLocked:
+			return None
+		timestamp = int(self.__dateEarned)
+		if timestamp == -1:
+			return None
+		if fmt == None:
+			return timestamp
+		return datetime.fromtimestamp(timestamp).strftime(fmt)
+		
+	def getDescription(self):
+		return self.getProperty('description')
+	
+	def getGameId(self):
+		return self.getProperty('game_id')
+	
+	def getPath(self):
+		if self.__isLocked:
+			return self.getProperty('badge_locked_path')
+		return self.getProperty('badge_path')
+	
+	def getPoints(self):
+		return self.getProperty('points')
+		
+	def getTitle(self):
+		return self.getProperty('title')
+	
+	def isLocked(self):
+		return self.__isLocked
+
+	def setDateEarned(self, earned):
+		self.__dateEarned = earned
+	
+	def setLocked(self, locked):
+		self.__locked = locked
 
 class Console(Record):
 

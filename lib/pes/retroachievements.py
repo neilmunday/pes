@@ -146,9 +146,10 @@ class RetroAchievementConnException(Exception):
 		Exception.__init__(self, msg)
 
 class RetroAchievementImageConsumer(multiprocessing.Process):
-	def __init__(self, taskQueue):
+	def __init__(self, taskQueue, exitEvent):
 		multiprocessing.Process.__init__(self)
 		self.taskQueue = taskQueue
+		self.exitEvent = exitEvent
 		
 	def run(self):
 		while True:
@@ -157,7 +158,8 @@ class RetroAchievementImageConsumer(multiprocessing.Process):
 				logging.debug("%s: exiting..." % self.name)
 				self.taskQueue.task_done()
 				return
-			task.run()
+			if not self.exitEvent.is_set():
+				task.run()
 			self.taskQueue.task_done()
 		return
 	
@@ -216,10 +218,11 @@ class RetroAchievementsUpdateThread(Thread):
 		logging.debug("RetroAchievementsUpdateThread.run: starting...")
 		self.started = True
 		self.__startTime = time.time()
+		self.__exitEvent = multiprocessing.Event()
 		self.__tasks = multiprocessing.JoinableQueue()
 		self.consumerTotal = multiprocessing.cpu_count() * 2
 		logging.debug("RetroAchievementsUpdateThread.run: creating %d consumers" % self.consumerTotal)
-		consumers = [RetroAchievementImageConsumer(self.__tasks) for i in xrange(self.consumerTotal)]
+		consumers = [RetroAchievementImageConsumer(self.__tasks, self.__exitEvent) for i in xrange(self.consumerTotal)]
 		
 		username = self.__raConn.getUsername()
 		
@@ -250,6 +253,9 @@ class RetroAchievementsUpdateThread(Thread):
 				return
 			logging.debug("RetroAchievementsUpdateThread.run: downloaded user games ok!")
 			for g in games:
+				if self.interrupted:
+					self.__stopHelper()
+					return
 				if g["NumPossibleAchievements"] > 0:
 					gameId = int(g['GameID'])
 					cur.execute("INSERT OR REPLACE INTO `achievements_games` (`game_id`, `console_id`, `name`, `achievement_total`, `score_total`) VALUES (%d, %d, '%s', %d, %d);" % (gameId, int(g['ConsoleID']), g['Title'].replace("'", "''"), int(g['NumPossibleAchievements']), int(g['PossibleScore'])))
@@ -264,6 +270,9 @@ class RetroAchievementsUpdateThread(Thread):
 						return
 					
 					for k, v in achievements['Achievements'].iteritems():
+						if self.interrupted:
+							self.__stopHelper()
+							return
 						badgeId = int(k)
 						badgePath = os.path.join(self.__badgeDir, "%s.png" % k)
 						badgeLockedPath = os.path.join(self.__badgeDir, "%s_locked.png" % k)
@@ -292,7 +301,11 @@ class RetroAchievementsUpdateThread(Thread):
 		finally:
 			if con:
 				con.close()
-				
+		
+		if self.interrupted:
+			self.__stopHelper()
+			return
+		
 		# use sub processes to download badges in parallel
 		for i in xrange(self.consumerTotal):
 			self.__tasks.put(None)
@@ -311,4 +324,18 @@ class RetroAchievementsUpdateThread(Thread):
 		self.__endTime = time.time()
 		self.done = True
 		self.success = True
+		logging.debug("RetroAchievementsUpdateThread.run: finished!")
+		
+	def stop(self):
+		if self.started and not self.done:
+			self.interrupted = True
+			logging.debug("RetroAchievementsUpdateThread.stop: stopping processes...")
+			self.__exitEvent.set()
+		else:
+			self.done = True
+			
+	def __stopHelper(self):
+		self.__endTime = time.time()
+		self.done = True
+		self.success = False
 		logging.debug("RetroAchievementsUpdateThread.run: finished!")

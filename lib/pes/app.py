@@ -150,7 +150,7 @@ class PESApp(object):
 			sdl2.video.SDL_DestroyWindow(self.__window)
 			self.__window = None
 
-	def __init__(self, dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, badgeDir, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, shutdownCommmand, rebootCommand, listTimezonesCommand, getTimezoneCommand, setTimezoneCommand):
+	def __init__(self, dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, badgeDir, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, lightBackgroundColour, shutdownCommmand, rebootCommand, listTimezonesCommand, getTimezoneCommand, setTimezoneCommand):
 		super(PESApp, self).__init__()
 		self.__dimensions = dimensions
 		self.__shutdownCommand = shutdownCommmand
@@ -181,6 +181,7 @@ class PESApp(object):
 		self.menuSelectedTextColour = sdl2.SDL_Color(menuSelectedTextColour[0], menuSelectedTextColour[1], menuSelectedTextColour[2])
 		self.menuSelectedBgColour = self.lineColour
 		self.textColour = sdl2.SDL_Color(textColour[0], textColour[1], textColour[2])
+		self.lightBackgroundColour = sdl2.SDL_Color(lightBackgroundColour[0], lightBackgroundColour[1], lightBackgroundColour[2])
 		
 		self.__headerHeight = 30
 		self.__footerHeight = 0
@@ -585,6 +586,7 @@ class PESApp(object):
 		self.headerFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, 22)
 		self.titleFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, 20)
 		self.bodyFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, 18)
+		self.smallBodyFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, 14)
 		
 		self.renderer = sdl2.SDL_CreateRenderer(self.__window, -1, sdl2.render.SDL_RENDERER_ACCELERATED)
 		
@@ -1327,7 +1329,10 @@ class AchievementsScreen(Screen):
 					self.__scanProgressBar.setProgress(self.__updateThread.getProgress())
 					self.__scanProgressBar.draw()
 				elif self.__updateThread.done and not self.__updateThread.success:
-					self.__descriptionLabel.setText("Update completed with errors!", True)
+					if self.__updateThread.interrupted:
+						self.__descriptionLabel.setText("Update was interrupted!", True)
+					else:
+						self.__descriptionLabel.setText("Update completed with errors!", True)
 					self.__updateThread = None
 					self.__isBusy = False
 				elif self.__updateThread.done and self.__updateThread.success:
@@ -1369,6 +1374,7 @@ class AchievementsScreen(Screen):
 			if event.key.keysym.sym == sdl2.SDLK_BACKSPACE or event.key.keysym.sym == sdl2.SDLK_HOME:
 				if self.__updateThread.started and not self.__updateThread.done:
 					self.setMenuActive(False)
+					self.__updateThread.stop()
 				elif self.__updateDbThread.done:
 					self.setMenuActive(False)
 					self.__updateDbThread = None
@@ -1750,6 +1756,9 @@ class HomeScreen(Screen):
 		self.__recentlyAddedThumbPanels = {}
 		self.__recentlyPlayedThumbPanels = {}
 		
+		self.__badgePanels = []
+		self.updateRecentBadges()
+		
 		#logging.debug("HomeScreen.init: thumbWidth %d" % self.__thumbWidth)
 		logging.debug("HomeScreen.init: initialised")
 			
@@ -1764,10 +1773,11 @@ class HomeScreen(Screen):
 				self.__recentlyAddedThumbPanels[self.__consoleName].draw()
 			if self.__consoleName in self.__recentlyPlayedThumbPanels:
 				self.__recentlyPlayedThumbPanels[self.__consoleName].draw()
-			#self.__recentlyAddedThumbPanel.draw()
 			self.__recentlyPlayedLabel.draw()
-			#if self.__recentlyPlayedThumbPanel:
-			#	self.__recentlyPlayedThumbPanel.draw()
+		elif self.menu.getSelectedItem().getText() == "Achievements":
+			self.__descriptionLabel.draw()
+			for p in self.__badgePanels:
+				p.draw()
 		else:
 			self.__descriptionLabel.draw()
 			
@@ -1790,6 +1800,7 @@ class HomeScreen(Screen):
 					t = ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyPlayedLabel.y + self.__recentlyPlayedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs)
 					t.loadTextures()
 					self.__recentlyPlayedThumbPanels[console.getName()] = self.addUiObject(t)
+		
 
 	def processEvent(self, event):
 		super(HomeScreen, self).processEvent(event)
@@ -1820,6 +1831,7 @@ class HomeScreen(Screen):
 				else:
 					self.__recentlyAddedThumbPanels[consoleName].setGames(games)
 		self.menu.setSelected(0, deselectAll=True)
+		self.updateRecentBadges()
 		self.update()
 		
 	def stop(self):
@@ -1844,64 +1856,59 @@ class HomeScreen(Screen):
 				self.__recentlyPlayedThumbPanels[self.__consoleName].setCoords(self.__recentlyPlayedThumbPanels[self.__consoleName].x, self.__recentlyPlayedLabel.y + self.__recentlyPlayedLabel.height + self.__thumbYGap)
 			else:
 				self.__recentlyPlayedLabel.setVisible(False)
-			
-			# get recently added
-			#logging.debug("HomeScreen.update: getting recently added games for %s..." % self.__consoleName)
-			
-			#if self.__consoleName not in self.__recentlyAddedThumbPanels:
-			#	games = console.getRecentlyAddedGames(0, self.__showThumbs)
-			#	if len(games) > 0:
-			#		thumbX = self.screenRect[0] + self.screenMargin
-			#		self.__recentlyAddedThumbPanels[self.__consoleName] = self.addUiObject(ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyAddedLabel.y + self.__recentlyAddedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
-			#	else:
-			#		self.__recentlyAddedLabel.setText(self.__recentlyAddedText + ": None added", True)
-			#else:
-			#	logging.debug("HomeScreen.update: no need to update recently added ganes for %s..." % self.__consoleName)
-			
-			#games = console.getRecentlyAddedGames(0, self.__showThumbs)
-			#thumbX = self.screenRect[0] + self.screenMargin
-			#if len(games) > 0:
-			#	if self.__recentlyAddedThumbPanel:
-			#		self.__recentlyAddedThumbPanel.setGames(games)
-			#	else:
-			#		self.__recentlyAddedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyAddedLabel.y + self.__recentlyAddedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
-			#else:
-			#	self.__recentlyAddedLabel.setText(self.__recentlyAddedText + ": None added")
-			#self.__recentlyPlayedLabel.y = self.__recentlyAddedThumbPanel.y + self.__recentlyAddedThumbPanel.height + 50
-			# get recently played
-			#logging.debug("HomeScreen.drawScreen: getting recently played games for %s..." % consoleName)
-			#games = console.getRecentlyPlayedGames(0, self.__showThumbs)
-			#if len(games) > 0:
-			#	if self.__recentlyPlayedThumbPanel:
-			#		self.__recentlyPlayedThumbPanel.setGames(games)
-			#		self.__recentlyPlayedThumbPanel.setCoords(self.__recentlyPlayedThumbPanel.x, self.__recentlyPlayedLabel.y + self.__recentlyPlayedLabel.height + self.__thumbYGap)
-			#	else:
-			#		self.__recentlyPlayedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyPlayedLabel.y + self.__recentlyPlayedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
-			#	self.__recentlyPlayedLabel.setVisible(True)
-			#	self.__recentlyPlayedThumbPanel.setVisible(True)
-			#else:
-			#	if self.__recentlyPlayedThumbPanel:
-			#		self.__recentlyPlayedThumbPanel.setVisible(False)
-			#	self.__recentlyPlayedLabel.setVisible(False)
-				
 			self.__consoleSelected = True
 		else:
 			self.__consoleSelected = False
-			if selected.getText() == "Home":
+			selectedText = selected.getText()
+			if selectedText == "Home":
 				self.__headerLabel.setText("Welcome to PES!")
-				self.__descriptionLabel.setText(self.__welcomeText)
-			elif selected.getText() == "Reboot":
+				self.__descriptionLabel.setText(self.__welcomeText, True)
+			elif selectedText == "Achievements":
+				self.__headerLabel.setText("Achievements")
+				if self.app.retroAchievementConn:
+					if self.app.achievementUser:
+						if len(self.__badgePanels) == 0:
+							self.__descriptionLabel.setText("None found.", True)
+						else:
+							self.__descriptionLabel.setText("Your recent achievements:", True)
+							y = self.__descriptionLabel.y + self.__descriptionLabel.height + 20
+							for b in self.__badgePanels:
+								b.setCoords(b.x, y)
+								y += b.height + 10
+					else:
+						self.__descriptionLabel.setText("View and update your achievements here.", True)
+				else:
+					self.__descriptionLabel.setText("View and update your achievements here.", True)
+			elif selectedText == "Reboot":
 				self.__headerLabel.setText("Reboot")
-				self.__descriptionLabel.setText("Select this menu item to reboot your system.")
-			elif selected.getText() == "Exit":
+				self.__descriptionLabel.setText("Select this menu item to reboot your system.", True)
+			elif selectedText == "Exit":
 				self.__headerLabel.setText("Exit")
-				self.__descriptionLabel.setText("Select this menu item to exit the PES GUI and return to the command line.")
-			elif selected.getText() == "Settings":
+				self.__descriptionLabel.setText("Select this menu item to exit the PES GUI and return to the command line.", True)
+			elif selectedText == "Settings":
 				self.__headerLabel.setText("Settings")
-				self.__descriptionLabel.setText("Select this menu item to customise PES and to add ROMs to PES' database.")
-			elif selected.getText() == "Power Off":
+				self.__descriptionLabel.setText("Select this menu item to customise PES and to add ROMs to PES' database.", True)
+			elif selectedText == "Power Off":
 				self.__headerLabel.setText("Power Off")
-				self.__descriptionLabel.setText("Select this menu item to power off your system.")
+				self.__descriptionLabel.setText("Select this menu item to power off your system.", True)
+				
+	def updateRecentBadges(self):
+		if self.app.achievementUser:
+			logging.debug("HomeScreen.updateRecentBadges: updating...")
+			for b in self.__badgePanels:
+				self.removeUiObject(b)
+				b.destroy()
+			self.__badgePanels = []
+			badges = self.app.achievementUser.getRecentBadges(10)
+			x = self.screenRect[0] + self.screenMargin
+			y = 0
+			width = self.screenRect[2] - (self.screenMargin * 2)
+			for b in badges:
+				badgePanel = self.addUiObject(BadgePanel(self.app.renderer, x, y, width, self.app.bodyFont, self.app.smallBodyFont, self.app.textColour, self.app.lightBackgroundColour, self.app.menuSelectedBgColour, b))
+				self.__badgePanels.append(badgePanel)
+				y += badgePanel.height + 10
+				if y + badgePanel.height > self.screenRect[1] + self.screenRect[3]:
+					break
 				
 class JoystickPromptMap(object):
 	

@@ -275,6 +275,41 @@ class UIObject(object):
 	def setVisible(self, visible):
 		self.visible = visible
 		
+class BadgePanel(UIObject):
+	
+	def __init__(self, renderer, x, y, width, font, smallFont, colour, bgColour, selectedBgColour, badge):
+		self.__badge = badge
+		self.__margin = 5
+		labelWidth = width - (self.__margin * 2)
+		self.__titleLabel = Label(renderer, x + self.__margin, y, badge.getTitle(), font, colour, fixedWidth=labelWidth)
+		height = self.__titleLabel.height
+		self.__bgColour = bgColour
+		self.__icon = Icon(renderer, x + self.__margin, self.__titleLabel.y + self.__titleLabel.height, 64, 64, badge.getPath())
+		height = self.__titleLabel.height + self.__icon.height + self.__margin
+		super(BadgePanel, self).__init__(renderer, x, y, width, height)
+		labelWidth = width - (self.__margin + self.__icon.width + 10)
+		self.__descriptionLabel = Label(renderer, self.__icon.x + self.__icon.width + 10, self.__icon.y, badge.getDescription() + "\nPoints: %d\nEarned: %s" % (badge.getPoints(), badge.getDateEarned("%Y/%m/%d")), smallFont, colour, fixedWidth=labelWidth)
+		
+	def destroy(self):
+		logging.debug("BadgePanel.destroy: destroying badge panel for badge %d" % self.__badge.getId())
+		self.__titleLabel.destroy()
+		self.__icon.destroy()
+		self.__descriptionLabel.destroy()
+		
+	def draw(self):
+		if self.visible:
+			sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__bgColour.r, self.__bgColour.g, self.__bgColour.b, 255)
+			self.__titleLabel.draw()
+			self.__descriptionLabel.draw()
+			self.__icon.draw()
+			
+	def setCoords(self, x, y):
+		super(BadgePanel, self).setCoords(x, y)
+		self.__titleLabel.setCoords(self.x + self.__margin, y)
+		if self.__icon:
+			self.__icon.setCoords(self.x + self.__margin, self.__titleLabel.y + self.__titleLabel.height)
+			self.__descriptionLabel.setCoords(self.__icon.x + self.__icon.width + 10, self.__icon.y)
+		
 class Button(UIObject):
 	
 	def __init__(self, renderer, x, y, width, height, text, font, colour, selectedBgColour, callback = None, *callbackArgs):
@@ -301,6 +336,18 @@ class Button(UIObject):
 		if self.__texture:
 			sdl2.SDL_DestroyTexture(self.__texture)
 			self.__texture = None
+	
+	def draw(self):
+		if self.visible:
+			if self.__texture == None:
+				surface = sdl2.sdlttf.TTF_RenderText_Blended(self.__font, self.__text, self.__colour)
+				self.__texture = sdl2.SDL_CreateTextureFromSurface(self.renderer, surface)
+				sdl2.SDL_FreeSurface(surface)
+			if self.hasFocus():
+				sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__selectedBgColour.r, self.__selectedBgColour.g, self.__selectedBgColour.b, 255)
+			else:
+				sdl2.sdlgfx.rectangleRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__selectedBgColour.r, self.__selectedBgColour.g, self.__selectedBgColour.b, 255)
+			sdl2.SDL_RenderCopy(self.renderer, self.__texture, sdl2.SDL_Rect(0, 0, self.__labelWidth, self.__labelHeight), sdl2.SDL_Rect(self.__labelX, self.__labelY, self.__labelWidth, self.__labelHeight))
 			
 	def processEvent(self, event):
 		if self.visible and self.hasFocus():
@@ -314,18 +361,6 @@ class Button(UIObject):
 				else:
 					logging.debug("Button.processEvent: no callback for button \"%s\"" % self.__text)
 			
-	def draw(self):
-		if self.visible:
-			if self.__texture == None:
-				surface = sdl2.sdlttf.TTF_RenderText_Blended(self.__font, self.__text, self.__colour)
-				self.__texture = sdl2.SDL_CreateTextureFromSurface(self.renderer, surface)
-				sdl2.SDL_FreeSurface(surface)
-			if self.hasFocus():
-				sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__selectedBgColour.r, self.__selectedBgColour.g, self.__selectedBgColour.b, 255)
-			else:
-				sdl2.sdlgfx.rectangleRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__selectedBgColour.r, self.__selectedBgColour.g, self.__selectedBgColour.b, 255)
-			sdl2.SDL_RenderCopy(self.renderer, self.__texture, sdl2.SDL_Rect(0, 0, self.__labelWidth, self.__labelHeight), sdl2.SDL_Rect(self.__labelX, self.__labelY, self.__labelWidth, self.__labelHeight))
-			
 class Icon(UIObject):
 	
 	def __init__(self, renderer, x, y, width, height, image):
@@ -336,7 +371,7 @@ class Icon(UIObject):
 		
 	def destroy(self):
 		if self.__texture:
-			logging.debug("Icon.destory: destroying icon \"%s\"" % self.__image)
+			logging.debug("Icon.destroy: destroying icon \"%s\"" % self.__image)
 			sdl2.SDL_DestroyTexture(self.__texture)
 			self.__texture = None
 		
@@ -929,7 +964,7 @@ class ThumbnailPanel(UIObject):
 				t.draw()
 			
 	def destroy(self):
-		logging.debug("ThumbnailPanel.destory: destroying...")
+		logging.debug("ThumbnailPanel.destroy: destroying...")
 		for t in self.__thumbnails:
 			t.destroy()
 			
