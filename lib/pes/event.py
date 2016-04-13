@@ -29,6 +29,7 @@ EVENT_TYPE = None
 # PES Events
 EVENT_DB_UPDATE = 1
 EVENT_RESOURCES_LOADED = 2
+EVENT_ACHIEVEMENTS_UPDATE = 3
 
 def decodePesEvent(event):
 	data1 = cast(event.user.data1, c_char_p)

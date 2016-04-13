@@ -732,8 +732,14 @@ class PESApp(object):
 						if screenSaverActive:
 							screenSaverActive = False
 							screenSaverTick = sdl2.timer.SDL_GetTicks()
-					elif t == pes.event.EVENT_RESOURCES_LOADED:
-						pass
+					elif not loading and t == pes.event.EVENT_ACHIEVEMENTS_UPDATE:
+						logging.debug("PESApp.run: achievements have been updated")
+						self.setUpRetroAchievementUser()
+						self.screens["Achievements"].updateAchievementUserText()
+						self.screens["Home"].updateRecentBadges()
+					#elif t == pes.event.EVENT_RESOURCES_LOADED:
+					#	pass
+					
 
 				if screenSaverActive:
 					if event.type == sdl2.SDL_KEYDOWN:
@@ -1338,8 +1344,6 @@ class AchievementsScreen(Screen):
 				elif self.__updateThread.done and self.__updateThread.success:
 					self.__descriptionLabel.setText("Update completed successfully!", True)
 					self.__updateThread = None
-					self.app.setUpRetroAchievementUser()
-					self.__updateAchievementUserText()
 					self.__isBusy = False
 			self.__descriptionLabel.draw()
 			
@@ -1427,7 +1431,8 @@ class AchievementsScreen(Screen):
 					else:
 						self.__scanProgressBar.setProgress(0)
 					self.__updateThread.start()
-	def __updateAchievementUserText(self):
+					
+	def updateAchievementUserText(self):
 		self.__descriptionAchievementUserText = "Username: %s\nPoints: %d (%d)\nRank: %d\n\nGames that you have earned achievements for can be browsed below:" % (self.app.achievementUser.getName(), self.app.achievementUser.getTotalPoints(), self.app.achievementUser.getTotalTruePoints(), self.app.achievementUser.getRank())
 
 class ConsoleScreen(Screen):

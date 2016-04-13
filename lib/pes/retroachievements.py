@@ -28,6 +28,7 @@ import urllib
 import urllib2
 import logging
 import multiprocessing
+import pes.event
 import sqlite3
 import time
 from datetime import datetime
@@ -324,6 +325,7 @@ class RetroAchievementsUpdateThread(Thread):
 		self.__endTime = time.time()
 		self.done = True
 		self.success = True
+		pes.event.pushPesEvent(pes.event.EVENT_ACHIEVEMENTS_UPDATE)
 		logging.debug("RetroAchievementsUpdateThread.run: finished!")
 		
 	def stop(self):
