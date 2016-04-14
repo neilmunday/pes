@@ -64,7 +64,8 @@ class ConsoleTask(object):
 				cur.execute(query)
 				if fetch:
 					row = cur.fetchone()
-				con.commit()
+				else:	
+					con.commit()
 				con.close()
 			except sqlite3.Error, e:
 				logging.exception(e)
@@ -98,7 +99,7 @@ class ConsoleTask(object):
 			row = self.__execute("SELECT `full_name` FROM `games_catalogue` WHERE `short_name` = \"%s\"" % name, True)
 			if row:
 				name = row['full_name']
-
+				
 			row = self.__execute("SELECT `game_id`, `name`, `cover_art`, `game_path`, `api_id` FROM `games` WHERE `game_path` = \"%s\";" % rom, True)
 			if row == None or (row['cover_art'] == "0" and row['api_id'] == -1) or (row['cover_art'] != "0" and not os.path.exists(row['cover_art'])):
 				gameApiId = None
@@ -107,14 +108,27 @@ class ConsoleTask(object):
 				
 				# has cover art already been provided by the user or downloaded previously?
 				for e in imgExtensions:
-					path = cacheDir + os.sep + filename + '.' + e
+					path = os.path.join(cacheDir, "%s.%s" % (filename, e))
 					if os.path.exists(path):
 						thumbPath = path
 						break
-					path = cacheDir + os.sep + name.replace('/', '_') + '.' + e
-					if os.path.exists(path):
-						thumbPath = path
-						break
+					path2 = os.path.join(cacheDir, "%s.%s" % (name.replace('/', '_'), e))
+					if path != path2:
+						path = path2
+						if os.path.exists(path):
+							thumbPath = path
+							break
+					
+				if thumbPath != '0':
+					# can the image be opened?
+					imgOk = False
+					try:
+						img = Image.open(thumbPath)
+						img.close()
+					except IOError as e:
+						logging.warning("ConsoleTask: %s is not a valid image, it will be deleted")
+						os.remove(thumbPath)
+						thumbPath = '0'
 				
 				overview = ''
 				released = -1
@@ -217,14 +231,17 @@ class ConsoleTask(object):
 
 									if imageSaved:
 										# resize the image if it is too big
-										self.__scaleImage(thumbPath, name)
+										if not self.__scaleImage(thumbPath, name):
+											thumbPath = '0'
 							else:
 								# does the provided image need to be scaled?
-								self.__scaleImage(thumbPath, name)
+								if not self.__scaleImage(thumbPath, name):
+									thumbPath = '0'
 						else:
 							if thumbPath != "0":
 								# does the provided image need to be scaled?
-								self.__scaleImage(thumbPath, name)
+								if not self.__scaleImage(thumbPath, name):
+									thumbPath = '0'
 				else:
 					gameApiId = -1
 
@@ -243,16 +260,22 @@ class ConsoleTask(object):
 				
 	@staticmethod
 	def __scaleImage(path, name):
-		img = Image.open(path)
-		width, height = img.size
-		scaleWidth = ConsoleTask.SCALE_WIDTH
-		ratio = min(float(scaleWidth / width), float(scaleWidth / height))
-		newWidth = width * ratio
-		newHeight = height * ratio
-		if width > newWidth or height > newHeight:
-			# scale image
-			img.thumbnail((newWidth, newHeight), Image.ANTIALIAS)
-			img.save(path)
+		try:
+			img = Image.open(path)
+			width, height = img.size
+			scaleWidth = ConsoleTask.SCALE_WIDTH
+			ratio = min(float(scaleWidth / width), float(scaleWidth / height))
+			newWidth = width * ratio
+			newHeight = height * ratio
+			if width > newWidth or height > newHeight:
+				# scale image
+				img.thumbnail((newWidth, newHeight), Image.ANTIALIAS)
+				img.save(path)
+			img.close()
+		except IOError as e:
+			logging.error("Failed to scale: %s" % path)
+			return False
+		return True
 			
 	def setLock(self, lock):
 		self.lock = lock
