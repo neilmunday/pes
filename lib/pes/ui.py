@@ -298,6 +298,7 @@ class BadgePanel(UIObject):
 		
 	def draw(self):
 		if self.visible:
+			super(BadgePanel, self).draw()
 			sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__bgColour.r, self.__bgColour.g, self.__bgColour.b, 255)
 			self.__titleLabel.draw()
 			self.__descriptionLabel.draw()
