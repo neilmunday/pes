@@ -74,7 +74,7 @@ class RetroAchievementConn(object):
 		response = urllib2.urlopen(fullUrl)
 		contents = response.read()
 		if contents == "Invalid API Key":
-			raise RetroAchievementException("Invalid API Key")
+			raise RetroAchievementConnException("Invalid API Key")
 		s = json.loads(contents)
 		return s
 		
