@@ -1289,7 +1289,7 @@ class AchievementsScreen(Screen):
 		
 		if app.retroAchievementConn:
 			if self.app.achievementUser:
-				self.__updateAchievementUserText()
+				self.updateAchievementUserText()
 				self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + self.__titleLabel.height + 30, self.__descriptionAchievementUserText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
 			else:
 				self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + self.__titleLabel.height + 30, self.__descriptionNoAchievementUserText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
