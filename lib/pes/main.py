@@ -139,8 +139,10 @@ if __name__ == '__main__':
 			textColour = processColour(configParser.get("colours", "text").split(','))
 			lightBackgroundColour = processColour(configParser.get("colours", "lightBackground").split(','))
 			# coverart settings
-			coverartSize = configParser.getfloat('settings', 'coverartSize')
-			coverartCacheLen = configParser.getint('settings', 'coverartCacheLen')
+			coverartSize = configParser.getfloat("settings", "coverartSize")
+			coverartCacheLen = configParser.getint("settings", "coverartCacheLen")
+			# icon settings
+			iconCacheLen = configParser.getint("settings", "iconCacheLen")
 			# command settings
 			shutdownCommand = configParser.get("commands", "shutdown")
 			rebootCommand = configParser.get("commands", "reboot")
@@ -170,7 +172,7 @@ if __name__ == '__main__':
 		else:
 			logging.debug("CEC disabled in pes.ini")
 		
-		app = PESApp(dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, badgeDir, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, lightBackgroundColour, shutdownCommand, rebootCommand, listTimezonesCommand, getTimezoneCommand, setTimezoneCommand)
+		app = PESApp(dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, iconCacheLen, badgeDir, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, lightBackgroundColour, shutdownCommand, rebootCommand, listTimezonesCommand, getTimezoneCommand, setTimezoneCommand)
 		
 		if cecEnabled:
 			# set-up CEC

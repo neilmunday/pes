@@ -213,12 +213,22 @@ class GameMenuItem(MenuItem):
 	def __repr__(self):
 		return "<GameMenuItem: text: %s >" % self.__game.getName()
 	
-class RAMenuItem(MenuItem):
+class AchievementGameMenuItem(MenuItem):
 	
-	def __init__(self, gameDict, selected = False, callback = None, *callbackArgs):
-		percent = (float(gameDict["NumAchieved"]) / float(gameDict["NumPossibleAchievements"])) * 100.0
-		super(RAMenuItem, self).__init__("%s (%s) %.1f%%" % (gameDict["Title"], gameDict["ConsoleName"], percent), selected, False, callback, *callbackArgs)
-		self.__gameDict = gameDict
+	def __init__(self, game, callback=None, *callbackArgs):
+		super(AchievementGameMenuItem, self).__init__("%s (%s) %dpts %.1f%%" % (game.getName(), game.getConsoleName(), game.getUserPointsTotal(), game.getPercentComplete()), False, False, callback, *callbackArgs)
+		
+class DataMenuItem(MenuItem):
+	
+	def __init__(self, dataObj, selected = False, toggable = False, callback = None, *callbackArgs):
+		super(DataMenuItem, self).__init__(dataObj.getTitle(), selected, toggable, callback, *callbackArgs)
+		self.__dataObj = dataObj
+		
+	def getDataObject(self):
+		return self.__dataObj
+	
+	def __repr__(self):
+		return "<DataMenuItem: text: %s >" % self.__dataObj.getTitle()
 
 class UIObject(object):
 	
@@ -275,42 +285,76 @@ class UIObject(object):
 	def setVisible(self, visible):
 		self.visible = visible
 		
-class BadgePanel(UIObject):
+class IconPanel(UIObject):
 	
-	def __init__(self, renderer, x, y, width, font, smallFont, colour, bgColour, selectedBgColour, badge):
-		self.__badge = badge
+	def __init__(self, renderer, x, y, width, font, smallFont, colour, bgColour, selectedBgColour, title, description, icon, dataObj):
 		self.__margin = 5
+		self.__title = title
+		self.__description = description
 		labelWidth = width - (self.__margin * 2)
-		self.__titleLabel = Label(renderer, x + self.__margin, y, badge.getTitle(), font, colour, fixedWidth=labelWidth)
+		self.__titleLabel = Label(renderer, x + self.__margin, y, self.__title, font, colour, fixedWidth=labelWidth)
 		height = self.__titleLabel.height
 		self.__bgColour = bgColour
-		self.__icon = Icon(renderer, x + self.__margin, self.__titleLabel.y + self.__titleLabel.height, 64, 64, badge.getPath())
+		self.__icon = Icon(renderer, x + self.__margin, self.__titleLabel.y + self.__titleLabel.height, 64, 64, icon)
 		height = self.__titleLabel.height + self.__icon.height + self.__margin
-		super(BadgePanel, self).__init__(renderer, x, y, width, height)
+		super(IconPanel, self).__init__(renderer, x, y, width, height)
 		labelWidth = width - (self.__margin + self.__icon.width + 10)
-		self.__descriptionLabel = Label(renderer, self.__icon.x + self.__icon.width + 10, self.__icon.y, badge.getDescription() + "\nPoints: %d\nEarned: %s" % (badge.getPoints(), badge.getDateEarned("%Y/%m/%d")), smallFont, colour, fixedWidth=labelWidth)
+		self.__descriptionLabel = Label(renderer, self.__icon.x + self.__icon.width + 10, self.__icon.y, self.__description, smallFont, colour, fixedWidth=labelWidth)
+		self.__dataObj = dataObj
 		
 	def destroy(self):
-		logging.debug("BadgePanel.destroy: destroying badge panel for badge %d" % self.__badge.getId())
+		logging.debug("IconPanel.destroy: destroying icon panel: \"%s\"" % self.__title)
 		self.__titleLabel.destroy()
 		self.__icon.destroy()
 		self.__descriptionLabel.destroy()
 		
 	def draw(self):
 		if self.visible:
-			super(BadgePanel, self).draw()
+			super(IconPanel, self).draw()
 			sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__bgColour.r, self.__bgColour.g, self.__bgColour.b, 255)
 			self.__titleLabel.draw()
 			self.__descriptionLabel.draw()
 			self.__icon.draw()
 			
 	def setCoords(self, x, y):
-		super(BadgePanel, self).setCoords(x, y)
+		super(IconPanel, self).setCoords(x, y)
 		self.__titleLabel.setCoords(self.x + self.__margin, y)
 		if self.__icon:
 			self.__icon.setCoords(self.x + self.__margin, self.__titleLabel.y + self.__titleLabel.height)
 			self.__descriptionLabel.setCoords(self.__icon.x + self.__icon.width + 10, self.__icon.y)
+			
+	def getDataObject(self):
+		return self.__dataObj
+			
+	def setDataObject(self, obj):
+		self.__dataObj = obj
 		
+	def setDescription(self, txt):
+		self.__descriptionLabel.setText(txt, True)
+		
+	def setIcon(self, icon):
+		self.__icon.setImage(icon)
+		
+	def setTitle(self, txt):
+		self.__titleLabel.setText(txt, True)
+		
+class BadgePanel(IconPanel):
+	
+	def __init__(self, renderer, x, y, width, font, smallFont, colour, bgColour, selectedBgColour, badge):
+		super(BadgePanel, self).__init__(renderer, x, y, width, font, smallFont, colour, bgColour, selectedBgColour, badge.getTitle(), self.__createDescription(badge), badge.getPath(), badge)
+		
+	def __createDescription(self, badge):
+		dateEarned = badge.getDateEarned("%d/%m/%Y")
+		if dateEarned == None:
+			dateEarned = "N/A"
+		return "%s\nPoints: %d\nEarned: %s" % (badge.getDescription(), badge.getPoints(), dateEarned)
+		
+	def setDataObject(self, badge):
+		super(BadgePanel, self).setDataObject(badge)
+		self.setTitle(badge.getTitle())
+		self.setDescription(self.__createDescription(badge))
+		self.setIcon(badge.getPath())
+
 class Button(UIObject):
 	
 	def __init__(self, renderer, x, y, width, height, text, font, colour, selectedBgColour, callback = None, *callbackArgs):
@@ -364,23 +408,56 @@ class Button(UIObject):
 			
 class Icon(UIObject):
 	
+	CACHE_LEN = 200
+	__cache = {} # shared texture cache
+	__queue = deque()
+	
 	def __init__(self, renderer, x, y, width, height, image):
 		super(Icon, self).__init__(renderer, x, y, width, height)
 		self.__image = image
 		self.__texture = None
 		logging.debug("Icon.init: initialised for \"%s\"" % image)
 		
+	@staticmethod
+	def __addToCache(path, texture):
+		Icon.__cache[path] = texture
+		Icon.__queue.append(path)
+		cacheLength = len(Icon.__queue)
+		if cacheLength > Icon.CACHE_LEN:
+			logging.debug("Icon.__addToCache: cache length %d exceeded, removing item from cache to make room..." % Icon.CACHE_LEN)
+			path = Icon.__queue.popleft()
+			sdl2.SDL_DestroyTexture(Icon.__cache[path])
+			del Icon.__cache[path]
+		else:
+			logging.debug("Icon.__addToCache: cache length: %d" % cacheLength)
+		
 	def destroy(self):
-		if self.__texture:
-			logging.debug("Icon.destroy: destroying icon \"%s\"" % self.__image)
-			sdl2.SDL_DestroyTexture(self.__texture)
-			self.__texture = None
+		pass
+			
+	@staticmethod
+	def destroyTextures():
+		logging.debug("Icon.destroyTextures: purging %d textures..." % len(Icon.__cache))
+		keys = []
+		for key, value in Icon.__cache.iteritems():
+			sdl2.SDL_DestroyTexture(value)
+			keys.append(key)
+		for k in keys:
+			del Icon.__cache[k]
+		Icon.__queue.clear()
 		
 	def draw(self):
 		if self.visible:
-			if not self.__texture:
+			if self.__image not in Icon.__cache:
+				logging.debug("Icon.draw: loading texture for %s" % self.__image)
 				self.__texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, self.__image)
+				self.__addToCache(self.__image, self.__texture)
+			else:
+				#print logging.debug("Icon.draw: using texture from cache for %s" % self.__image)
+				self.__texture = Icon.__cache[self.__image]
 			sdl2.SDL_RenderCopy(self.renderer, self.__texture, None, sdl2.SDL_Rect(self.x, self.y, self.width, self.height))
+			
+	def setImage(self, image):
+		self.__image = image
 			
 class Label(UIObject):
 	
@@ -779,6 +856,291 @@ class List(UIObject):
 		self.__sliderGap = 2
 		self.__labelX = self.__scrollbarX + self.__scrollbarWidth + self.__labelMargin
 		self.__labelWidth = self.width - self.__scrollbarWidth - self.__labelMargin
+		# work out slider height
+		self.__sliderHeight = int((float(self.__visibleMenuItems) / float(self.__menuCount)) * self.__scrollbarHeight) - (self.__sliderGap * 2)
+		self.__sliderX = self.__scrollbarX + 2
+		self.__sliderWidth = self.__scrollbarWidth - (self.__sliderGap * 2)
+		self.__showScrollbar = True
+		self.__updateScrollbar()
+		
+	def __updateScrollbar(self):
+		if self.__showScrollbar:
+				self.__sliderY = int(((float(self.__menu.getSelectedIndex()) / float(self.__menuCount)) * float(self.__scrollbarHeight - self.__sliderHeight)) + self.__scrollbarY) + self.__sliderGap
+
+class IconPanelList(UIObject):
+	
+	# listen events
+	LISTEN_ITEM_ADDED = 1
+	LISTEN_ITEM_REMOVED = 2
+	LISTEN_ITEM_SELECTED = 3
+	LISTEN_ITEM_INSERTED = 4
+	LISTEN_ITEM_TOGGLED = 5
+	
+	SCROLLBAR_AUTO = 1
+	SCROLLBAR_DISABLED = 2
+	SCROLLBAR_ENABLED = 3
+	
+	def __init__(self, renderer, x, y, width, height, menu, font, smallFont, colour, selectedColour, bgColour, selectedBgColour, selectedBgColourNoFocus, showScrollbarPref=1, drawBackground=False, allowSelectAll=True, panelMargin=12):
+		super(IconPanelList, self).__init__(renderer,x, y, width, height)
+		self.__drawBackground = drawBackground
+		self.__menu = None # DataMenuItems
+		self.__font = font
+		self.__smallFont = smallFont
+		self.__colour = colour
+		self.__selectedColour = selectedColour
+		self.__selectedBgColourNoFocus = selectedBgColourNoFocus
+		self.__bgColour = bgColour
+		self.__selectedBgColour = selectedBgColour
+		self.__fontHeight = sdl2.sdlttf.TTF_FontHeight(self.__font)
+		self.__panels = None
+		self.__showScrollbarPref = showScrollbarPref
+		self.__allowSelectAll = allowSelectAll
+		self.__panelMargin = panelMargin
+		self.__panelGap = 10
+		self.setMenu(menu)
+		self.__listeners = []
+		logging.debug("IconPanelList.init: created List with %d panels for %d menu items, width: %d, height: %d" % (len(self.__panels), self.__menuCount, self.width, self.height))
+	
+	def addListener(self, l):
+		if l not in self.__listeners:
+			self.__listeners.append(l)
+	
+	def destroy(self):
+		self.__menu.removeListener(self)
+		logging.debug("List.destroy: destroying %d panels..." % len(self.__panels))
+		for p in self.__panels:
+			p.destroy()
+		
+	def draw(self):
+		if self.visible:
+			super(IconPanelList, self).draw()
+			i = self.__firstMenuItem
+			for p in self.__panels:
+				p.draw()
+				i += 1
+			if self.__drawBackground:
+				sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__selectedBgColourNoFocus.r, self.__selectedBgColourNoFocus.g, self.__selectedBgColourNoFocus.b, 50)
+			if self.__showScrollbar:
+				sdl2.sdlgfx.boxRGBA(self.renderer, self.__sliderX, self.__sliderY, self.__sliderX + self.__sliderWidth, self.__sliderY + self.__sliderHeight, self.__selectedColour.r, self.__selectedColour.g, self.__selectedColour.b, 50)
+	
+	def __fireListenEvent(self, eventType, item):
+		for l in self.__listeners:
+			l.processListEvent(self, eventType, item)
+	
+	def processEvent(self, event):
+		if self.visible and self.hasFocus():
+			if event.type == sdl2.SDL_KEYUP:
+				if event.key.keysym.sym == sdl2.SDLK_DOWN or event.key.keysym.sym == sdl2.SDLK_UP:
+					self.__fireListenEvent(List.LISTEN_ITEM_SELECTED, self.__menu.getSelectedItem())
+			elif event.type == sdl2.SDL_KEYDOWN:
+				if event.key.keysym.sym == sdl2.SDLK_DOWN:
+					#logging.debug("List.processEvent: key event: DOWN")
+					menuIndex = self.__menu.getSelectedIndex()
+					self.__panels[self.__panelIndex].setBorderColour(None)
+					#print "menuIndex: %d, labelIndex: %d, visibleMenuItems: %d, menuCount: %d" % (menuIndex, self.__panelIndex, self.__visibleMenuItems, self.__menuCount)
+					if self.__panelIndex + 1 > self.__visibleMenuItems - 1:
+						if menuIndex + 1 > self.__menuCount - 1:
+							self.__firstMenuItem = 0
+							self.__panelIndex = 0
+							menuIndex = 0
+							if self.__menuCount > self.__visibleMenuItems:
+								for i in xrange(self.__visibleMenuItems):
+									self.__panels[i].setDataObject(self.__menu.getItem(i + self.__firstMenuItem).getDataObject())
+						else:
+							self.__firstMenuItem += 1
+							menuIndex += 1
+							if self.__menuCount > self.__visibleMenuItems:
+								panelY = self.y
+								panel = self.__panels.popleft()
+								panel.setDataObject(self.__menu.getItem(self.__firstMenuItem - 1 + self.__visibleMenuItems).getDataObject())
+								self.__panels.append(panel)
+								for p in self.__panels:
+									p.setCoords(p.x, panelY)
+									panelY += p.height + self.__panelGap
+					else:
+						self.__panelIndex += 1
+						menuIndex += 1
+					self.__panels[self.__panelIndex].setBorderColour(self.__selectedBgColour)
+					self.__menu.setSelected(menuIndex, fireEvent=False)
+					if self.__showScrollbar:
+						self.__updateScrollbar()
+				elif event.key.keysym.sym == sdl2.SDLK_UP:
+					#logging.debug("List.processEvent: key event: UP")
+					menuIndex = self.__menu.getSelectedIndex()
+					self.__panels[self.__panelIndex].setBorderColour(None)
+					if self.__panelIndex - 1 < 0:
+						if menuIndex - 1 < 0:
+							self.__firstMenuItem = self.__menuCount - self.__visibleMenuItems
+							self.__panelIndex = self.__visibleMenuItems - 1
+							menuIndex = self.__menuCount - 1
+							if self.__menuCount > self.__visibleMenuItems:
+								for i in xrange(self.__visibleMenuItems):
+									self.__panels[i].setDataObject(self.__menu.getItem(i + self.__firstMenuItem).getDataObject())
+						else:
+							self.__firstMenuItem -= 1
+							menuIndex -= 1
+							if self.__menuCount > self.__visibleMenuItems:
+								panelY = self.y
+								panel = self.__panels.pop()
+								panel.setDataObject(self.__menu.getItem(self.__firstMenuItem).getDataObject())
+								self.__panels.appendleft(panel)
+								for p in self.__panels:
+									p.setCoords(p.x, panelY)
+									panelY += p.height + self.__panelGap
+					else:
+						self.__panelIndex -= 1
+						menuIndex -= 1
+					self.__panels[self.__panelIndex].setBorderColour(self.__selectedBgColour)
+					self.__menu.setSelected(menuIndex, fireEvent=False)
+					if self.__showScrollbar:
+						self.__updateScrollbar()
+				elif event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER:
+					logging.debug("IconPanelList.processEvent: key event: RETURN")
+					m = self.__menu.getSelectedItem()
+					m.trigger()
+				elif event.key.keysym.sym == sdl2.SDLK_s:
+					self.__menu.toggle(self.__menu.getSelectedIndex(), not self.__menu.getSelectedItem().isToggled())
+				#elif event.key.keysym.sym == sdl2.SDLK_PAGEDOWN and self.__allowSelectAll:
+				#	self.__menu.toggleAll(False)
+				#elif event.key.keysym.sym == sdl2.SDLK_PAGEUP and self.__allowSelectAll:
+				#	self.__menu.toggleAll(True)
+				elif event.key.keysym.sym == sdl2.SDLK_PAGEDOWN or event.key.keysym.sym == sdl2.SDLK_PAGEUP:
+					menuIndex = self.__menu.getSelectedIndex()
+					if event.key.keysym.sym == sdl2.SDLK_PAGEDOWN:
+						if menuIndex + self.__visibleMenuItems < self.__menuCount:
+							menuIndex = menuIndex + self.__visibleMenuItems
+						else:
+							menuIndex = 0
+					else:
+						if menuIndex - self.__visibleMenuItems >= 0:
+							menuIndex = menuIndex - self.__visibleMenuItems
+						else:
+							menuIndex = self.__menuCount - self.__visibleMenuItems
+					self.__menu.setSelected(menuIndex)
+					
+	def processMenuEvent(self, menu, eventType, item):
+		if eventType == Menu.LISTEN_ITEM_ADDED:
+			logging.debug("IconPanelList.processMenuEvent: item added: %s" % item.getText())
+			self.__menuCount = self.__menu.getCount()
+			self.__visibleMenuItems = int(self.height / self.__panels[0].height)
+			if self.__visibleMenuItems > self.__menuCount:
+				self.__visibleMenuItems = self.__menuCount
+			else:
+				if self.__showScrollbarPref == IconPanelList.SCROLLBAR_AUTO or self.__showScrollbarPref == IconPanelList.SCROLLBAR_ENABLED:
+					self.__setupScrollbar()
+			panelLen = len(self.__panels)
+			if panelLen < self.__visibleMenuItems:
+				self.__panels.append(BadgePanel(self.renderer, self.__panelX, self.__panels[-1].height + self.__panels[-1].y + self.__panelGap, self.width, self.__font, self.__smallFont, self.__colour, self.__bgColour, self.__selectedBgColour, item.getDataObject()))
+				if self.__showScrollbar:
+					self.__sliderHeight = int((float(self.__visibleMenuItems) / float(self.__menuCount)) * self.__scrollbarHeight)
+			self.__fireListenEvent(IconPanelList.LISTEN_ITEM_ADDED, item)
+		elif eventType == Menu.LISTEN_ITEM_INSERTED:
+			logging.debug("IconPanelList.processMenuEvent: item inserted")
+			self.__menuCount = self.__menu.getCount()
+			self.__visibleMenuItems = int(self.height / self.__panels[0])
+			if self.__visibleMenuItems > self.__menuCount:
+				self.__visibleMenuItems = self.__menuCount
+			else:
+				if self.__showScrollbarPref == IconPanelList.SCROLLBAR_AUTO or self.__showScrollbarPref == IconPanelList.SCROLLBAR_ENABLED:
+					self.__setupScrollbar()
+			panelLen = len(self.__panels)
+			if panelLen < self.__visibleMenuItems:
+				self.__panels.append(BadgePanel(self.renderer, self.__panelX, self.__panels[-1].height + self.__panels[-1].y + self.__panelGap, self.width, self.__font, self.__smallFont, self.__colour, self.__bgColour, self.__selectedBgColour, item.getDataObject()))
+				if self.__showScrollbar:
+					self.__sliderHeight = int((float(self.__visibleMenuItems) / float(self.__menuCount)) * self.__scrollbarHeight)
+			# update label text
+			for i in xrange(self.__visibleMenuItems):
+				self.__panels[i].setDataObject(self.__menu.getItem(self.__firstMenuItem + i).getDataObject())
+			self.__fireListenEvent(IconPanelList.LISTEN_ITEM_INSERTED, item)
+		elif eventType == Menu.LISTEN_ITEM_SELECTED:
+			logging.debug("IconPanelList.processMenuEvent: item selected")
+			self.__selectLabel(self.__menu.getSelectedIndex())
+			self.__fireListenEvent(IconPanelList.LISTEN_ITEM_SELECTED, item)
+		elif eventType == Menu.LISTEN_ITEM_TOGGLED:
+			logging.debug("IconPanelList.processMenuEvent: item toggled")
+			self.__fireListenEvent(IconPanelList.LISTEN_ITEM_TOGGLED, item)
+			
+	def removeListener(self, l):
+		if l in self.__listeners:
+			self.__listeners.remove(l)
+		
+	def __selectLabel(self, menuIndex):
+		logging.debug("IconPanelList.__selectLabel: selecting index %d (%s)" % (menuIndex, self.__menu.getSelectedItem().getText()))
+		self.__panels[self.__panelIndex].setBorderColour(None)
+		if menuIndex < self.__visibleMenuItems:
+			self.__panelIndex = menuIndex
+			self.__firstMenuItem = 0
+			if self.__menuCount > self.__visibleMenuItems:
+				for i in xrange(self.__visibleMenuItems):
+					self.__panels[i].setDataObject(self.__menu.getItem(i + self.__firstMenuItem).getDataObject())
+		else:
+			if self.__menuCount - menuIndex > self.__visibleMenuItems:
+				self.__firstMenuItem = menuIndex
+				self.__panelIndex = 0
+				# shift panels
+				for i in xrange(self.__visibleMenuItems):
+					self.__panels[i].setDataObject(self.__menu.getItem(i + self.__firstMenuItem).getDataObject())
+			else:
+				self.__firstMenuItem = self.__menuCount - self.__visibleMenuItems
+				self.__panelIndex = self.__visibleMenuItems - (self.__menuCount - menuIndex)
+				# shift panels
+				for i in xrange(self.__visibleMenuItems):
+					self.__panels[i].setDataObject(self.__menu.getItem(i + self.__firstMenuItem).getDataObject())
+		self.__panels[self.__panelIndex].setBorderColour(self.__selectedBgColour)
+		self.__updateScrollbar()
+		
+	def setFocus(self, focus):
+		color = None
+		if focus:
+			colour = self.__selectedBgColour
+		else:
+			colour = self.__selectedBgColourNoFocus
+		#self.__panels[self.__panelIndex].setBackgroundColour(colour)
+		super(IconPanelList, self).setFocus(focus)
+		
+	def setMenu(self, menu):
+		if self.__menu:
+			self.__menu.removeListener(self)
+		self.__menu = menu
+		self.__menuCount = self.__menu.getCount()
+		if self.__panels:
+			for p in self.__panels:
+				p.destroy()
+				del p
+			self.__panels.clear()
+		else:
+			self.__panels = deque()
+		p = BadgePanel(self.renderer, 0, self.y, self.width, self.__font, self.__smallFont, self.__colour, self.__bgColour, self.__selectedBgColour, self.__menu.getItem(0).getDataObject())
+		
+		self.__visibleMenuItems = int(self.height / p.height)
+		if self.__visibleMenuItems > self.__menuCount:
+			self.__visibleMenuItems = self.__menuCount
+		if self.__showScrollbarPref == List.SCROLLBAR_ENABLED or (self.__showScrollbarPref == List.SCROLLBAR_AUTO and self.__menuCount > self.__visibleMenuItems):
+			self.__setupScrollbar()
+		else:
+			self.__panelX = self.x + self.__panelMargin
+			self.__panelWidth = self.width - self.__panelMargin
+			self.__showScrollbar = False
+		
+		p.setCoords(self.__panelX, p.y)
+		self.__panels.append(p)
+		panelY = self.y + p.height + self.__panelGap
+		for i in xrange(1, self.__visibleMenuItems):
+			p = BadgePanel(self.renderer, self.__panelX, panelY, self.width, self.__font, self.__smallFont, self.__colour, self.__bgColour, self.__selectedBgColour, self.__menu.getItem(i).getDataObject())
+			self.__panels.append(p)
+			panelY += p.height + self.__panelGap
+		self.__firstMenuItem = 0
+		self.__panelIndex = 0
+		self.__menu.addListener(self)
+		
+	def __setupScrollbar(self):
+		self.__scrollbarWidth = 20
+		self.__scrollbarHeight = self.height
+		self.__scrollbarX = self.x
+		self.__scrollbarY = self.y
+		self.__sliderGap = 2
+		self.__panelX = self.__scrollbarX + self.__scrollbarWidth + self.__panelMargin
+		self.__panelWidth = self.width - self.__scrollbarWidth - self.__panelMargin
 		# work out slider height
 		self.__sliderHeight = int((float(self.__visibleMenuItems) / float(self.__menuCount)) * self.__scrollbarHeight) - (self.__sliderGap * 2)
 		self.__sliderX = self.__scrollbarX + 2

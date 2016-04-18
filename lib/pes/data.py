@@ -210,7 +210,22 @@ class AchievementUser(Record):
 	
 	def __init__(self, db, userId):
 		super(AchievementUser, self).__init__(db, 'achievements_user', ['user_id', 'user_name', 'rank', 'total_points', 'total_truepoints'], 'user_id', userId)
-		
+	
+	def getGames(self):
+		self.connect()
+		cur = self.doQuery('SELECT `achievements_games`.`game_id`, (SELECT COUNT(*) FROM `achievements_earned`, `achievements_badges` WHERE `achievements_badges`.`game_id` = `achievements_games`.`game_id` AND `achievements_earned`.`user_id` = %d AND `achievements_badges`.`badge_id` = `achievements_earned`.`badge_id`) AS `totalEarned`, (SELECT SUM(`points`) FROM `achievements_earned`, `achievements_badges` WHERE `achievements_badges`.`game_id` = `achievements_games`.`game_id` AND `achievements_earned`.`user_id` = %d AND `achievements_badges`.`badge_id` = `achievements_earned`.`badge_id`) AS `totalPoints` FROM `achievements_games`;' % ( self.getId(), self.getId()))
+		games = []
+		while True:
+			row = cur.fetchone()
+			if row == None:
+				break
+			totalPoints = 0
+			if row['totalPoints']:
+				totalPoints = int(row['totalPoints'])
+			games.append(AchievementGame(self.getDb(), self.getId(), int(row['game_id']), int(row['totalEarned']), totalPoints))
+		self.disconnect()
+		return games
+	
 	def getName(self):
 		return self.getProperty('user_name')
 	
@@ -225,7 +240,7 @@ class AchievementUser(Record):
 			row = cur.fetchone()
 			if row == None:
 				break
-			badges.append(Badge(self.getDb(), int(row['badge_id']), False, int(row['date_earned'])))
+			badges.append(Badge(self.getDb(), int(row['badge_id']), int(row['date_earned'])))
 		self.disconnect()
 		return badges
 	
@@ -244,11 +259,70 @@ class AchievementUser(Record):
 	def setTotalTruePoints(self, points):
 		self.setProperty('total_truepoints', int(points))
 		
+class AchievementGame(Record):
+	
+	def __init__(self, db, userId, gameId, userEarnedTotal=0, userPointsTotal=0):
+		super(AchievementGame, self).__init__(db, 'achievements_games', ['game_id', 'console_id', 'name', 'achievement_total', 'score_total'], 'game_id', gameId)
+		self.__userEarnedTotal = userEarnedTotal
+		self.__userPointsTotal = userPointsTotal
+		self.__consoleName = None
+		self.__userId = userId
+		self.__badges = None
+		
+	def getAchievementTotal(self):
+		return self.getProperty('achievement_total')
+	
+	def getConsoleName(self):
+		if not self.__consoleName:
+			self.connect()
+			cur = self.doQuery('SELECT `name` FROM `consoles` WHERE `achievement_api_id` = %s' % self.getProperty('console_id'))
+			if cur.rowcount == 0:
+				raise Exception("Could not find corresponding console for game %s" % self.getId())
+			row = cur.fetchone()
+			self.__consoleName = row['name'] 
+			self.disconnect()
+		return self.__consoleName
+	
+	def getBadges(self):
+		if self.__badges == None:
+			self.connect()
+			cur = self.doQuery('SELECT `badge_id`, (SELECT `date_earned` FROM `achievements_earned` WHERE `achievements_badges`.`badge_id` = `achievements_earned`.`badge_id` AND `achievements_earned`.`user_id` = %d) As `date_earned` FROM `achievements_badges` WHERE `game_id` = %d ORDER BY `title`;' % (self.__userId, self.getId()))
+			self.__badges = []
+			while True:
+				row = cur.fetchone()
+				if row == None:
+					break
+				if row['date_earned']:
+					self.__badges.append(Badge(self.getDb(), int(row['badge_id']), int(row['date_earned'])))
+				else:
+					self.__badges.append(Badge(self.getDb(), int(row['badge_id']), None))
+			self.disconnect()
+		return self.__badges
+		
+	def getName(self):
+		return self.getProperty('name')
+	
+	def getPercentComplete(self):
+		return (float(self.__userEarnedTotal) / float(self.getAchievementTotal())) * 100.0
+	
+	def getScoreTotal(self):
+		return self.getProperty('score_total')
+	
+	def getUserEarnedTotal(self):
+		return self.__userEarnedTotal
+	
+	def getUserPointsTotal(self):
+		return self.__userPointsTotal
+		
 class Badge(Record):
-	def __init__(self, db, badgeId, locked, dateEarned=None):
+	def __init__(self, db, badgeId, dateEarned=None):
 		super(Badge, self).__init__(db, 'achievements_badges', ['badge_id', 'title', 'game_id', 'description', 'points', 'badge_path', 'badge_locked_path'], 'badge_id', badgeId, True)
-		self.__isLocked = locked
 		self.__dateEarned = dateEarned
+		if self.__dateEarned:
+			self.__isLocked = False
+		else:
+			self.__isLocked = True
+		logging.debug("Badge.init: created badge with title: \"%s\"" % self.getTitle())
 		
 	def getDateEarned(self, fmt=None):
 		if self.__isLocked:
@@ -282,9 +356,10 @@ class Badge(Record):
 
 	def setDateEarned(self, earned):
 		self.__dateEarned = earned
-	
-	def setLocked(self, locked):
-		self.__locked = locked
+		if earned:
+			self.__locked = False
+		else:
+			self.__locked = True
 
 class Console(Record):
 

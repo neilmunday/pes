@@ -281,7 +281,7 @@ class RetroAchievementsUpdateThread(Thread):
 						
 						if 'DateEarned' in v:
 							ts = time.mktime(datetime.strptime(v['DateEarned'], '%Y-%m-%d %H:%M:%S').timetuple())
-							cur.execute("INSERT OR IGNORE INTO `achievements_earned` (`user_id`, `badge_id`, `game_id`, `date_earned`) VALUES (%d, %d, %d, %d);" % (userId, badgeId, gameId, ts))
+							cur.execute("INSERT OR IGNORE INTO `achievements_earned` (`user_id`, `badge_id`, `date_earned`) VALUES (%d, %d, %d);" % (userId, badgeId, ts))
 						
 						# create badge download task (if needed)
 						if not os.path.exists(badgePath):

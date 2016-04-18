@@ -150,7 +150,7 @@ class PESApp(object):
 			sdl2.video.SDL_DestroyWindow(self.__window)
 			self.__window = None
 
-	def __init__(self, dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, badgeDir, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, lightBackgroundColour, shutdownCommmand, rebootCommand, listTimezonesCommand, getTimezoneCommand, setTimezoneCommand):
+	def __init__(self, dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, iconCacheLen, badgeDir, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, lightBackgroundColour, shutdownCommmand, rebootCommand, listTimezonesCommand, getTimezoneCommand, setTimezoneCommand):
 		super(PESApp, self).__init__()
 		self.__dimensions = dimensions
 		self.__shutdownCommand = shutdownCommmand
@@ -167,6 +167,7 @@ class PESApp(object):
 		
 		ConsoleTask.SCALE_WIDTH = coverartSize
 		Thumbnail.CACHE_LEN = coverartCacheLen
+		Icon.CACHE_LEN = iconCacheLen
 		
 		self.coverartCacheLen = coverartCacheLen
 		self.consoles = []
@@ -213,6 +214,7 @@ class PESApp(object):
 			if self.__msgBox:
 				self.__msgBox.destroy()
 			Thumbnail.destroyTextures()
+			Icon.destroyTextures()
 			for o in self.__uiObjects:
 				o.destroy()
 			sdl2.sdlttf.TTF_CloseFont(self.headerFont)
@@ -1062,7 +1064,7 @@ class PESLoadingThread(threading.Thread):
 			cur.execute('CREATE INDEX IF NOT EXISTS "achievements_game_index" on achievements_games (game_id ASC)')
 			cur.execute('CREATE TABLE IF NOT EXISTS `achievements_badges`(`badge_id` INTEGER PRIMARY KEY, `title` TEXT, `game_id` INT, `description` TEXT, `points` INT, `badge_path` TEXT, `badge_locked_path` TEXT)')
 			cur.execute('CREATE INDEX IF NOT EXISTS "achievements_badge_index" on achievements_badges (badge_id ASC)')
-			cur.execute('CREATE TABLE IF NOT EXISTS `achievements_earned`(`user_id` INT, `badge_id` INT, `game_id` INT, `date_earned` INT, PRIMARY KEY (user_id, badge_id))')
+			cur.execute('CREATE TABLE IF NOT EXISTS `achievements_earned`(`user_id` INT, `badge_id` INT, `date_earned` INT, PRIMARY KEY (user_id, badge_id))')
 			cur.execute('CREATE INDEX IF NOT EXISTS "achievements_earned_index" on achievements_earned (user_id ASC, badge_id ASC)')
 			
 			self.progress = 16
@@ -1279,6 +1281,7 @@ class AchievementsScreen(Screen):
 		self.__titleLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], "Your Achievements",
  self.app.titleFont, self.app.textColour, fixedWidth=self.wrap))
 		
+		self.__games = None
 		self.__gamesList = None
 		self.__achievementsList = None
 		
@@ -1291,22 +1294,18 @@ class AchievementsScreen(Screen):
 			if self.app.achievementUser:
 				self.updateAchievementUserText()
 				self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + self.__titleLabel.height + 30, self.__descriptionAchievementUserText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
+				
+				self.__games = self.app.achievementUser.getGames()
+				gamesMenu = Menu([])
+				for g in self.__games:
+					gamesMenu.addItem(AchievementGameMenuItem(g, self.__loadAchievements, g))
+				gamesMenu.sort()
+				gamesListX = self.screenRect[0] + self.screenMargin
+				gamesListY = self.__descriptionLabel.y + self.__descriptionLabel.height + 10
+				self.__gamesList = self.addUiObject(List(self.renderer, gamesListX, gamesListY, self.screenRect[2] - (self.screenMargin * 2), self.screenRect[3] - gamesListY - self.screenMargin, gamesMenu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
+				self.__gamesList.setFocus(True)
 			else:
 				self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + self.__titleLabel.height + 30, self.__descriptionNoAchievementUserText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
-			#games = self.app.retroAchievement.getUserAllGames(self.app.retroAchievement.getUsername())
-			#gamesMenu = Menu([])
-			#for g in games:
-				#if g["NumPossibleAchievements"] > 0:
-					#gamesMenu.addItem(RAMenuItem(g, False, self.__loadAchievements, g))
-			#gamesMenu.sort()
-				
-			#self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + self.__titleLabel.height + 30, "Your achievements summary from RetroAchievements.org is as follows", self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
-			
-			#gamesListX = self.screenRect[0] + self.screenMargin
-			#gamesListY = self.__descriptionLabel.y + self.__descriptionLabel.height + 10
-			
-			#self.__gamesList = self.addUiObject(List(self.renderer, gamesListX, gamesListY, self.screenRect[2] - (self.screenMargin * 2), self.screenRect[3] - gamesListY - self.screenMargin, gamesMenu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
-			#self.__gamesList.setFocus(True)
 		else:
 			self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + self.__titleLabel.height + 30, self.__descriptionNoRaConnText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
 			
@@ -1353,21 +1352,22 @@ class AchievementsScreen(Screen):
 	def isBusy(self):
 		return self.__isBusy
 		
-	def __loadAchievements(self, gameDict):
-		logging.debug("AchievementsScreen.__loadAchievements: loading achievements for %s" % gameDict["GameID"])
-		achievements = self.app.retroAchievementConn.getGameInfoAndUserProgress(self.app.retroAchievementConn.getUsername(), int(gameDict["GameID"]))
+	def __loadAchievements(self, game):
+		logging.debug("AchievementsScreen.__loadAchievements: loading achievements for %d" % game.getId())
 		menu = Menu([])
-		for k, v in achievements["Achievements"].iteritems():
-			menu.addItem(MenuItem("%s" % v["Title"]))
+		badges = game.getBadges()
+		for b in badges:
+			menu.addItem(DataMenuItem(b))
+		self.__descriptionLabel.setText("%d Achievements for %s (%s):" % (len(badges), game.getName(), game.getConsoleName()), True)
 		if self.__achievementsList == None:
-			self.__achievementsList = self.addUiObject(List(self.renderer, self.__gamesList.x, self.__gamesList.y, self.__gamesList.width, self.__gamesList.height, menu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
+			y = self.__descriptionLabel.y + self.__descriptionLabel.height + 20
+			self.__achievementsList = self.addUiObject(IconPanelList(self.renderer, self.__gamesList.x, y, self.__gamesList.width, self.screenRect[3] - y - self.screenMargin, menu, self.app.bodyFont, self.app.smallBodyFont, self.app.textColour, self.app.textColour, self.app.lightBackgroundColour, self.app.menuSelectedBgColour, List.SCROLLBAR_AUTO, True, False))
 		else:
 			self.__achievementsList.setMenu(menu)
 		self.__gamesList.setFocus(False)
 		self.__gamesList.setVisible(False)
 		self.__achievementsList.setFocus(True)
 		self.__achievementsList.setVisible(True)
-		self.__descriptionLabel.setText("Achievements for %s (%s)" % (gameDict["Title"], gameDict["ConsoleName"]))
 	
 	def processEvent(self, event):
 		oldMenuActive = self.menuActive
@@ -1390,6 +1390,7 @@ class AchievementsScreen(Screen):
 				self.__achievementsList.setFocus(False)
 				self.__gamesList.setVisible(True)
 				self.__gamesList.setFocus(True)
+				self.__descriptionLabel.setText(self.__descriptionAchievementUserText, True)
 				self.setMenuActive(False)
 				return
 			
@@ -1431,6 +1432,9 @@ class AchievementsScreen(Screen):
 					else:
 						self.__scanProgressBar.setProgress(0)
 					self.__updateThread.start()
+		elif selectedText == "Browse":
+			if event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER):
+				pass
 					
 	def updateAchievementUserText(self):
 		self.__descriptionAchievementUserText = "Username: %s\nPoints: %d (%d)\nRank: %d\n\nGames that you have earned achievements for can be browsed below:" % (self.app.achievementUser.getName(), self.app.achievementUser.getTotalPoints(), self.app.achievementUser.getTotalTruePoints(), self.app.achievementUser.getRank())
@@ -1734,11 +1738,12 @@ class ConsoleScreen(Screen):
 class HomeScreen(Screen):
 	
 	def __init__(self, app, renderer, menuRect, screenRect):
-		super(HomeScreen, self).__init__(app, renderer, "Home", Menu([MenuItem("Home")]), menuRect, screenRect)
+		#super(HomeScreen, self).__init__(app, renderer, "Home", Menu([MenuItem("Home")]), menuRect, screenRect)
+		super(HomeScreen, self).__init__(app, renderer, "Home", Menu([MenuItem("Achievements", False, False, app.setScreen, "Achievements")]), menuRect, screenRect)
 		for c in self.app.consoles:
 			if c.getGameTotal() > 0:
 				self.menu.addItem(ConsoleMenuItem(c, False, False, self.__loadConsoleScreen, c))
-		self.menu.addItem(MenuItem("Achievements", False, False, self.app.setScreen, "Achievements"))
+		#self.menu.addItem(MenuItem("Achievements", False, False, self.app.setScreen, "Achievements"))
 		self.menu.addItem(MenuItem("Settings", False, False, self.app.setScreen, "Settings"))
 		self.menu.addItem(MenuItem("Reload", False, False, self.app.reload))
 		self.menu.addItem(MenuItem("Reboot", False, False, self.app.reboot))
@@ -1751,9 +1756,11 @@ class HomeScreen(Screen):
 		self.__consoleTexture = None
 		self.__consoleSelected = False
 		self.__consoleName = None
-		self.__headerLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], "Welcome to PES!", self.app.titleFont, self.app.textColour))
+		#self.__headerLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], "Welcome to PES!", self.app.titleFont, self.app.textColour))
+		self.__headerLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], "Achievements", self.app.titleFont, self.app.textColour))
 		self.__welcomeText = "This is the PES 2.0 BETA.\n\nI hope you enjoy this new version and any feedback (good or bad) is greatly appreciated.\n\nCheers,\n\nNeil."
-		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__welcomeText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
+		#self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__welcomeText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
+		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), "BLAH", self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
 		self.__recentlyAddedText = "Recently Added"
 		self.__recentlyAddedLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__recentlyAddedText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
 		self.__recentlyPlayedLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), "Recently Played", self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
@@ -1762,9 +1769,8 @@ class HomeScreen(Screen):
 		self.__recentlyPlayedThumbPanels = {}
 		
 		self.__badgePanels = []
-		self.updateRecentBadges()
-		
-		#logging.debug("HomeScreen.init: thumbWidth %d" % self.__thumbWidth)
+		self.__initBadges = True # hack to make sure badges are not initialised inside the PES loading thread
+
 		logging.debug("HomeScreen.init: initialised")
 			
 	def drawScreen(self):
@@ -1780,6 +1786,9 @@ class HomeScreen(Screen):
 				self.__recentlyPlayedThumbPanels[self.__consoleName].draw()
 			self.__recentlyPlayedLabel.draw()
 		elif self.menu.getSelectedItem().getText() == "Achievements":
+			if self.__initBadges:
+				self.updateRecentBadges()
+				self.__initBadges = False
 			self.__descriptionLabel.draw()
 			for p in self.__badgePanels:
 				p.draw()
@@ -1825,7 +1834,7 @@ class HomeScreen(Screen):
 			if c.getGameTotal() > 0:
 				consoleName = c.getName()
 				logging.debug("HomeScreen.refreshMenu: inserting %s" % consoleName)
-				self.menu.insertItem(len(self.menu.getItems()) - 4, ConsoleMenuItem(c, False, False, self.app.setScreen, "Console %s" % consoleName))
+				self.menu.insertItem(len(self.menu.getItems()) - 5, ConsoleMenuItem(c, False, False, self.app.setScreen, "Console %s" % consoleName))
 				# update recently added thumbnails
 				games = c.getRecentlyAddedGames(0, self.__showThumbs)
 				if consoleName not in self.__recentlyAddedThumbPanels:
@@ -1838,6 +1847,9 @@ class HomeScreen(Screen):
 		self.menu.setSelected(0, deselectAll=True)
 		self.updateRecentBadges()
 		self.update()
+		
+	def __setAchievementsText(self):
+		self.__descriptionLabel.setText("Username: %s\nPoints: %d (%d)\nRank: %d" % (self.app.achievementUser.getName(), self.app.achievementUser.getTotalPoints(), self.app.achievementUser.getTotalTruePoints(), self.app.achievementUser.getRank()), True)
 		
 	def stop(self):
 		super(HomeScreen, self).stop()
@@ -1873,9 +1885,11 @@ class HomeScreen(Screen):
 				if self.app.retroAchievementConn:
 					if self.app.achievementUser:
 						if len(self.__badgePanels) == 0:
-							self.__descriptionLabel.setText("None found.", True)
+							#self.__descriptionLabel.setText("None found.", True)
+							self.__setAchievementsText()
 						else:
-							self.__descriptionLabel.setText("Your recent achievements:", True)
+							#self.__descriptionLabel.setText("Your recent achievements:", True)
+							self.__setAchievementsText()
 							y = self.__descriptionLabel.y + self.__descriptionLabel.height + 20
 							for b in self.__badgePanels:
 								b.setCoords(b.x, y)
@@ -1900,13 +1914,14 @@ class HomeScreen(Screen):
 	def updateRecentBadges(self):
 		if self.app.achievementUser:
 			logging.debug("HomeScreen.updateRecentBadges: updating...")
+			self.__setAchievementsText()
 			for b in self.__badgePanels:
 				self.removeUiObject(b)
 				b.destroy()
 			self.__badgePanels = []
 			badges = self.app.achievementUser.getRecentBadges(10)
 			x = self.screenRect[0] + self.screenMargin
-			y = 0
+			y = self.__descriptionLabel.y + self.__descriptionLabel.height + 20
 			width = self.screenRect[2] - (self.screenMargin * 2)
 			for b in badges:
 				badgePanel = self.addUiObject(BadgePanel(self.app.renderer, x, y, width, self.app.bodyFont, self.app.smallBodyFont, self.app.textColour, self.app.lightBackgroundColour, self.app.menuSelectedBgColour, b))
@@ -1914,6 +1929,11 @@ class HomeScreen(Screen):
 				y += badgePanel.height + 10
 				if y + badgePanel.height > self.screenRect[1] + self.screenRect[3]:
 					break
+		else:
+			if self.app.retroAchievementConn:
+				self.__descriptionLabel.setText("Please go to the Achievements screen to update your records.", True)
+			else:
+				self.__descriptionLabel.setText("PES can display and track gaming achievements. To do so, please register an account at www.retroachievements.org and then enter your username, password and API key into pes.ini.", True)
 				
 class JoystickPromptMap(object):
 	
