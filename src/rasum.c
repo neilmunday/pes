@@ -128,7 +128,8 @@ void nesHash(FILE *ptr, MD5_CTX *context){
 	int round = 1;
 	uint8_t * data = (uint8_t *) malloc(romSize << 14);
 	if (!data){
-		exit(3);
+		fprintf(stderr, "malloc failed for NES ROM\n");
+		exit(1);
 	}
 	memset(data, 0xFF, romSize << 14);
 	mapper_no = (header.rom_type >> 4);
@@ -184,18 +185,14 @@ int main(int argc, char **argv){
 	}
 	
 	if (optind == argc){
-		fprintf(stderr, "Rom file path not specified!");
+		fprintf(stderr, "Rom file path not specified!\n");
 		return 1;
 	}
 	
 	romFile = argv[optind];
 	
 	FILE *ptr;
-	
-	printf("%s\n", romFile);
 
-	//ptr=fopen("/home/neil/pes/roms/MegaDrive/Aladdin.smd","rb");
-	//ptr=fopen("/home/neil/pes/roms/NES/Super Mario Bros..nes","rb");
 	ptr = fopen(romFile, "rb");
 	if (!ptr)
 	{
@@ -222,15 +219,13 @@ int main(int argc, char **argv){
 		fprintf(stderr, "Unsupported ROM type: \"%s\"\n", romType);
 		return 1;
 	}
- 	
+
 	unsigned char digest[16];
 	MD5_Final(digest, &context);
 	char *out = (char*)malloc(33);
-    for (int n = 0; n < 16; ++n) {
-        snprintf(&(out[n*2]), 16*2, "%02x", (unsigned int)digest[n]);
-    }
-    
-    printf("%s\n", out);
-	
+	for (int n = 0; n < 16; ++n) {
+		snprintf(&(out[n*2]), 16*2, "%02x", (unsigned int)digest[n]);
+	}
+	printf("%s\n", out);
 	return 0;
 }
