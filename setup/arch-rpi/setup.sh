@@ -6,7 +6,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2016 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -67,6 +67,9 @@ run $setupDir/install-fuse-libretro.sh
 run $setupDir/install-fba-libretro.sh
 run $setupDir/install-imame4all.sh
 run $setupDir/install-stella-libretro.sh
+
+header "Installing rasum..."
+run $setupDir/install-rasum.sh
 
 header "Setting up Samba..."
 run $setupDir/install-samba.sh

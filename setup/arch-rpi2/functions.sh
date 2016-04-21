@@ -59,6 +59,9 @@ function rmSourceDir {
 	fi
 }
 
+thisDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+export rootDir=`realpath "$thisDir/../../"`
 export buildDir=$HOME/pes-build
 export srcDir=$HOME/src
 export pesDir="/opt/pes"

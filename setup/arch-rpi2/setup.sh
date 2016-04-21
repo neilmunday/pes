@@ -68,6 +68,9 @@ run $setupDir/install-fba-libretro.sh
 run $setupDir/install-imame4all.sh
 run $setupDir/install-stella-libretro.sh
 
+header "Installing rasum..."
+run $setupDir/install-rasum.sh
+
 header "Setting up Samba..."
 run $setupDir/install-samba.sh
 
