@@ -38,6 +38,9 @@ run sudo dnf update
 header "Installing additional packages..."
 run $setupDir/install-packages.sh
 
+header "Installing PES..."
+run $setupDir/install-pes.sh
+
 header "Installing SDL2..."
 run $setupDir/install-sdl2.sh
 
