@@ -3,6 +3,7 @@
 
 # Ignore commands.sh as it dynamically created
 bin/commands.sh
+bin/rasum
 
 # Ignore these files and directories:
 build/
