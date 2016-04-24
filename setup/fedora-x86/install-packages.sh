@@ -35,18 +35,4 @@ source $setupDir/functions.sh
 
 run sudo dnf install alsa-lib-devel gcc make cmake freetype-devel libpng-devel libtiff-devel mesa-libGL-devel openssl-devel patch python-devel python-Levenshtein python-pillow python-pip samba  scons xz-devel zlib-devel
 
-run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
-	gcc git cmake make patch pkg-config scons swig vim wget \
-	libusb-compat linuxconsole libplatform \
-	python2 python2-levenshtein python2-pip python2-imaging \
-	ntp \
-	freetype2 \
-	parted \
-	rsync \
-	samba \
-	fbset mesa mesa-libgl alsa-utils \
-	crda iw  wpa_supplicant \
-	p7zip zip unzip \
-	sdl
-
 run sudo pip2 install --upgrade pip
