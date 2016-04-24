@@ -41,5 +41,5 @@ checkDir libretro-fba
 cd libretro-fba
 checkFile makefile.libretro
 run make -f makefile.libretro profile=performance -j
-checkFile fb_libretro.so
-run sudo cp fb_libretro.so $retroArchCoresDir
+checkFile fba_libretro.so
+run sudo cp fba_libretro.so $retroArchCoresDir
