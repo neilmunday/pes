@@ -33,7 +33,7 @@ source $setupDir/functions.sh
 
 PREFIX=$emulatorInstallDir/mupen64plus
 
-export PATH="/opt/sld2/default/bin:$PATH"
+export PATH="/opt/sdl2/default/bin:$PATH"
 
 run which sdl2-config
 
