@@ -63,3 +63,35 @@ Debugging
 To turn on debug messages please add the "-v" flag. You can also redirect all logging information to a file of your choosing by using the "-l" flag, e.g.
 
 	/opt/pes/bin/pes -v -l ~/pes/log
+
+Setting Up File Sharing via Samba
+=================================
+
+1. Edit /etc/samba/smb.conf and make the [homes] section towards the end of the file look like so:
+
+	[homes]
+	comment = Home Directories
+	browseable = no
+	writable = yes
+
+2. Run the following command:
+
+	sudo setsebool -P samba_enable_home_dirs on
+
+3. Set a Samba password for yourself:
+
+	sudo smbpasswd -a YOUR_USER_NAME
+	
+4. Start Samba:
+
+	sudo enable nmb.service
+	sudo enable smb.service
+	sudo start nmb.service
+	sudo start smb.service
+	
+5. Allow Samba connections through the firewall:
+
+	sudo firewall-cmd --add-service=samba
+	sudo firewall-cmd --permanent --add-service=samba
+	
+Now from Windows you should be able to browse home directories on your Fedora Linux computer. Within your home directory you should see a "pes" directory. Underneath this resides the "roms" directory into which you can copy ROMs for PES to use.
