@@ -33,6 +33,32 @@ source $setupDir/functions.sh
 
 # install packages
 
-run sudo dnf install alsa-lib-devel gcc gcc-c++ make cmake freetype-devel libjpeg-turbo-devel libpng-devel libtiff-devel mesa-libGL-devel mesa-libGLES-devel mesa-libEGL-devel openssl-devel patch pkgconfig python-devel python-Levenshtein python-pillow python-pip samba scons systemd-devel swig wget xz-devel zlib-devel
+run sudo dnf install alsa-lib-devel \
+	gcc \
+	gcc-c++ \
+	make \
+	cmake \
+	freetype-devel \
+	libjpeg-turbo-devel \
+	libpng-devel \
+	libtiff-devel \
+	mesa-libGL-devel \
+	mesa-libGLES-devel \
+	mesa-libEGL-devel \
+	openssl-devel \
+	patch \
+	pkgconfig \
+	python-devel \
+	python-Levenshtein \
+	python-pillow \
+	python-pip \
+	samba \
+	scons \
+	SDL-devel \
+	systemd-devel \
+	swig \
+	wget \
+	xz-devel \
+	zlib-devel
 
 run sudo pip2 install --upgrade pip
