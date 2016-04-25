@@ -148,8 +148,6 @@ run cd $sdl2GFXDir
 run make -j
 run sudo make install
 
-exit
-
 header "Installing PySDL2"
 
 run sudo pip2 install PySDL2
