@@ -42,4 +42,24 @@ Now run the setup.sh script:
 
 This script will run each install script to compile the emulators and supporting software required by PES.
 	
-Or you can opt to run each "install-" script yourself. Note: not all are run by setup.sh as some install emulators etc. that are not production ready.
+Or you can opt to run each "install-" script yourself.
+
+Note: not all are run by setup.sh as some install emulators etc. that are not production ready.
+
+Start PES
+=========
+
+Providing no errors were encountered above, you can start PES as a normal user like so:
+
+	/opt/pes/bin/pes
+	
+This will start PES in fullscreen mode. If you would rather run PES in a window, please run:
+
+	/opt/pes/bin/pes -w
+	
+Debugging
+=========
+
+To turn on debug messages please add the "-v" flag. You can also redirect all logging information to a file of your choosing by using the "-l" flag, e.g.
+
+	/opt/pes/bin/pes -v -l ~/pes/log
