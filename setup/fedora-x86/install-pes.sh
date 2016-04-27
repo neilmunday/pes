@@ -33,4 +33,5 @@ source $setupDir/functions.sh
 
 run sudo rsync -av ../../bin ../../conf.d ../../resources ../../lib $pesDir/
 run sudo chown -R root:root $pesDir
-
+run sudo sed -i -r "s/audio_volume/#audio_volume/" $pesDir/conf.d/retroarch/retroarch.cfg
+run sudo sed -i -r "s/audio_device/#audio_device/" $pesDir/conf.d/retroarch/retroarch.cfg
