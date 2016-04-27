@@ -25,13 +25,20 @@
 setupDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if [ ! -e $setupDir/functions.sh ]; then
-        echo "Error! $setupDir/functions does not exist!"
-        exit 1
+	echo "Error! $setupDir/functions does not exist!"
+	exit 1
 fi
 
 source $setupDir/functions.sh
 
-run sudo rsync -av ../../bin ../../conf.d ../../resources ../../lib $pesDir/
-run sudo chown -R root:root $pesDir
-run sudo sed -i -r "s/audio_volume/#audio_volume/" $pesDir/conf.d/retroarch/retroarch.cfg
-run sudo sed -i -r "s/audio_device/#audio_device/" $pesDir/conf.d/retroarch/retroarch.cfg
+checkFile $setupDir/smb.conf
+
+run sudo setsebool -P samba_enable_home_dirs on
+run sudo firewall-cmd --add-service=samba
+run sudo firewall-cmd --permanent --add-service=samba
+
+run sudo cp -v $setupDir/smb.conf /etc/samba/smb.conf
+run sudo systemctl start smb.service
+run sudo systemctl start nmb.service
+run sudo systemctl enable smb.service
+run sudo systemctl enable nmb.service

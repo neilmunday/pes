@@ -25,13 +25,41 @@
 setupDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if [ ! -e $setupDir/functions.sh ]; then
-        echo "Error! $setupDir/functions does not exist!"
-        exit 1
+	echo "Error! $setupDir/functions does not exist!"
+	exit 1
 fi
 
 source $setupDir/functions.sh
 
-run sudo rsync -av ../../bin ../../conf.d ../../resources ../../lib $pesDir/
-run sudo chown -R root:root $pesDir
-run sudo sed -i -r "s/audio_volume/#audio_volume/" $pesDir/conf.d/retroarch/retroarch.cfg
-run sudo sed -i -r "s/audio_device/#audio_device/" $pesDir/conf.d/retroarch/retroarch.cfg
+header "Enabling auto-login"
+
+if [ ! -z $DESKTOP_SESSION ]; then
+	if [ "$DESKTOP_SESSION" == "LXDE" ]; then
+		echo "Desktop is LXDE"
+		if [ -e /etc/lxdm/lxdm.conf ]; then
+			echo "Enabling auto login for $USER"
+			run sudo sed -r -i "s/#[ ]*autologin=[A-Za-z0-9]+/autologin=$USER/" /etc/lxdm/lxdm.conf
+		else
+			echo "Error: /etc/lxdm/lxdm.conf does not exist!"
+		fi
+		run mkdir -p ~/.config/lxsession/LXDE
+		autostartFile="$HOME/.config/lxsession/LXDE/autostart"
+		echo -n "Setting up autostart config for PES... "
+		if [ ! -e "$autostartFile" ]; then
+			cat > $autostartFile << EOF
+@/opt/pes/bin/pes -l ~/pes/log/pes.log
+EOF
+			echo "Done!"
+		else
+			if ! grep -q '/opt/pes/bin/pes' $autostartFile; then
+				echo "@rm $HOME/pes/log/pes.log" >> $autostartFile
+				echo "@/opt/pes/bin/pes -l $HOME/pes/log/pes.log" >> $autostartFile
+				echo "Done!"
+			else
+				echo "No need!"
+			fi
+		fi
+	fi
+else
+	echo "No action taken!"
+fi
