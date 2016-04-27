@@ -47,10 +47,6 @@ header "Building N64 emulator - mupenplus64"
 
 checkFile $SDL2_CONFIG
 
-#
-# core - use my fork for now as this adds hot key support
-#
-
 cd $buildDir
 
 component=mupen64plus-core
@@ -58,7 +54,7 @@ component=mupen64plus-core
 rmSourceDir $component
 
 header "Downloading $component"
-run git clone https://github.com/neilmunday/$component
+run git clone https://github.com/ricrpi/$component
 checkDir $component
 cd $component
 run git remote add upstream https://github.com/mupen64plus/$component
@@ -70,10 +66,11 @@ SDL_LDLIBS=`$SDL2_CONFIG --libs`
 
 checkDir projects/unix
 cd projects/unix
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j
 run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install
 
 # add extra privileges to generated binary for task scheduling
-sudo setcap cap_sys_nice+ep $PREFIX/bin/mupen64plus
+#sudo setcap cap_sys_nice+ep $PREFIX/bin/mupen64plus
 
 unset APIDIR
 
@@ -102,6 +99,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j
 run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install
 
 #
@@ -126,6 +124,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
+run make PREFIX=$PREFIX V=1 VC=1 -j
 run sudo make PREFIX=$PREFIX V=1 VC=1 -j install
 
 #
@@ -150,6 +149,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j
 run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install
 
 #
@@ -176,6 +176,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
+run make PREFIX=$PREFIX V=1 -j
 run sudo make PREFIX=$PREFIX V=1 -j install
 
 #
@@ -200,6 +201,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1
 run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 install
 
 #
@@ -207,8 +209,10 @@ run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V
 #
 
 launchScript="$PREFIX/bin/mupen64plus-launcher.sh"
+tmpScript="$buildDir/mupen64plus-launcher"
 
-run echo "#!/bin/bash" > $launchScript
-run echo "$PREFIX/bin/mupen64plus --corelib $PREFIX/lib/libmupen64plus.so.2 --datadir $PREFIX/share/mupen64plus --plugindir $PREFIX/lib/mupen64plus --configdir \$HOME/pes/conf.d/mupen64plus \"\$1\"" >> $launchScript
-run chmod 755 $launchScript
-
+run echo "#!/bin/bash" > $tmpScript
+run echo "$PREFIX/bin/mupen64plus --corelib $PREFIX/lib/libmupen64plus.so.2 --datadir $PREFIX/share/mupen64plus --plugindir $PREFIX/lib/mupen64plus --configdir \$HOME/pes/conf.d/mupen64plus \"\$1\"" >> $tmpScript
+run sudo cp $tmpScript $launchScript
+run rm -f $tmpScript
+run sudo chmod 755 $launchScript
