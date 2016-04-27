@@ -26,10 +26,12 @@ from time import sleep
 from pes import *
 from pes.data import *
 from pes.util import *
+from subprocess import Popen, PIPE
 from threading import Thread
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element, SubElement
 import glob
+import json
 import logging
 import pes.event
 import sqlite3
@@ -49,6 +51,7 @@ class ConsoleTask(object):
 		self.rom = rom
 		self.consoleApiName = consoleApiName
 		self.console = console
+		self.consoleName = console.getName()
 		
 	def __repr__(self):
 		return self.rom
@@ -100,8 +103,8 @@ class ConsoleTask(object):
 			if row:
 				name = row['full_name']
 				
-			row = self.__execute("SELECT `game_id`, `name`, `cover_art`, `game_path`, `api_id` FROM `games` WHERE `game_path` = \"%s\";" % rom, True)
-			if row == None or (row['cover_art'] == "0" and row['api_id'] == -1) or (row['cover_art'] != "0" and not os.path.exists(row['cover_art'])):
+			row = self.__execute("SELECT `game_id`, `name`, `cover_art`, `game_path`, `thegamesdb_id` FROM `games` WHERE `game_path` = \"%s\";" % rom, True)
+			if row == None or (row['cover_art'] == "0" and row['thegamesdb_id'] == -1) or (row['cover_art'] != "0" and not os.path.exists(row['cover_art'])):
 				gameApiId = None
 				bestName = name
 				thumbPath = '0'
@@ -246,10 +249,43 @@ class ConsoleTask(object):
 					gameApiId = -1
 
 				if row == None:
-					self.__execute("INSERT INTO `games`(`exists`, `console_id`, `name`, `game_path`, `api_id`, `cover_art`, `overview`, `released`, `added`, `favourite`, `last_played`, `play_count`, `size`) VALUES (1, %d, '%s', '%s', %d, '%s', '%s', %d, %d, 0, -1, 0, %d);" % (consoleId, name.replace("'", "''"), rom.replace("'", "''"), gameApiId, thumbPath.replace("'", "''"), overview.replace("'", "''"), released, time.time(), fileSize))
+					rasum = "NULL"
+					achievementApiId = -1
+					if self.console.getAchievementApiId() != "NULL":
+						# work out rasum (if applicable)
+						if self.consoleName == "MegaDrive" or self.consoleName == "Genesis":
+							command = "%s -t genesis \"%s\"" % (rasumExe, rom)
+						elif self.consoleName == "NES":
+							command = "%s -t nes \"%s\"" % (rasumExe, rom)
+						elif self.consoleName == "SNES":
+							command = "%s -t snes \"%s\"" % (rasumExe, rom)
+						else:
+							command = "%s \"%s\"" % (rasumExe, rom)
+						process = Popen(command, stdout=PIPE, stderr=PIPE, shell=True)
+						stdout, stderr = process.communicate()
+						if process.returncode != 0:
+							logging.error("Failed to run command: %s\nstdout: %s\nstderr: %s\n" % (command, stdout, stderr))
+						else:
+							rasum = stdout.replace("\n", "")
+							# now look-up achievement API ID from retroachievements.org
+							try:
+								request = urllib2.Request("http://www.retroachievements.org/dorequest.php", urllib.urlencode({'r': 'gameid', 'm': rasum}))
+								fullUrl = '%s?%s' % (request.get_full_url(), request.get_data())
+								response = urllib2.urlopen(fullUrl)
+								contents = response.read()
+								s = json.loads(contents)
+								if s["Success"]:
+									achievementApiId = int(s["GameID"])
+								else:
+									logging.error("Failed to process %s for %s" % (fullUrl, rom))
+							except Exception as e:
+								logging.error("The following error occurred when processing: %s" % rom)
+								logging.error(e)
+					
+					self.__execute("INSERT INTO `games`(`exists`, `console_id`, `name`, `game_path`, `thegamesdb_id`, `cover_art`, `overview`, `released`, `added`, `favourite`, `last_played`, `play_count`, `size`, `rasum`, `achievement_api_id`) VALUES (1, %d, '%s', '%s', %d, '%s', '%s', %d, %d, 0, -1, 0, %d, '%s', %d);" % (consoleId, name.replace("'", "''"), rom.replace("'", "''"), gameApiId, thumbPath.replace("'", "''"), overview.replace("'", "''"), released, time.time(), fileSize, rasum, achievementApiId))
 					added += 1
 				elif gameApiId != -1:
-					self.__execute("UPDATE `games` SET `api_id` = %d, `cover_art` = '%s', `overview` = '%s', `exists` = 1 WHERE `game_id` = %d;" % (gameApiId, thumbPath.replace("'", "''"), overview.replace("'", "''"), row['game_id']))
+					self.__execute("UPDATE `games` SET `thegamesdb_id` = %d, `cover_art` = '%s', `overview` = '%s', `exists` = 1 WHERE `game_id` = %d;" % (gameApiId, thumbPath.replace("'", "''"), overview.replace("'", "''"), row['game_id']))
 					updated += 1
 				else:
 					self.__execute("UPDATE `games` SET `exists` = 1 WHERE `game_id` = %d;" % row["game_id"])

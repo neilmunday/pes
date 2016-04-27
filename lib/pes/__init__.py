@@ -30,6 +30,7 @@ VERSION_DATE = '2016-03'
 VERSION_AUTHOR = 'Neil Munday'
 
 baseDir = os.path.abspath('%s%s../../' % (os.path.dirname(os.path.realpath(__file__)), os.sep))
+rasumExe = os.path.join("%s/bin/rasum" % baseDir)
 resourceDir = os.path.join(baseDir, 'resources')
 defaultFontFile = os.path.join(resourceDir, 'verdana.ttf')
 gamepadImageFile = os.path.join(resourceDir, 'gamepad.png')

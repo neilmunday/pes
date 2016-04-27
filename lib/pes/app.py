@@ -569,7 +569,7 @@ class PESApp(object):
 			# assume full screen
 			logging.debug("PESApp.run: running fullscreen")
 			self.__dimensions = (videoMode.w, videoMode.h)
-			self.__window = sdl2.video.SDL_CreateWindow('PES', sdl2.video.SDL_WINDOWPOS_UNDEFINED, sdl2.video.SDL_WINDOWPOS_UNDEFINED, self.__dimensions[0], self.__dimensions[1], self.__dimensions[0], self.__dimensions[1], sdl2.video.SDL_WINDOW_FULLSCREEN_DESKTOP)
+			self.__window = sdl2.video.SDL_CreateWindow('PES', sdl2.video.SDL_WINDOWPOS_UNDEFINED, sdl2.video.SDL_WINDOWPOS_UNDEFINED, self.__dimensions[0], self.__dimensions[1], sdl2.video.SDL_WINDOW_FULLSCREEN_DESKTOP)
 		else:
 			# windowed
 			logging.debug("PESApp.run: running windowed")
@@ -623,13 +623,13 @@ class PESApp(object):
 		# load joystick database
 		sdl2.SDL_GameControllerAddMappingsFromFile(userGameControllerFile)
 		
-		self.__gamepadIcon = Icon(self.renderer, dateLabel.x, dateLabel.y, self.__ICON_WIDTH, self.__ICON_HEIGHT, gamepadImageFile)
+		self.__gamepadIcon = Icon(self.renderer, dateLabel.x, dateLabel.y, self.__ICON_WIDTH, self.__ICON_HEIGHT, gamepadImageFile, False)
 		self.__gamepadIcon.setVisible(False)
 		
-		self.__remoteIcon = Icon(self.renderer, dateLabel.x, dateLabel.y, self.__ICON_WIDTH, self.__ICON_HEIGHT, remoteImageFile)
+		self.__remoteIcon = Icon(self.renderer, dateLabel.x, dateLabel.y, self.__ICON_WIDTH, self.__ICON_HEIGHT, remoteImageFile, False)
 		self.__remoteIcon.setVisible(self.__cecEnabled)
 		
-		self.__networkIcon = Icon(self.renderer, dateLabel.x - 42, dateLabel.y, self.__ICON_WIDTH, self.__ICON_HEIGHT, networkImageFile)
+		self.__networkIcon = Icon(self.renderer, dateLabel.x - 42, dateLabel.y, self.__ICON_WIDTH, self.__ICON_HEIGHT, networkImageFile, False)
 		self.ip = None
 		defaultInterface = getDefaultInterface()
 		if defaultInterface:
@@ -953,7 +953,7 @@ class PESApp(object):
 			f.write("echo running %s\n" % command)
 			f.write("echo see %s for console output\n" % execLog)
 			f.write("%s &> %s\n" % (command, execLog))
-			f.write("exec %s%sbin%spes %s\n" % (baseDir, os.sep, os.sep, ' '.join(sys.argv[1:])))
+			f.write("exec %s %s\n" % (os.path.join(baseDir, 'bin', 'pes') , ' '.join(sys.argv[1:])))
 		self.exit(0)
 		
 	def setCecEnabled(self, enabled):
@@ -1050,7 +1050,7 @@ class PESLoadingThread(threading.Thread):
 			con = sqlite3.connect(userPesDb)
 			con.row_factory = sqlite3.Row
 			cur = con.cursor()
-			cur.execute('CREATE TABLE IF NOT EXISTS `games`(`game_id` INTEGER PRIMARY KEY, `api_id` INT, `exists` INT, `console_id` INT, `name` TEXT, `cover_art` TEXT, `game_path` TEXT, `overview` TEXT, `released` INT, `last_played` INT, `added` INT, `favourite` INT(1), `play_count` INT, `size` INT )')
+			cur.execute('CREATE TABLE IF NOT EXISTS `games`(`game_id` INTEGER PRIMARY KEY, `thegamesdb_id` INT, `exists` INT, `console_id` INT, `name` TEXT, `cover_art` TEXT, `game_path` TEXT, `overview` TEXT, `released` INT, `last_played` INT, `added` INT, `favourite` INT(1), `play_count` INT, `size` INT, `rasum` TEXT, `achievement_api_id` INT )')
 			cur.execute('CREATE INDEX IF NOT EXISTS "games_index" on games (game_id ASC)')
 			cur.execute('CREATE TABLE IF NOT EXISTS `consoles`(`console_id` INTEGER PRIMARY KEY, `thegamesdb_api_id` INT, `achievement_api_id` INT, `name` TEXT)')
 			cur.execute('CREATE INDEX IF NOT EXISTS "console_index" on consoles (console_id ASC)')
@@ -1327,6 +1327,8 @@ class AchievementsScreen(Screen):
 				self.__gamesList.draw()
 			if self.__achievementsList:
 				self.__achievementsList.draw()
+				if not self.__achievementsList.hasFocus():
+					self.__achievementsList.setFocus(True)
 		elif selectedText == "Update":
 			if self.__updateThread:
 				if self.__updateThread.started and not self.__updateThread.done:
@@ -1357,7 +1359,7 @@ class AchievementsScreen(Screen):
 		menu = Menu([])
 		badges = game.getBadges()
 		for b in badges:
-			menu.addItem(DataMenuItem(b))
+			menu.addItem(DataMenuItem(b, False, False, self.__playGame, game))
 		self.__descriptionLabel.setText("%d Achievements for %s (%s):" % (len(badges), game.getName(), game.getConsoleName()), True)
 		if self.__achievementsList == None:
 			y = self.__descriptionLabel.y + self.__descriptionLabel.height + 20
@@ -1366,8 +1368,17 @@ class AchievementsScreen(Screen):
 			self.__achievementsList.setMenu(menu)
 		self.__gamesList.setFocus(False)
 		self.__gamesList.setVisible(False)
-		self.__achievementsList.setFocus(True)
+		self.__achievementsList.setFocus(False)
 		self.__achievementsList.setVisible(True)
+		
+	def __playGame(self, game):
+		logging.debug("AchievementsScreen.__playGame: attempting to find corresponding game object...")
+		gameId = game.getGameId()
+		if gameId == None:
+			self.app.showMessageBox("Sorry, could not find corresponding game.", None, None)
+		else:
+			logging.debug("AchievementsScreen.__playGame: found game with ID %d" % gameId)
+			#self.app.playGame(gameId)
 	
 	def processEvent(self, event):
 		oldMenuActive = self.menuActive

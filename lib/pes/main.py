@@ -78,6 +78,8 @@ if __name__ == '__main__':
 		
 		mkdir(userDir)
 		mkdir(userConfDir)
+		mkdir(userRetroArchConfDir)
+		mkdir(userRetroArchJoysticksConfDir)
 		initConfig()
 		
 		checkFile(userPesConfigFile)
@@ -87,6 +89,7 @@ if __name__ == '__main__':
 		checkFile(gamepadImageFile)
 		checkFile(networkImageFile)
 		checkFile(remoteImageFile)
+		checkFile(rasumExe)
 		
 		logging.info("loading settings...")
 		checkFile(userPesConfigFile)

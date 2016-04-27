@@ -188,6 +188,14 @@ class MenuItem(object):
 		
 	def __repr__(self):
 		return "<MenuItem: text: %s >" % self.__text
+	
+class AchievementGameMenuItem(MenuItem):
+	
+	def __init__(self, game, callback=None, *callbackArgs):
+		super(AchievementGameMenuItem, self).__init__("%s (%s) %dpts %.1f%%" % (game.getName(), game.getConsoleName(), game.getUserPointsTotal(), game.getPercentComplete()), False, False, callback, *callbackArgs)
+		
+	def __repr__(self):
+		return "<AchievementGameMenuItem>"
 		
 class ConsoleMenuItem(MenuItem):
 	
@@ -201,23 +209,6 @@ class ConsoleMenuItem(MenuItem):
 	def __repr__(self):
 		return "<ConsoleMenuItem: text: %s >" % self.__console.getName()
 	
-class GameMenuItem(MenuItem):
-	
-	def __init__(self, game, selected = False, toggable = False, callback = None, *callbackArgs):
-		super(GameMenuItem, self).__init__(game.getName(), selected, toggable, callback, *callbackArgs)
-		self.__game = game
-		
-	def getGame(self):
-		return self.__game
-	
-	def __repr__(self):
-		return "<GameMenuItem: text: %s >" % self.__game.getName()
-	
-class AchievementGameMenuItem(MenuItem):
-	
-	def __init__(self, game, callback=None, *callbackArgs):
-		super(AchievementGameMenuItem, self).__init__("%s (%s) %dpts %.1f%%" % (game.getName(), game.getConsoleName(), game.getUserPointsTotal(), game.getPercentComplete()), False, False, callback, *callbackArgs)
-		
 class DataMenuItem(MenuItem):
 	
 	def __init__(self, dataObj, selected = False, toggable = False, callback = None, *callbackArgs):
@@ -229,6 +220,18 @@ class DataMenuItem(MenuItem):
 	
 	def __repr__(self):
 		return "<DataMenuItem: text: %s >" % self.__dataObj.getTitle()
+	
+class GameMenuItem(MenuItem):
+	
+	def __init__(self, game, selected = False, toggable = False, callback = None, *callbackArgs):
+		super(GameMenuItem, self).__init__(game.getName(), selected, toggable, callback, *callbackArgs)
+		self.__game = game
+		
+	def getGame(self):
+		return self.__game
+	
+	def __repr__(self):
+		return "<GameMenuItem: text: %s >" % self.__game.getName()
 
 class UIObject(object):
 	
@@ -248,7 +251,13 @@ class UIObject(object):
 	
 	def draw(self):
 		if self.visible and self.__drawBorder:
-			sdl2.sdlgfx.rectangleRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__borderColour.r, self.__borderColour.g, self.__borderColour.b, 255)
+			drawBorder()
+			
+	def drawBorder(self):
+		sdl2.sdlgfx.rectangleRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__borderColour.r, self.__borderColour.g, self.__borderColour.b, 255)
+	
+	def hasBorder(self):
+		return self.__drawBorder
 	
 	def hasFocus(self):
 		return self.__focus
@@ -289,6 +298,7 @@ class IconPanel(UIObject):
 	
 	def __init__(self, renderer, x, y, width, font, smallFont, colour, bgColour, selectedBgColour, title, description, icon, dataObj):
 		self.__margin = 5
+		self.__iconGap = 10
 		self.__title = title
 		self.__description = description
 		labelWidth = width - (self.__margin * 2)
@@ -298,8 +308,9 @@ class IconPanel(UIObject):
 		self.__icon = Icon(renderer, x + self.__margin, self.__titleLabel.y + self.__titleLabel.height, 64, 64, icon)
 		height = self.__titleLabel.height + self.__icon.height + self.__margin
 		super(IconPanel, self).__init__(renderer, x, y, width, height)
-		labelWidth = width - (self.__margin + self.__icon.width + 10)
-		self.__descriptionLabel = Label(renderer, self.__icon.x + self.__icon.width + 10, self.__icon.y, self.__description, smallFont, colour, fixedWidth=labelWidth)
+		labelWidth = width - (self.__margin + self.__icon.width + self.__iconGap)
+		labelHeight = height - (self.__icon.y)
+		self.__descriptionLabel = Label(renderer, self.__icon.x + self.__icon.width + self.__iconGap, self.__icon.y, self.__description, smallFont, colour, fixedWidth=labelWidth, fixedHeight=labelHeight)
 		self.__dataObj = dataObj
 		
 	def destroy(self):
@@ -310,18 +321,19 @@ class IconPanel(UIObject):
 		
 	def draw(self):
 		if self.visible:
-			super(IconPanel, self).draw()
 			sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__bgColour.r, self.__bgColour.g, self.__bgColour.b, 255)
 			self.__titleLabel.draw()
 			self.__descriptionLabel.draw()
 			self.__icon.draw()
+			if self.hasBorder():
+				self.drawBorder()
 			
 	def setCoords(self, x, y):
 		super(IconPanel, self).setCoords(x, y)
 		self.__titleLabel.setCoords(self.x + self.__margin, y)
 		if self.__icon:
 			self.__icon.setCoords(self.x + self.__margin, self.__titleLabel.y + self.__titleLabel.height)
-			self.__descriptionLabel.setCoords(self.__icon.x + self.__icon.width + 10, self.__icon.y)
+			self.__descriptionLabel.setCoords(self.__icon.x + self.__icon.width + self.__iconGap, self.__icon.y)
 			
 	def getDataObject(self):
 		return self.__dataObj
@@ -334,6 +346,9 @@ class IconPanel(UIObject):
 		
 	def setIcon(self, icon):
 		self.__icon.setImage(icon)
+		
+	#def setSize(self, w, h):
+	#	super(IconPanel, self).setSize(w, h)
 		
 	def setTitle(self, txt):
 		self.__titleLabel.setText(txt, True)
@@ -354,6 +369,11 @@ class BadgePanel(IconPanel):
 		self.setTitle(badge.getTitle())
 		self.setDescription(self.__createDescription(badge))
 		self.setIcon(badge.getPath())
+		
+#class GameAchievementPanel(IconPanel):
+	
+#	def __init__(self, renderer, x, y, width, font, smallFont, colour, bgColour, selectedBgColour, game):
+#		super(BadgePanel, self).__init__(renderer, x, y, width, font, smallFont, colour, bgColour, selectedBgColour, badge.getTitle(), self.__createDescription(badge), badge.getPath(), badge)
 
 class Button(UIObject):
 	
@@ -412,11 +432,12 @@ class Icon(UIObject):
 	__cache = {} # shared texture cache
 	__queue = deque()
 	
-	def __init__(self, renderer, x, y, width, height, image):
+	def __init__(self, renderer, x, y, width, height, image, useCache=True):
 		super(Icon, self).__init__(renderer, x, y, width, height)
 		self.__image = image
 		self.__texture = None
-		logging.debug("Icon.init: initialised for \"%s\"" % image)
+		self.__useCache = useCache
+		logging.debug("Icon.init: initialised for \"%s\", using cache: %s" % (self.__image, self.__useCache))
 		
 	@staticmethod
 	def __addToCache(path, texture):
@@ -432,7 +453,10 @@ class Icon(UIObject):
 			logging.debug("Icon.__addToCache: cache length: %d" % cacheLength)
 		
 	def destroy(self):
-		pass
+		if not self.__useCache and self.__texture:
+			logging.debug("Icon.destroy: destroying texture for %s" % self.__image)
+			sdl2.SDL_DestroyTexture(self.__texture)
+			self.__texture = None
 			
 	@staticmethod
 	def destroyTextures():
@@ -447,15 +471,17 @@ class Icon(UIObject):
 		
 	def draw(self):
 		if self.visible:
-			if self.__image not in Icon.__cache:
-				logging.debug("Icon.draw: loading texture for %s" % self.__image)
-				self.__texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, self.__image)
-				self.__addToCache(self.__image, self.__texture)
+			if self.__useCache:
+				if self.__image not in Icon.__cache:
+					logging.debug("Icon.draw: loading texture for %s (using cache)" % self.__image)
+					self.__addToCache(self.__image, sdl2.sdlimage.IMG_LoadTexture(self.renderer, self.__image))
+				texture = Icon.__cache[self.__image]
 			else:
-				#print logging.debug("Icon.draw: using texture from cache for %s" % self.__image)
-				self.__texture = Icon.__cache[self.__image]
-			sdl2.SDL_RenderCopy(self.renderer, self.__texture, None, sdl2.SDL_Rect(self.x, self.y, self.width, self.height))
-			
+				if self.__texture == None:
+					logging.debug("Icon.draw: loading texture for %s (no cache)" % self.__image)
+					self.__texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, self.__image)
+				texture = self.__texture
+			sdl2.SDL_RenderCopy(self.renderer, texture, None, sdl2.SDL_Rect(self.x, self.y, self.width, self.height))
 	def setImage(self, image):
 		self.__image = image
 			
@@ -897,8 +923,8 @@ class IconPanelList(UIObject):
 		self.__allowSelectAll = allowSelectAll
 		self.__panelMargin = panelMargin
 		self.__panelGap = 10
-		self.setMenu(menu)
 		self.__listeners = []
+		self.setMenu(menu)
 		logging.debug("IconPanelList.init: created List with %d panels for %d menu items, width: %d, height: %d" % (len(self.__panels), self.__menuCount, self.width, self.height))
 	
 	def addListener(self, l):
@@ -1123,15 +1149,17 @@ class IconPanelList(UIObject):
 			self.__showScrollbar = False
 		
 		p.setCoords(self.__panelX, p.y)
+		p.setSize(self.__panelWidth, p.height)
 		self.__panels.append(p)
 		panelY = self.y + p.height + self.__panelGap
 		for i in xrange(1, self.__visibleMenuItems):
-			p = BadgePanel(self.renderer, self.__panelX, panelY, self.width, self.__font, self.__smallFont, self.__colour, self.__bgColour, self.__selectedBgColour, self.__menu.getItem(i).getDataObject())
+			p = BadgePanel(self.renderer, self.__panelX, panelY, self.__panelWidth, self.__font, self.__smallFont, self.__colour, self.__bgColour, self.__selectedBgColour, self.__menu.getItem(i).getDataObject())
 			self.__panels.append(p)
 			panelY += p.height + self.__panelGap
 		self.__firstMenuItem = 0
 		self.__panelIndex = 0
 		self.__menu.addListener(self)
+		self.__menu.setSelected(0, fireEvent=True)
 		
 	def __setupScrollbar(self):
 		self.__scrollbarWidth = 20

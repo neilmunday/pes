@@ -90,7 +90,7 @@ class Record(object):
 	def doQuery(self, query):
 		if not self.__con:
 			raise sqlite3.Error('Database %s not connected' % self.__db)
-		#logging.debug('Record.doQuery: executing query: %s' % query)
+		logging.debug('Record.doQuery: executing query: %s' % query)
 		self.__cur.execute(query)
 		return self.__cur
 
@@ -113,7 +113,8 @@ class Record(object):
 
 	def getProperty(self, field):
 		if self.__dataLoaded:
-			return self.__properties[field]
+			if field in self.__properties:
+				return self.__properties[field]
 		return None
 
 	def __getWritableFields(self):
@@ -268,9 +269,13 @@ class AchievementGame(Record):
 		self.__consoleName = None
 		self.__userId = userId
 		self.__badges = None
+		self.__gameId = None
 		
 	def getAchievementTotal(self):
 		return self.getProperty('achievement_total')
+	
+	def getConsoleId(self):
+		return self.getProperty('console_id')
 	
 	def getConsoleName(self):
 		if not self.__consoleName:
@@ -298,6 +303,20 @@ class AchievementGame(Record):
 					self.__badges.append(Badge(self.getDb(), int(row['badge_id']), None))
 			self.disconnect()
 		return self.__badges
+	
+	def getGameId(self):
+		# attempt to find the corresponding game
+		if self.__gameId == None:
+			self.connect()
+			name = self.getName().replace("'", "''")
+			cur = self.doQuery('SELECT `game_id` FROM `games`, `consoles` WHERE `games`.`console_id` = `consoles`.`console_id` AND `consoles`.`achievement_api_id` = "%d" AND `games`.`achievement_api_id` = %d LIMIT 0,1;' % (self.getConsoleId(), self.getId()))
+			if cur.rowcount == 0:
+				return None
+			row = cur.fetchone()
+			if row == None:
+				return None
+			self.__gameId = int(row['game_id'])
+		return self.__gameId
 		
 	def getName(self):
 		return self.getProperty('name')
@@ -377,14 +396,13 @@ class Console(Record):
 		self.__imgCacheDir = imgCacheDir
 		self.__gameTotal = None
 		self.__ignoreRoms = []
-		self.__achievementApiId = None
 		
 	def addIgnoreRom(self, rom):
 		if rom not in self.__ignoreRoms:
 			self.__ignoreRoms.append(rom)
 			
 	def getAchievementApiId(self):
-		return self.__achievementApiId
+		return self.getProperty('achievement_api_id')
 
 	def getCommand(self, game):
 		return self.__command.replace('%%GAME%%', "\"%s\"" % game.getPath()).replace('%%USERCONFDIR%%', userConfDir)
@@ -537,8 +555,8 @@ class Console(Record):
 
 class Game(Record):
 
-	def __init__(self, gameId, db, console=None, loadData=True):
-		super(Game, self).__init__(db, 'games', ['api_id', 'exists', 'console_id', 'name', 'cover_art', 'game_path', 'overview', 'released', 'last_played', 'favourite', 'play_count', 'size'], 'game_id', int(gameId), True, loadData)
+	def __init__(self, gameId, db, console, loadData=True):
+		super(Game, self).__init__(db, 'games', ['thegamesdb_id', 'exists', 'console_id', 'name', 'cover_art', 'game_path', 'overview', 'released', 'last_played', 'favourite', 'play_count', 'size', 'rasum', 'achievement_api_id'], 'game_id', int(gameId), True, loadData)
 		self.__console = console
 
 	def getCommand(self):
