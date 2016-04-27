@@ -65,5 +65,14 @@ run $setupDir/install-stella-libretro.sh
 header "Installing rasum..."
 run $setupDir/install-rasum.sh
 
+header "Install qtsixad..."
+run $setupDir/install-qtsixad.sh
+
+header "Setting up samba..."
+run $setupDir/install-samba.sh
+
+header "Setting up autologin..."
+run $setupDir/auto-login.sh
+
 header "Done!"
 exit 0
