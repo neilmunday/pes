@@ -57,7 +57,7 @@ run tar xvfz $sdl2Tar
 checkDir $sdl2Dir
 run cd $sdl2Dir
 
-./configure --prefix=$prefix --enable-libudev
+./configure --prefix=$prefix --enable-libudev --enable-video-opengl --enable-video-x11 
 
 run make 
 run sudo make -j install
@@ -65,7 +65,6 @@ run sudo make -j install
 run sudo rm -f /opt/sdl2/default
 run sudo ln -s $prefix /opt/sdl2/default
 
-SDL image
 header "Downloading SDL2 Image"
 sdl2ImageVersion=2.0.1
 sdl2ImageTar=$srcDir/SDL2_image-${sdl2ImageVersion}.tar.gz
@@ -93,7 +92,6 @@ run cd $sdl2ImageDir
 run make -j
 run sudo make install
 
-SDL TTF
 header "Downloading SDL2 TTF"
 sdl2TTFVersion=2.0.14
 sdl2TTFTar=$srcDir/SDL2_ttf-${sdl2TTFVersion}.tar.gz

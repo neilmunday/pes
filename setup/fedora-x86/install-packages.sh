@@ -33,7 +33,10 @@ source $setupDir/functions.sh
 
 # install packages
 
-run sudo dnf install alsa-lib-devel \
+run sudo dnf install \
+	alsa-lib-devel \
+	boost-devel \
+	dbus-devel \
 	gcc \
 	gcc-c++ \
 	make \
