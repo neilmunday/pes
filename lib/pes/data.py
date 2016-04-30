@@ -263,13 +263,14 @@ class AchievementUser(Record):
 class AchievementGame(Record):
 	
 	def __init__(self, db, userId, gameId, userEarnedTotal=0, userPointsTotal=0):
-		super(AchievementGame, self).__init__(db, 'achievements_games', ['game_id', 'console_id', 'name', 'achievement_total', 'score_total'], 'game_id', gameId)
+		super(AchievementGame, self).__init__(db, 'achievements_games', ['game_id', 'console_id', 'achievement_total', 'score_total'], 'game_id', gameId)
 		self.__userEarnedTotal = userEarnedTotal
 		self.__userPointsTotal = userPointsTotal
 		self.__consoleName = None
 		self.__userId = userId
 		self.__badges = None
 		self.__gameId = None
+		self.__name = None
 		
 	def getAchievementTotal(self):
 		return self.getProperty('achievement_total')
@@ -310,16 +311,23 @@ class AchievementGame(Record):
 			self.connect()
 			name = self.getName().replace("'", "''")
 			cur = self.doQuery('SELECT `game_id` FROM `games`, `consoles` WHERE `games`.`console_id` = `consoles`.`console_id` AND `consoles`.`achievement_api_id` = "%d" AND `games`.`achievement_api_id` = %d LIMIT 0,1;' % (self.getConsoleId(), self.getId()))
-			if cur.rowcount == 0:
-				return None
 			row = cur.fetchone()
 			if row == None:
 				return None
 			self.__gameId = int(row['game_id'])
+			self.disconnect()
 		return self.__gameId
 		
 	def getName(self):
-		return self.getProperty('name')
+		if self.__name == None:
+			self.connect()
+			cur = self.doQuery('SELECT `name` FROM `games` WHERE `achievement_api_id` = %d;' % self.getId())
+			row = cur.fetchone()
+			if row == None:
+				return None
+			self.disconnect()
+			self.__name = row['name']
+		return self.__name
 	
 	def getPercentComplete(self):
 		return (float(self.__userEarnedTotal) / float(self.getAchievementTotal())) * 100.0

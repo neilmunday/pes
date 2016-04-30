@@ -1060,7 +1060,7 @@ class PESLoadingThread(threading.Thread):
 			cur.execute('CREATE INDEX IF NOT EXISTS "games_catalogue_index" on games_catalogue (short_name ASC)')
 			cur.execute('CREATE TABLE IF NOT EXISTS `achievements_user`(`user_id` INTEGER PRIMARY KEY, `user_name` TEXT, `rank` INT, `total_points` INT, `total_truepoints` INT)')
 			cur.execute('CREATE INDEX IF NOT EXISTS "achievements_user_index" on achievements_user (user_id ASC)')
-			cur.execute('CREATE TABLE IF NOT EXISTS `achievements_games`(`game_id` INTEGER PRIMARY KEY, `console_id` INT, `name` TEXT, `achievement_total` INT, `score_total` INT)')
+			cur.execute('CREATE TABLE IF NOT EXISTS `achievements_games`(`game_id` INTEGER PRIMARY KEY, `console_id` INT, `achievement_total` INT, `score_total` INT)')
 			cur.execute('CREATE INDEX IF NOT EXISTS "achievements_game_index" on achievements_games (game_id ASC)')
 			cur.execute('CREATE TABLE IF NOT EXISTS `achievements_badges`(`badge_id` INTEGER PRIMARY KEY, `title` TEXT, `game_id` INT, `description` TEXT, `points` INT, `badge_path` TEXT, `badge_locked_path` TEXT)')
 			cur.execute('CREATE INDEX IF NOT EXISTS "achievements_badge_index" on achievements_badges (badge_id ASC)')
@@ -1081,15 +1081,19 @@ class PESLoadingThread(threading.Thread):
 				sectionTotal = float(len(sections))
 				
 				i = 0.0
+				insertValues = []
 				for section in sections:
 					if catalogueConfigParser.has_option(section, 'full_name'):
 						fullName = catalogueConfigParser.get(section, 'full_name')
-						logging.debug("PESLoadingThread.run: inserting game into catalogue: %s -> %s" % (section, fullName))
-						cur.execute('INSERT INTO `games_catalogue` (`short_name`, `full_name`) VALUES ("%s", "%s");' % (section, fullName))
+						#logging.debug("PESLoadingThread.run: inserting game into catalogue: %s -> %s" % (section, fullName))
+						#cur.execute('INSERT INTO `games_catalogue` (`short_name`, `full_name`) VALUES ("%s", "%s");' % (section, fullName))
+						insertValues.append('("%s", "%s")' % (section, fullName))
 					else:
 						logging.error("PESLoadingThread.run: games catalogue section \"%s\" has no \"full_name\" option!" % section)
 					i += 1.0
 					self.progress = 16 + (16 * (i / sectionTotal))
+				if len(insertValues) > 0:
+					cur.execute('INSERT INTO `games_catalogue` (`short_name`, `full_name`) VALUES %s;' % ','.join(insertValues))
 						
 			con.commit()
 		except sqlite3.Error, e:
@@ -1296,14 +1300,15 @@ class AchievementsScreen(Screen):
 				self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + self.__titleLabel.height + 30, self.__descriptionAchievementUserText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
 				
 				self.__games = self.app.achievementUser.getGames()
-				gamesMenu = Menu([])
-				for g in self.__games:
-					gamesMenu.addItem(AchievementGameMenuItem(g, self.__loadAchievements, g))
-				gamesMenu.sort()
-				gamesListX = self.screenRect[0] + self.screenMargin
-				gamesListY = self.__descriptionLabel.y + self.__descriptionLabel.height + 10
-				self.__gamesList = self.addUiObject(List(self.renderer, gamesListX, gamesListY, self.screenRect[2] - (self.screenMargin * 2), self.screenRect[3] - gamesListY - self.screenMargin, gamesMenu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
-				self.__gamesList.setFocus(True)
+				if len(self.__games) > 0:
+					gamesMenu = Menu([])
+					for g in self.__games:
+						gamesMenu.addItem(AchievementGameMenuItem(g, self.__loadAchievements, g))
+					gamesMenu.sort()
+					gamesListX = self.screenRect[0] + self.screenMargin
+					gamesListY = self.__descriptionLabel.y + self.__descriptionLabel.height + 10
+					self.__gamesList = self.addUiObject(List(self.renderer, gamesListX, gamesListY, self.screenRect[2] - (self.screenMargin * 2), self.screenRect[3] - gamesListY - self.screenMargin, gamesMenu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
+					self.__gamesList.setFocus(True)
 			else:
 				self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + self.__titleLabel.height + 30, self.__descriptionNoAchievementUserText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
 		else:
@@ -2010,7 +2015,8 @@ class SettingsScreen(Screen):
 	
 	def __init__(self, app, renderer, menuRect, screenRect):
 		super(SettingsScreen, self).__init__(app, renderer, "Settings", Menu([
-			MenuItem("Update Database"),
+			MenuItem("Update Games"),
+			MenuItem("Update Badges"),
 			MenuItem("Joystick Set-Up")]),
 		menuRect, screenRect)
 		
@@ -2027,11 +2033,12 @@ class SettingsScreen(Screen):
 			self.__updateDatabaseMenu.addItem(ConsoleMenuItem(c, False, True))
 		self.__toggleMargin = 20
 		self.__updateDbThread = None
+		self.__updateAchievementsThread = None
 		self.__scanProgressBar = None
 		self.__defaultHeaderText = "Settings"
 		self.__headerLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], self.__defaultHeaderText, self.app.titleFont, self.app.textColour))
 		logging.debug("SettingsScreen.init: initialised")
-		self.__initText = "Here you can scan for new games, set-up your joysticks as well as being able to reset PES to its default settings\n\nPlease select an item from the menu on the left."
+		self.__initText = "Here you can scan for new games, sync your badges with www.retroachievements.org, set-up your joysticks as well as being able to reset PES to its default settings\n\nPlease select an item from the menu on the left."
 		self.__scanText = "Please use the menu below to select which consoles you wish to include in your search. By default all consoles are selected. Use the SELECT button to toggle the items in the menu.\n\nWhen you are ready, please select the \"Begin Scan\" button."
 		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__initText, self.app.bodyFont, self.app.textColour, fixedWidth=self.screenRect[2] - self.screenMargin))
 		self.__consoleList = None
@@ -2093,7 +2100,7 @@ class SettingsScreen(Screen):
 		
 		selected = self.menu.getSelectedItem().getText()
 		
-		if selected == "Update Database":
+		if selected == "Update Games":
 			if self.__updateDbThread != None:
 				if self.__updateDbThread.started and not self.__updateDbThread.done:
 					self.__descriptionLabel.setText("Scanned %d out of %d roms... press BACK to abort\n\nElapsed: %s\n\nRemaining: %s\n\nProgress:" % (self.__updateDbThread.getProcessed(), self.__updateDbThread.romTotal, self.__updateDbThread.getElapsed(), self.__updateDbThread.getRemaining()), True)
@@ -2111,6 +2118,21 @@ class SettingsScreen(Screen):
 				self.__scanButton.draw()
 				self.__selectAllButton.draw()
 				self.__deselectAllButton.draw()
+		elif selected == "Update Badges":
+			if self.app.retroAchievementConn and self.app.achievementUser:
+				if self.__updateAchievementsThread != None:
+					if self.__updateAchievementsThread.started and not self.__updateAchievementsThread.done:
+						self.__descriptionLabel.setText("Processed %d out of %d games... press BACK to abort\n\nElapsed: %s\n\nProgress:" % (self.__updateAchievementsThread.getProcessed(), self.__updateAchievementsThread.getTotal(), self.__updateAchievementsThread.getElapsed()), True)
+						self.__scanProgressBar.y = self.__descriptionLabel.y + self.__descriptionLabel.height + 10
+						self.__scanProgressBar.setProgress(self.__updateAchievementsThread.getProgress())
+						self.__scanProgressBar.draw()
+					elif self.__updateAchievementsThread.done:
+						interruptedStr = ""
+						if self.__updateAchievementsThread.interrupted:
+							interruptedStr = "(scan interrupted)"
+						self.__descriptionLabel.setText("Scan completed in %s %s\n\nProcessed %d badges\n\nPress BACK or HOME to continue." % (self.__updateAchievementsThread.getElapsed(), interruptedStr, self.__updateAchievementsThread.getBadgeTotal()), True)
+						self.__isBusy = False
+			self.__descriptionLabel.draw()
 		elif selected == "Timezone":
 			self.__descriptionLabel.draw()
 			self.__timezoneList.draw()
@@ -2285,8 +2307,8 @@ class SettingsScreen(Screen):
 		selected = self.menu.getSelectedItem().getText()
 		oldMenuActive = self.menuActive # store state before parent method changes it!
 		
-		# don't pass up the event if a db scan is in progress
-		if event.type == sdl2.SDL_KEYDOWN and selected == "Update Database" and self.__updateDbThread != None:
+		# don't pass up the event if a games scan is in progress
+		if event.type == sdl2.SDL_KEYDOWN and selected == "Update Games" and self.__updateDbThread != None:
 			if event.key.keysym.sym == sdl2.SDLK_BACKSPACE or event.key.keysym.sym == sdl2.SDLK_HOME:
 				if self.__updateDbThread.started and not self.__updateDbThread.done:
 					self.setMenuActive(False)
@@ -2302,13 +2324,22 @@ class SettingsScreen(Screen):
 					if event.key.keysym.sym == sdl2.SDLK_HOME:
 						self.__reset()
 			return
+		elif event.type == sdl2.SDL_KEYDOWN and selected == "Update Badges" and self.__updateAchievementsThread != None:
+			if event.key.keysym.sym == sdl2.SDLK_BACKSPACE or event.key.keysym.sym == sdl2.SDLK_HOME:
+				if self.__updateAchievementsThread.started and not self.__updateAchievementsThread.done:
+					self.setMenuActive(False)
+					self.__updateAchievementsThread.stop()
+				elif self.__updateAchievementsThread.done:
+					self.__updateAchievementsThread = None
+					if event.key.keysym.sym == sdl2.SDLK_HOME:
+						self.__reset()
 		
 		super(SettingsScreen, self).processEvent(event)
 		
 		if oldMenuActive:
 			if event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER):
 				logging.debug("SettingsScreen.processEvent: return key trapped for %s" % selected)
-				if selected == "Update Database":
+				if selected == "Update Games":
 					self.__headerLabel.setText(selected)
 					self.__updateDatabaseMenu.toggleAll(True)
 					self.__descriptionLabel.setText(self.__scanText, True)
@@ -2323,6 +2354,19 @@ class SettingsScreen(Screen):
 						self.__selectAllButton = self.addUiObject(Button(self.renderer, self.__scanButton.x, self.__scanButton.y + self.__scanButton.height + 10, 150, 50, "Select All", self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__updateDatabaseMenu.toggleAll, True))
 						self.__deselectAllButton = self.addUiObject(Button(self.renderer, self.__scanButton.x, self.__selectAllButton.y + self.__selectAllButton.height + 10, 150, 50, "Deselect All", self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__updateDatabaseMenu.toggleAll, False))
 					self.__scanButton.setFocus(False)
+				elif selected == "Update Badges":
+					if not self.app.retroAchievementConn:
+						self.__descriptionLabel.setText("To track your achievements in your games, please enter your www.retroachievements.org username, password and API key into \\pes\config\pes\pes.ini or %s and then reload PES." % userPesConfigFile)
+					else:
+						self.__descriptionLabel.setText("Preparing to synchronise PES with your www.retroachievements.org account...")
+						if not self.__updateAchievementsThread:
+							self.__updateAchievementsThread = RetroAchievementsUpdateThread(self.app.retroAchievementConn, self.app.badgeDir)
+							if self.__scanProgressBar == None:
+								self.__scanProgressBar = ProgressBar(self.renderer, self.screenRect[0] + self.screenMargin, self.__descriptionLabel.y + self.__descriptionLabel.height + 10, self.screenRect[2] - (self.screenMargin * 2), 40, self.app.lineColour, self.app.menuBackgroundColour)
+							else:
+								self.__scanProgressBar.setProgress(0)
+							self.__isBusy = True
+							self.__updateAchievementsThread.start()
 				elif selected == "Timezone":
 					self.__descriptionLabel.setText("You can change the current timezone from \"%s\" by selecting one from the list below." % self.app.currentTimezone, True)
 					if self.__timezoneList == None:
@@ -2368,7 +2412,7 @@ class SettingsScreen(Screen):
 					
 				self.__init = False
 		else:
-				if selected == "Update Database":
+				if selected == "Update Games":
 					if event.type == sdl2.SDL_KEYDOWN:
 						if event.key.keysym.sym == sdl2.SDLK_RIGHT:
 							self.__consoleList.setFocus(False)
@@ -2440,6 +2484,7 @@ class SettingsScreen(Screen):
 		self.__headerLabel.setText(self.__defaultHeaderText)
 		self.__descriptionLabel.setText(self.__initText, True)
 		self.__ignoreJsEvents = True
+		self.menu.setSelected(0)
 		self.app.doJsToKeyEvents = True
 		
 	def __setTimezone(self, timezone):
