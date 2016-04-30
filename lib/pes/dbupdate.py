@@ -331,8 +331,7 @@ class Consumer(multiprocessing.Process):
 			if task is None:
 				logging.debug("%s: exiting..." % self.name)
 				self.taskQueue.task_done()
-				self.resultQueue.close()
-				return
+				break
 			if self.exitEvent.is_set():
 				self.taskQueue.task_done()
 			else:
@@ -340,6 +339,7 @@ class Consumer(multiprocessing.Process):
 				result = task.run()
 				self.taskQueue.task_done()
 				self.resultQueue.put(result)
+		self.resultQueue.close()
 		return
 	
 class UpdateDbThread(Thread):
@@ -384,6 +384,10 @@ class UpdateDbThread(Thread):
 			return self.formatTime(self.__endTime - self.__startTime)
 	
 	def getProcessed(self):
+		if not self.started or not self.__queueSetUp:
+			return 0
+		if self.done:
+			return self.romTotal
 		return self.romTotal - self.__tasks.qsize()
 		
 	def getProgress(self):
@@ -466,7 +470,6 @@ class UpdateDbThread(Thread):
 
 			for f in files:
 				if os.path.isfile(f) and self.__extensionOk(extensions, f):
-					#self.__tasks.put(ConsoleTask(f, consoleApiName, c))
 					romFiles.append(f)
 					self.romTotal += 1
 					
