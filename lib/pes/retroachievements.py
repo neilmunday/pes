@@ -321,6 +321,13 @@ class RetroAchievementsUpdateThread(Thread):
 			return 100
 		return int((float(self.__gameTotal - qsize) / float(self.__gameTotal)) * 100.0)
 	
+	def getRemaining(self):
+		processed = self.getProcessed()
+		if processed == 0 or not self.started or self.done or self.__tasks.qsize() == 0:
+			return self.formatTime(0)
+		# now work out average time taken per game
+		return self.formatTime(((time.time() - self.__startTime) / processed) * self.__tasks.qsize())
+	
 	def getTotal(self):
 		return self.__gameTotal
 		

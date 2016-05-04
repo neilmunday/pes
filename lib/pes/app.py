@@ -311,6 +311,7 @@ class PESApp(object):
 		self.screens["Home"] = HomeScreen(self, self.renderer, self.menuRect, self.screenRect)
 		self.screens["Settings"] = SettingsScreen(self, self.renderer, self.menuRect, self.screenRect)
 		self.screens["Achievements"] = AchievementsScreen(self, self.renderer, self.menuRect, self.screenRect)
+		self.screens["Play"] = PlayScreen(self, self.renderer, self.menuRect, self.screenRect, None)
 		consoleScreens = 0
 		for c in self.consoles:
 			if c.getGameTotal() > 0:
@@ -1503,7 +1504,7 @@ class ConsoleScreen(Screen):
 		self.__gameInfoLabelX = self.__listX + self.__listWidth + 50
 		self.__gameInfoLabelY = self.__previewThumbnailY + self.__previewThumbnailHeight + 10
 		self.__gameInfoLabelWidth = self.screenRect[0] + self.screenRect[2] - self.__gameInfoLabelX - 5
-		self.__gameInfoLabelHeight = 5 * sdl2.sdlttf.TTF_FontHeight(self.app.bodyFont)
+		self.__gameInfoLabelHeight = 6 * sdl2.sdlttf.TTF_FontHeight(self.app.bodyFont)
 		self.__gameInfoLabel = self.addUiObject(Label(self.renderer, self.__gameInfoLabelX, self.__gameInfoLabelY, " ", self.app.bodyFont, self.app.textColour, fixedWidth=self.__gameInfoLabelWidth,
  fixedHeight=self.__gameInfoLabelHeight, bgColour=self.app.menuTextColour, bgAlpha=50))
 		self.__gameOverviewLabelX = self.__gameInfoLabelX
@@ -1521,7 +1522,8 @@ class ConsoleScreen(Screen):
 		menu = Menu([])
 		for g in games:
 			g.refresh()
-			m = GameMenuItem(g, False, True, self.app.playGame, g)
+			#m = GameMenuItem(g, False, True, self.app.playGame, g)
+			m = GameMenuItem(g, False, True, self.__playGame, g)
 			m.toggle(g.isFavourite())
 			menu.addItem(m)
 		return menu
@@ -1602,7 +1604,18 @@ class ConsoleScreen(Screen):
 		playCount = game.getPlayCount()
 		if playCount > 0:
 			lastPlayed = game.getLastPlayed("%d/%m/%Y")
-		return "File name: %s\nReleased: %s\nPlay Count: %d\nLast Played: %s\nSize: %s\nOverview:" % (os.path.basename(game.getPath()), game.getReleased("%d/%m/%Y"), playCount, lastPlayed, game.getSize(True))
+		achievementInfo = "N/A"
+		if self.app.retroAchievementConn and self.app.achievementUser and game.hasAchievements():
+			achievementGame = self.app.achievementUser.getGame(game.getAchievementApiId())
+			achievementInfo = "%d%% complete, %d points" % (achievementGame.getPercentComplete(), achievementGame.getUserPointsTotal())
+		return "File name: %s\nReleased: %s\nPlay Count: %d\nLast Played: %s\nSize: %s\nBadges: %s\nOverview:" % (os.path.basename(game.getPath()), game.getReleased("%d/%m/%Y"), playCount, lastPlayed, game.getSize(True), achievementInfo)
+	
+	def __playGame(self, game):
+		if self.app.retroAchievementConn and self.app.achievementUser and game.hasAchievements():
+			self.app.screens["Play"].setGame(game)
+			self.app.setScreen("Play")
+		else:
+			self.app.playGame(game)
 			
 	def processEvent(self, event):
 		super(ConsoleScreen, self).processEvent(event)
@@ -1744,6 +1757,10 @@ class ConsoleScreen(Screen):
 				self.__favouriteThumbPanel.setGames(self.__favouriteGames[0:self.__showThumbs])
 			else:
 				self.__favouriteThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__favouriteGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
+			self.__gameInfoLabel.setText(self.__getGameInfoText(self.__favouriteGames[0]))
+			self.__gameOverviewLabel.setText(self.__favouriteGames[0].getOverview())
+			if self.__previewThumbnail != None:
+				self.__previewThumbnail.setGame(self.__favouriteGames[0])
 		
 	def stop(self):
 		super(ConsoleScreen, self).stop()
@@ -1951,6 +1968,70 @@ class HomeScreen(Screen):
 			else:
 				self.__descriptionLabel.setText("PES can display and track gaming achievements. To do so, please register an account at www.retroachievements.org and then enter your username, password and API key into pes.ini.", True)
 				
+class PlayScreen(Screen):
+	
+	def __init__(self, app, renderer, menuRect, screenRect, game):
+		super(PlayScreen, self).__init__(app, renderer, "Play", Menu([MenuItem("Play", False, False, self.__play), MenuItem("Browse")]), menuRect, screenRect)
+		self.__game = game
+		self.__consoleTexture = None
+		self.__titleLabel = None
+		self.__consoleName = None
+		self.__achievementsList = None
+		
+	def drawScreen(self):
+		super(PlayScreen, self).drawScreen()
+		sdl2.SDL_RenderCopy(self.renderer, self.__consoleTexture, None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
+		self.__titleLabel.draw()
+		self.__achievementsList.draw()
+		
+	def __play(self):
+		self.app.playGame(self.__game)
+		
+	def processEvent(self, event):
+		super(PlayScreen, self).processEvent(event)
+		
+		if not self.menuActive and not self.justActivated:
+			if self.menu.getSelectedItem().getText() == "Browse":
+				self.__achievementsList.setFocus(True)
+				self.__achievementsList.processEvent(event)
+			elif self.__achievementsList.hasFocus():
+				self.__achievementsList.setFocus(False)
+		elif self.__achievementsList.hasFocus():
+			self.__achievementsList.setFocus(False)
+		
+	def setGame(self, game):
+		if game == self.__game:
+			return
+		achievementGame = self.app.achievementUser.getGame(game.getAchievementApiId())
+		if achievementGame == None:
+			logging.error("PlayScreen.setGame: could not find a game with achievement_api_id = %d" % game.getAchievementApiId())
+			self.app.exit(1)
+		self.__game = game
+		consoleName = game.getConsole().getName()
+		titleStr = "Game: %s\nProgress: %d%%\nPoints: %d of %d awarded" % (game.getName(), achievementGame.getPercentComplete(), achievementGame.getUserPointsTotal(), achievementGame.getScoreTotal())
+		if self.__titleLabel == None:
+			self.__titleLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], titleStr,
+ self.app.titleFont, self.app.textColour, fixedWidth=self.wrap))
+		else:
+			self.__titleLabel.setText(titleStr, True)
+		if self.__consoleTexture == None:
+			self.__consoleTexture = sdl2.SDL_CreateTextureFromSurface(self.renderer, self.app.consoleSurfaces[consoleName])
+			sdl2.SDL_SetTextureAlphaMod(self.__consoleTexture, CONSOLE_TEXTURE_ALPHA)
+		elif self.__consoleName != consoleName:
+			sdl2.SDL_DestroyTexture(self.__consoleTexture)
+			self.__consoleTexture = sdl2.SDL_CreateTextureFromSurface(self.renderer, self.app.consoleSurfaces[consoleName])
+			sdl2.SDL_SetTextureAlphaMod(self.__consoleTexture, CONSOLE_TEXTURE_ALPHA)
+		self.__consoleName = consoleName
+		menu = Menu([])
+		badges = achievementGame.getBadges()
+		for b in badges:
+			menu.addItem(DataMenuItem(b, False, False, self.__play))
+		if self.__achievementsList == None:
+			y = self.__titleLabel.y + self.__titleLabel.height + 10
+			self.__achievementsList = self.addUiObject(IconPanelList(self.renderer, self.__titleLabel.x, y, self.screenRect[2] - (self.screenMargin * 2), self.screenRect[3] - y - self.screenMargin, menu, self.app.bodyFont, self.app.smallBodyFont, self.app.textColour, self.app.textColour, None, self.app.menuSelectedBgColour, List.SCROLLBAR_AUTO, True, False))
+		else:
+			self.__achievementsList.setMenu(menu)
+				
 class JoystickPromptMap(object):
 	
 	BUTTON = 1
@@ -2119,10 +2200,10 @@ class SettingsScreen(Screen):
 				self.__selectAllButton.draw()
 				self.__deselectAllButton.draw()
 		elif selected == "Update Badges":
-			if self.app.retroAchievementConn and self.app.achievementUser:
+			if self.app.retroAchievementConn:
 				if self.__updateAchievementsThread != None:
 					if self.__updateAchievementsThread.started and not self.__updateAchievementsThread.done:
-						self.__descriptionLabel.setText("Processed %d out of %d games... press BACK to abort\n\nElapsed: %s\n\nProgress:" % (self.__updateAchievementsThread.getProcessed(), self.__updateAchievementsThread.getTotal(), self.__updateAchievementsThread.getElapsed()), True)
+						self.__descriptionLabel.setText("Processed %d out of %d games... press BACK to abort\n\nElapsed: %s\n\nRemaining: %s\n\nProgress:" % (self.__updateAchievementsThread.getProcessed(), self.__updateAchievementsThread.getTotal(), self.__updateAchievementsThread.getElapsed(), self.__updateAchievementsThread.getRemaining()), True)
 						self.__scanProgressBar.y = self.__descriptionLabel.y + self.__descriptionLabel.height + 10
 						self.__scanProgressBar.setProgress(self.__updateAchievementsThread.getProgress())
 						self.__scanProgressBar.draw()

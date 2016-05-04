@@ -321,7 +321,8 @@ class IconPanel(UIObject):
 		
 	def draw(self):
 		if self.visible:
-			sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__bgColour.r, self.__bgColour.g, self.__bgColour.b, 255)
+			if self.__bgColour:
+				sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__bgColour.r, self.__bgColour.g, self.__bgColour.b, 255)
 			self.__titleLabel.draw()
 			self.__descriptionLabel.draw()
 			self.__icon.draw()
@@ -1112,16 +1113,18 @@ class IconPanelList(UIObject):
 				# shift panels
 				for i in xrange(self.__visibleMenuItems):
 					self.__panels[i].setDataObject(self.__menu.getItem(i + self.__firstMenuItem).getDataObject())
-		self.__panels[self.__panelIndex].setBorderColour(self.__selectedBgColour)
+		if self.hasFocus():
+			self.__panels[self.__panelIndex].setBorderColour(self.__selectedBgColour)
 		self.__updateScrollbar()
 		
 	def setFocus(self, focus):
 		color = None
 		if focus:
 			colour = self.__selectedBgColour
+			self.__panels[self.__panelIndex].setBorderColour(self.__selectedBgColour)
 		else:
 			colour = self.__selectedBgColourNoFocus
-		#self.__panels[self.__panelIndex].setBackgroundColour(colour)
+			self.__panels[self.__panelIndex].setBorderColour(None)
 		super(IconPanelList, self).setFocus(focus)
 		
 	def setMenu(self, menu):

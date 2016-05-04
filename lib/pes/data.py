@@ -211,10 +211,23 @@ class AchievementUser(Record):
 	
 	def __init__(self, db, userId):
 		super(AchievementUser, self).__init__(db, 'achievements_user', ['user_id', 'user_name', 'rank', 'total_points', 'total_truepoints'], 'user_id', userId)
+		
+	def getGame(self, gameId):
+		self.connect()
+		cur = self.doQuery('SELECT (SELECT COUNT(*) FROM `achievements_earned`, `achievements_badges` WHERE `achievements_badges`.`game_id` = %d AND `achievements_earned`.`user_id` = %d AND `achievements_badges`.`badge_id` = `achievements_earned`.`badge_id`) AS `totalEarned`, (SELECT SUM(`points`) FROM `achievements_earned`, `achievements_badges` WHERE `achievements_badges`.`game_id` = %d AND `achievements_earned`.`user_id` = %d AND `achievements_badges`.`badge_id` = `achievements_earned`.`badge_id`) AS `totalPoints` FROM `achievements_games` WHERE `achievements_games`.`game_id` = %d ;' % (gameId, self.getId(), gameId, self.getId(), gameId))
+		row = cur.fetchone()
+		if row == None:
+			self.disconnect()
+			return None
+		totalPoints = 0
+		if row['totalPoints']:
+			totalPoints = int(row['totalPoints'])
+		self.disconnect()
+		return AchievementGame(self.getDb(), self.getId(), gameId, int(row['totalEarned']), totalPoints)
 	
 	def getGames(self):
 		self.connect()
-		cur = self.doQuery('SELECT `achievements_games`.`game_id`, (SELECT COUNT(*) FROM `achievements_earned`, `achievements_badges` WHERE `achievements_badges`.`game_id` = `achievements_games`.`game_id` AND `achievements_earned`.`user_id` = %d AND `achievements_badges`.`badge_id` = `achievements_earned`.`badge_id`) AS `totalEarned`, (SELECT SUM(`points`) FROM `achievements_earned`, `achievements_badges` WHERE `achievements_badges`.`game_id` = `achievements_games`.`game_id` AND `achievements_earned`.`user_id` = %d AND `achievements_badges`.`badge_id` = `achievements_earned`.`badge_id`) AS `totalPoints` FROM `achievements_games`;' % ( self.getId(), self.getId()))
+		cur = self.doQuery('SELECT `achievements_games`.`game_id`, (SELECT COUNT(*) FROM `achievements_earned`, `achievements_badges` WHERE `achievements_badges`.`game_id` = `achievements_games`.`game_id` AND `achievements_earned`.`user_id` = %d AND `achievements_badges`.`badge_id` = `achievements_earned`.`badge_id`) AS `totalEarned`, (SELECT SUM(`points`) FROM `achievements_earned`, `achievements_badges` WHERE `achievements_badges`.`game_id` = `achievements_games`.`game_id` AND `achievements_earned`.`user_id` = %d AND `achievements_badges`.`badge_id` = `achievements_earned`.`badge_id`) AS `totalPoints` FROM `achievements_games`;' % (self.getId(), self.getId()))
 		games = []
 		while True:
 			row = cur.fetchone()
@@ -446,6 +459,19 @@ class Console(Record):
 			self.disconnect()
 			self.__gameTotal = row['total']	
 		return self.__gameTotal
+	
+	def getGamesWithAchievements(self):
+		self.connect()
+		games = []
+		query = 'SELECT `game_id` FROM `games` WHERE `console_id` = %d AND `achievement_api_id` > 0 ORDER BY UPPER(`name`)' % self.getId()
+		cur = self.doQuery(query)
+		while True:
+			row = cur.fetchone()
+			if row == None:
+				break
+			games.append(Game(row['game_id'], self.getDb(), self))
+		self.disconnect()
+		return games
 
 	def getExtensions(self):
 		return self.__extensions
@@ -567,6 +593,9 @@ class Game(Record):
 		super(Game, self).__init__(db, 'games', ['thegamesdb_id', 'exists', 'console_id', 'name', 'cover_art', 'game_path', 'overview', 'released', 'last_played', 'favourite', 'play_count', 'size', 'rasum', 'achievement_api_id'], 'game_id', int(gameId), True, loadData)
 		self.__console = console
 
+	def getAchievementApiId(self):
+		return self.getProperty('achievement_api_id')
+
 	def getCommand(self):
 		return self.__console.getCommand(self)
 
@@ -622,6 +651,19 @@ class Game(Record):
 		if size < 1073741824:
 			return "%.1fMiB" % (size / 1048576.0)
 		return "%.1fGiB" % (size / 1073741824.0)
+	
+	def hasAchievements(self):
+		apiId = self.getAchievementApiId()
+		if apiId <= 0:
+			return False
+		self.connect()
+		cur = self.doQuery('SELECT COUNT(*) AS `total` FROM `achievements_games` WHERE `game_id` = %d;' % apiId)
+		row = cur.fetchone()
+		rtn = False
+		if row != None:
+			return int(row['total']) > 0
+		self.disconnect()
+		return rtn
 
 	def isFavourite(self, yesNoMap=None):
 		fav = self.getProperty('favourite') == 1
