@@ -637,7 +637,8 @@ class PESApp(object):
 			self.ip = getIPAddress(defaultInterface)
 			logging.debug("PESApp.run: default interface: %s, IP address: %s" % (defaultInterface, self.ip))
 		else:
-			self.__networkIcon.setVisible
+			logging.warning("PESApp.run: default network interface not found!")
+			self.__networkIcon.setVisible(False)
 			
 		self.__msgBox = None
 		
