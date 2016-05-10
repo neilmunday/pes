@@ -463,7 +463,7 @@ class Console(Record):
 	def getGamesWithAchievements(self):
 		self.connect()
 		games = []
-		query = 'SELECT `game_id` FROM `games` WHERE `console_id` = %d AND `achievement_api_id` > 0 ORDER BY UPPER(`name`)' % self.getId()
+		query = 'SELECT `game_id` FROM `games` WHERE `console_id` = %d AND `achievement_api_id` > 0 AND (SELECT COUNT(*) FROM `achievements_badges` WHERE `game_id` = `achievement_api_id`) > 0 ORDER BY UPPER(`name`)' % self.getId()
 		cur = self.doQuery(query)
 		while True:
 			row = cur.fetchone()

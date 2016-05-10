@@ -228,6 +228,23 @@ class PESApp(object):
 			logging.info("PESApp.exit: exiting...")
 			sys.exit(rtn)
 			
+	def getGameTotal(self):
+		# get number of games
+		try:
+			con = sqlite3.connect(userPesDb)
+			con.row_factory = sqlite3.Row
+			cur = con.cursor()
+			cur.execute('SELECT COUNT(*) AS `total` FROM `games`;')
+			row = cur.fetchone()
+			if row == None or row['total'] == 0:
+				return 0
+			return int(row['total'])
+		except sqlite3.Error, e:
+			pesExit("Error: %s" % e.args[0], True)
+		finally:
+			if con:
+				con.close()
+			
 	@staticmethod
 	def getMupen64PlusConfigAxisValue(controller, axis, positive=True, both=False):
 		bind = sdl2.SDL_GameControllerGetBindForAxis(controller, axis)
@@ -310,7 +327,6 @@ class PESApp(object):
 		logging.debug("PESApp.initScreens: initialising screens...")
 		self.screens["Home"] = HomeScreen(self, self.renderer, self.menuRect, self.screenRect)
 		self.screens["Settings"] = SettingsScreen(self, self.renderer, self.menuRect, self.screenRect)
-		self.screens["Achievements"] = AchievementsScreen(self, self.renderer, self.menuRect, self.screenRect)
 		self.screens["Play"] = PlayScreen(self, self.renderer, self.menuRect, self.screenRect, None)
 		consoleScreens = 0
 		for c in self.consoles:
@@ -738,7 +754,6 @@ class PESApp(object):
 					elif not loading and t == pes.event.EVENT_ACHIEVEMENTS_UPDATE:
 						logging.debug("PESApp.run: achievements have been updated")
 						self.setUpRetroAchievementUser()
-						self.screens["Achievements"].updateAchievementUserText()
 						self.screens["Home"].updateRecentBadges()
 					#elif t == pes.event.EVENT_RESOURCES_LOADED:
 					#	pass
@@ -1274,188 +1289,6 @@ class Screen(object):
 			for o in self.__uiObjects:
 				o.destroy()
 
-class AchievementsScreen(Screen):
-	
-	def __init__(self, app, renderer, menuRect, screenRect):
-		menu = None
-		if app.retroAchievementConn:
-			menu = Menu([MenuItem("Browse", False, False, self.__browse), MenuItem("Update")])
-		else:
-			menu = Menu([MenuItem("Back", False, False, self.__goBack)])
-		super(AchievementsScreen, self).__init__(app, renderer, "Your Achievements", menu, menuRect, screenRect)
-		self.__titleLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], "Your Achievements",
- self.app.titleFont, self.app.textColour, fixedWidth=self.wrap))
-		
-		self.__games = None
-		self.__gamesList = None
-		self.__achievementsList = None
-		
-		self.__descriptionNoRaConnText = "To track your achievements in your games, please enter your www.retroachievements.org username, password and API key into \\pes\config\pes\pes.ini or %s and then reload PES." % userPesConfigFile
-		self.__descriptionNoAchievementUserText = "Please run an update to load your RetroAchievements."
-		self.__descriptionAchievementUserText = " "
-		self.__descriptionRunUpdateText = "Synchronise your achievements with RetroAchievements.org here."
-		
-		if app.retroAchievementConn:
-			if self.app.achievementUser:
-				self.updateAchievementUserText()
-				self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + self.__titleLabel.height + 30, self.__descriptionAchievementUserText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
-				
-				self.__games = self.app.achievementUser.getGames()
-				if len(self.__games) > 0:
-					gamesMenu = Menu([])
-					for g in self.__games:
-						gamesMenu.addItem(AchievementGameMenuItem(g, self.__loadAchievements, g))
-					gamesMenu.sort()
-					gamesListX = self.screenRect[0] + self.screenMargin
-					gamesListY = self.__descriptionLabel.y + self.__descriptionLabel.height + 10
-					self.__gamesList = self.addUiObject(List(self.renderer, gamesListX, gamesListY, self.screenRect[2] - (self.screenMargin * 2), self.screenRect[3] - gamesListY - self.screenMargin, gamesMenu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
-					self.__gamesList.setFocus(True)
-			else:
-				self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + self.__titleLabel.height + 30, self.__descriptionNoAchievementUserText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
-		else:
-			self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__titleLabel.y + self.__titleLabel.height + 30, self.__descriptionNoRaConnText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
-			
-		self.__updateThread = None
-		self.__isBusy = False
-		self.__scanProgressBar = None
-			
-	def __browse(self):
-		if self.app.achievementUser == None:
-			self.app.goBack()
-		
-	def drawScreen(self):
-		self.__titleLabel.draw()
-		
-		selectedText = self.menu.getSelectedItem().getText()
-		if selectedText == "Browse":
-			self.__descriptionLabel.draw()
-			if self.__gamesList:
-				self.__gamesList.draw()
-			if self.__achievementsList:
-				self.__achievementsList.draw()
-				if not self.__achievementsList.hasFocus():
-					self.__achievementsList.setFocus(True)
-		elif selectedText == "Update":
-			if self.__updateThread:
-				if self.__updateThread.started and not self.__updateThread.done:
-					self.__descriptionLabel.setText("Update in progress for %s" % self.__updateThread.getElapsed(), True)
-					self.__scanProgressBar.setProgress(self.__updateThread.getProgress())
-					self.__scanProgressBar.draw()
-				elif self.__updateThread.done and not self.__updateThread.success:
-					if self.__updateThread.interrupted:
-						self.__descriptionLabel.setText("Update was interrupted!", True)
-					else:
-						self.__descriptionLabel.setText("Update completed with errors!", True)
-					self.__updateThread = None
-					self.__isBusy = False
-				elif self.__updateThread.done and self.__updateThread.success:
-					self.__descriptionLabel.setText("Update completed successfully!", True)
-					self.__updateThread = None
-					self.__isBusy = False
-			self.__descriptionLabel.draw()
-			
-	def __goBack(self):
-		self.app.goBack()
-		
-	def isBusy(self):
-		return self.__isBusy
-		
-	def __loadAchievements(self, game):
-		logging.debug("AchievementsScreen.__loadAchievements: loading achievements for %d" % game.getId())
-		menu = Menu([])
-		badges = game.getBadges()
-		for b in badges:
-			menu.addItem(DataMenuItem(b, False, False, self.__playGame, game))
-		self.__descriptionLabel.setText("%d Achievements for %s (%s):" % (len(badges), game.getName(), game.getConsoleName()), True)
-		if self.__achievementsList == None:
-			y = self.__descriptionLabel.y + self.__descriptionLabel.height + 20
-			self.__achievementsList = self.addUiObject(IconPanelList(self.renderer, self.__gamesList.x, y, self.__gamesList.width, self.screenRect[3] - y - self.screenMargin, menu, self.app.bodyFont, self.app.smallBodyFont, self.app.textColour, self.app.textColour, self.app.lightBackgroundColour, self.app.menuSelectedBgColour, List.SCROLLBAR_AUTO, True, False))
-		else:
-			self.__achievementsList.setMenu(menu)
-		self.__gamesList.setFocus(False)
-		self.__gamesList.setVisible(False)
-		self.__achievementsList.setFocus(False)
-		self.__achievementsList.setVisible(True)
-		
-	def __playGame(self, game):
-		logging.debug("AchievementsScreen.__playGame: attempting to find corresponding game object...")
-		gameId = game.getGameId()
-		if gameId == None:
-			self.app.showMessageBox("Sorry, could not find corresponding game.", None, None)
-		else:
-			logging.debug("AchievementsScreen.__playGame: found game with ID %d" % gameId)
-			#self.app.playGame(gameId)
-	
-	def processEvent(self, event):
-		oldMenuActive = self.menuActive
-		selectedText = self.menu.getSelectedItem().getText()
-		
-		# don't pass up the event if a db scan is in progress
-		if event.type == sdl2.SDL_KEYDOWN and selectedText == "Update" and self.__updateThread != None:
-			if event.key.keysym.sym == sdl2.SDLK_BACKSPACE or event.key.keysym.sym == sdl2.SDLK_HOME:
-				if self.__updateThread.started and not self.__updateThread.done:
-					self.setMenuActive(False)
-					self.__updateThread.stop()
-				elif self.__updateDbThread.done:
-					self.setMenuActive(False)
-					self.__updateDbThread = None
-			return
-		
-		if oldMenuActive and event.type == sdl2.SDL_KEYDOWN and event.key.keysym.sym == sdl2.SDLK_BACKSPACE:
-			if selectedText == "Browse" and self.__achievementsList != None and self.__achievementsList.isVisible():
-				self.__achievementsList.setVisible(False)
-				self.__achievementsList.setFocus(False)
-				self.__gamesList.setVisible(True)
-				self.__gamesList.setFocus(True)
-				self.__descriptionLabel.setText(self.__descriptionAchievementUserText, True)
-				self.setMenuActive(False)
-				return
-			
-		super(AchievementsScreen, self).processEvent(event)
-		
-		selectedText = self.menu.getSelectedItem().getText()
-		
-		if self.menuActive:
-			if event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_UP or event.key.keysym.sym == sdl2.SDLK_DOWN):
-				if selectedText == "Browse":
-					if self.app.retroAchievementConn == None:
-						self.__descriptionLabel.setText(self.__descriptionNoRaConnText, True)
-					elif self.app.achievementUser == None:
-						self.__descriptionLabel.setText(self.__descriptionNoAchievementUserText, True)
-					else:
-						self.__descriptionLabel.setText(self.__descriptionAchievementUserText, True)
-				else:
-					self.__descriptionLabel.setText(self.__descriptionRunUpdateText, True)
-				
-		elif not self.justActivated:
-			if event.type == sdl2.SDL_KEYUP:
-				if selectedText == "Browse":
-					if self.__gamesList:
-						self.__gamesList.processEvent(event)
-					if self.__achievementsList:
-						self.__achievementsList.processEvent(event)
-			elif event.type == sdl2.SDL_KEYDOWN:
-				if selectedText == "Browse":
-					if self.__gamesList:
-						self.__gamesList.processEvent(event)
-					if self.__achievementsList:
-						self.__achievementsList.processEvent(event)
-		elif selectedText == "Update":
-			if event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER):
-				if not self.__updateThread:
-					self.__updateThread = RetroAchievementsUpdateThread(self.app.retroAchievementConn, self.app.badgeDir)
-					if self.__scanProgressBar == None:
-						self.__scanProgressBar = ProgressBar(self.renderer, self.screenRect[0] + self.screenMargin, self.__descriptionLabel.y + self.__descriptionLabel.height + 10, self.screenRect[2] - (self.screenMargin * 2), 40, self.app.lineColour, self.app.menuBackgroundColour)
-					else:
-						self.__scanProgressBar.setProgress(0)
-					self.__updateThread.start()
-		elif selectedText == "Browse":
-			if event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER):
-				pass
-					
-	def updateAchievementUserText(self):
-		self.__descriptionAchievementUserText = "Username: %s\nPoints: %d (%d)\nRank: %d\n\nGames that you have earned achievements for can be browsed below:" % (self.app.achievementUser.getName(), self.app.achievementUser.getTotalPoints(), self.app.achievementUser.getTotalTruePoints(), self.app.achievementUser.getRank())
-
 class ConsoleScreen(Screen):
 	
 	def __init__(self, app, renderer, menuRect, screenRect, console):
@@ -1464,6 +1297,7 @@ class ConsoleScreen(Screen):
 			MenuItem("Recently Played"),
 			MenuItem("Most Played"),
 			MenuItem("Recently Added"),
+			MenuItem("Have Badges"),
 			MenuItem("All")
 		]),
 		menuRect, screenRect)
@@ -1490,6 +1324,7 @@ class ConsoleScreen(Screen):
 		self.__favouritesList = None
 		self.__recentlyPlayedList = None
 		self.__mostPlayedList = None
+		self.__achievementsList = None
 		self.__gameInfoLabel = None
 		self.__gameOverviewLabel = None
 		self.__previewThumbnail = None
@@ -1514,6 +1349,8 @@ class ConsoleScreen(Screen):
 		self.__recentlyPlayedThumbPanel = None
 		self.__mostPlayedThumbPanel = None
 		self.__favouriteThumbPanel = None
+		self.__achievementsThumbPanel = None
+		self.__allGamesThumbPanel = None
 		self.refreshNeeded = True
 		#self.refresh()
 		logging.debug("ConsoleScreen.init: initialised for %s" % self.__consoleName)
@@ -1522,7 +1359,6 @@ class ConsoleScreen(Screen):
 		menu = Menu([])
 		for g in games:
 			g.refresh()
-			#m = GameMenuItem(g, False, True, self.app.playGame, g)
 			m = GameMenuItem(g, False, True, self.__playGame, g)
 			m.toggle(g.isFavourite())
 			menu.addItem(m)
@@ -1556,13 +1392,19 @@ class ConsoleScreen(Screen):
 					self.__favouriteThumbPanel.draw()
 				else:
 					self.__noGamesFoundLabel.draw()
+			elif selectedText == "Have Badges":
+				if self.__gamesWithAchievementsTotal > 0 and self.__achievementsThumbPanel:
+					self.__achievementsThumbPanel.draw()
+				else:
+					self.__noGamesFoundLabel.draw()
 			elif selectedText == "Most Played":
 				if self.__mostPlayedGamesTotal > 0 and self.__mostPlayedThumbPanel:
 					self.__mostPlayedThumbPanel.draw()
 				else:
 					self.__noGamesFoundLabel.draw()
 			elif selectedText == "All":
-				self.__descriptionLabel.draw()
+				#self.__descriptionLabel.draw()
+				self.__allGamesThumbPanel.draw()
 		else:
 			if selectedText == "Recently Added":
 				self.__recentlyAddedGamesList.draw()
@@ -1580,6 +1422,14 @@ class ConsoleScreen(Screen):
 			elif selectedText == "Favourites":
 				if self.__favouriteGamesTotal > 0:
 					self.__favouritesList.draw()
+					self.__previewThumbnail.draw()
+					self.__gameInfoLabel.draw()
+					self.__gameOverviewLabel.draw()
+				else:
+					self.__noGamesFoundLabel.draw()
+			elif selectedText == "Have Badges":
+				if self.__gamesWithAchievementsTotal > 0:
+					self.__achievementsList.draw()
 					self.__previewThumbnail.draw()
 					self.__gameInfoLabel.draw()
 					self.__gameOverviewLabel.draw()
@@ -1643,6 +1493,8 @@ class ConsoleScreen(Screen):
 					self.__recentlyPlayedList.processEvent(event)
 				elif selectedText == "Favourites" and self.__favouritesList:
 					self.__favouritesList.processEvent(event)
+				elif selectedText == "Have Badges" and self.__achievementsList:
+					self.__achievementsList.processEvent(event)
 			elif event.type == sdl2.SDL_KEYDOWN:
 				selectedText = self.menu.getSelectedItem().getText()
 				if self.justActivated and (event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER):
@@ -1684,20 +1536,27 @@ class ConsoleScreen(Screen):
 							self.__gameInfoLabel.setText(self.__getGameInfoText(self.__favouriteGames[0]))
 							self.__gameOverviewLabel.setText(self.__favouriteGames[0].getOverview())
 							self.__createPreviewThumbnail(self.__favouriteGames[0])
+					elif selectedText == "Have Badges" and self.__achievementsList == None:
+						if self.__gamesWithAchievementsTotal > 0:
+							self.__achievementsList = self.addUiObject(List(self.renderer, self.__listX, self.__listY, self.__listWidth, self.__listHeight, self.__createMenu(self.__gamesWithAchievements), self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_AUTO, True, False))
+							self.__achievementsList.setFocus(True)
+							self.__achievementsList.addListener(self)
+							self.__gameInfoLabel.setText(self.__getGameInfoText(self.__gamesWithAchievements[0]))
+							self.__gameOverviewLabel.setText(self.__gamesWithAchievements[0].getOverview())
+							self.__createPreviewThumbnail(self.__gamesWithAchievements[0])
 				else:
 					if selectedText == "All":
 						self.__allGamesList.processEvent(event)
 					elif selectedText == "Recently Added":
 						self.__recentlyAddedGamesList.processEvent(event)
-					elif selectedText == "Favourites":
-						if self.__favouritesList:
-							self.__favouritesList.processEvent(event)
-					elif selectedText == "Most Played":
-						if self.__mostPlayedList:
-							self.__mostPlayedList.processEvent(event)
-					elif selectedText == "Recently Played":
-						if self.__recentlyPlayedList:
-							self.__recentlyPlayedList.processEvent(event)
+					elif selectedText == "Favourites" and self.__favouritesList:
+						self.__favouritesList.processEvent(event)
+					elif selectedText == "Most Played" and self.__mostPlayedList:
+						self.__mostPlayedList.processEvent(event)
+					elif selectedText == "Recently Played" and self.__recentlyPlayedList:
+						self.__recentlyPlayedList.processEvent(event)
+					elif selectedText == "Have Badges" and self.__achievementsList:
+						self.__achievementsList.processEvent(event)
 						
 	def processListEvent(self, uiList, eventType, item):
 		if eventType == List.LISTEN_ITEM_SELECTED:
@@ -1714,10 +1573,16 @@ class ConsoleScreen(Screen):
 						
 	def refresh(self):
 		logging.debug("ConsoleScreen.refresh: reloading content for %s..." % self.__consoleName)
-		self.__allGames = self.__console.getGames()
+		self.__allGames = self.__console.getGames() # game objects will not be intialised with database info so only init self.__showThumbs amount
+		for g in self.__allGames[0:self.__showThumbs]:
+			g.refresh()
 		self.__allGamesTotal = len(self.__allGames)
 		if self.__allGamesList:
 			self.__allGamesList.setMenu(self.__createMenu(self.__allGames))
+		if self.__allGamesThumbPanel:
+			self.__allGamesThumbPanel.setGames(self.__allGames[0:self.__showThumbs])
+		else:
+			self.__allGamesThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__allGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
 		self.__recentlyAddedGames = self.__console.getRecentlyAddedGames()
 		self.__recentlyAddedGamesTotal = len(self.__recentlyAddedGames)
 		if self.__recentlyAddedGamesList:
@@ -1744,6 +1609,15 @@ class ConsoleScreen(Screen):
 				self.__recentlyPlayedThumbPanel.setGames(self.__recentlyPlayedGames[0:self.__showThumbs])
 			else:
 				self.__recentlyPlayedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__recentlyPlayedGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
+		self.__gamesWithAchievements = self.__console.getGamesWithAchievements()
+		self.__gamesWithAchievementsTotal = len(self.__gamesWithAchievements)
+		if self.__gamesWithAchievementsTotal > 0:
+			if self.__achievementsList:
+				self.__achievementsList.setMenu(self.__createMenu(self.__gamesWithAchievements))
+			if self.__achievementsThumbPanel:
+				self.__achievementsThumbPanel.setGames(self.__gamesWithAchievements[0:self.__showThumbs])
+			else:
+				self.__achievementsThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__gamesWithAchievements[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
 		self.__updateFavourites()
 		self.refreshNeeded = False
 		
@@ -1771,8 +1645,8 @@ class ConsoleScreen(Screen):
 class HomeScreen(Screen):
 	
 	def __init__(self, app, renderer, menuRect, screenRect):
-		#super(HomeScreen, self).__init__(app, renderer, "Home", Menu([MenuItem("Home")]), menuRect, screenRect)
-		super(HomeScreen, self).__init__(app, renderer, "Home", Menu([MenuItem("Achievements", False, False, app.setScreen, "Achievements")]), menuRect, screenRect)
+		super(HomeScreen, self).__init__(app, renderer, "Home", Menu([MenuItem("Home")]), menuRect, screenRect)
+		#super(HomeScreen, self).__init__(app, renderer, "Home", Menu([MenuItem("Achievements", False, False, app.setScreen, "Achievements")]), menuRect, screenRect)
 		for c in self.app.consoles:
 			if c.getGameTotal() > 0:
 				self.menu.addItem(ConsoleMenuItem(c, False, False, self.__loadConsoleScreen, c))
@@ -1789,11 +1663,18 @@ class HomeScreen(Screen):
 		self.__consoleTexture = None
 		self.__consoleSelected = False
 		self.__consoleName = None
-		#self.__headerLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], "Welcome to PES!", self.app.titleFont, self.app.textColour))
-		self.__headerLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], "Achievements", self.app.titleFont, self.app.textColour))
-		self.__welcomeText = "This is the PES 2.0 BETA.\n\nI hope you enjoy this new version and any feedback (good or bad) is greatly appreciated.\n\nCheers,\n\nNeil."
-		#self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__welcomeText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
-		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), "BLAH", self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
+		self.__headerLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], "Welcome to PES!", self.app.titleFont, self.app.textColour))
+		#self.__headerLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], "Achievements", self.app.titleFont, self.app.textColour))
+		
+		self.__gamesAdded = self.app.getGameTotal() > 0
+		self.__welcomeText = " "
+		if not self.__gamesAdded:
+			self.__welcomeText = "Before you can start playing any games, please add some to PES and then go to \"Update Games\" under the \"Settings\" screen.\n\nNote: if you sign up for an account at www.retroachievements.org and enter your details into your pes.ini file, PES will show your achievements here.\n\nFor help please visit http://pes.mundayweb.com."
+		else:
+			self.__welcomeText = "Welcome back to PES. Please select an item from the menu on the left.\n\nNote: if you sign up for an account at www.retroachievements.org and enter your details into your pes.ini file, PES will show your achievements here.\n\nFor help please visit http://pes.mundayweb.com."
+				
+		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__welcomeText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
+		#self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), "BLAH", self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
 		self.__recentlyAddedText = "Recently Added"
 		self.__recentlyAddedLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__recentlyAddedText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
 		self.__recentlyPlayedLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), "Recently Played", self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
@@ -1805,6 +1686,9 @@ class HomeScreen(Screen):
 		self.__initBadges = True # hack to make sure badges are not initialised inside the PES loading thread
 
 		logging.debug("HomeScreen.init: initialised")
+		
+	def __doNothing(self):
+		self.setMenuActive(True)
 			
 	def drawScreen(self):
 		super(HomeScreen, self).drawScreen()
@@ -1818,7 +1702,7 @@ class HomeScreen(Screen):
 			if self.__consoleName in self.__recentlyPlayedThumbPanels:
 				self.__recentlyPlayedThumbPanels[self.__consoleName].draw()
 			self.__recentlyPlayedLabel.draw()
-		elif self.menu.getSelectedItem().getText() == "Achievements":
+		elif self.menu.getSelectedItem().getText() == "Home":
 			if self.__initBadges:
 				self.updateRecentBadges()
 				self.__initBadges = False
@@ -1853,6 +1737,8 @@ class HomeScreen(Screen):
 		super(HomeScreen, self).processEvent(event)
 		if self.menuActive and event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_UP or event.key.keysym.sym == sdl2.SDLK_DOWN):
 			self.update()
+		elif not self.menuActive and self.menu.getSelectedItem().getText() == "Home" and event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_KP_ENTER or event.key.keysym.sym == sdl2.SDLK_RETURN):
+			self.setMenuActive(True)
 		
 	def refreshMenu(self):
 		logging.debug("HomeScreen.refreshMenu: refreshing menu contents...")
@@ -1878,11 +1764,9 @@ class HomeScreen(Screen):
 				else:
 					self.__recentlyAddedThumbPanels[consoleName].setGames(games)
 		self.menu.setSelected(0, deselectAll=True)
+		self.__gamesAdded = self.app.getGameTotal() > 0
 		self.updateRecentBadges()
 		self.update()
-		
-	def __setAchievementsText(self):
-		self.__descriptionLabel.setText("Username: %s\nPoints: %d (%d)\nRank: %d" % (self.app.achievementUser.getName(), self.app.achievementUser.getTotalPoints(), self.app.achievementUser.getTotalTruePoints(), self.app.achievementUser.getRank()), True)
 		
 	def stop(self):
 		super(HomeScreen, self).stop()
@@ -1913,24 +1797,6 @@ class HomeScreen(Screen):
 			if selectedText == "Home":
 				self.__headerLabel.setText("Welcome to PES!")
 				self.__descriptionLabel.setText(self.__welcomeText, True)
-			elif selectedText == "Achievements":
-				self.__headerLabel.setText("Achievements")
-				if self.app.retroAchievementConn:
-					if self.app.achievementUser:
-						if len(self.__badgePanels) == 0:
-							#self.__descriptionLabel.setText("None found.", True)
-							self.__setAchievementsText()
-						else:
-							#self.__descriptionLabel.setText("Your recent achievements:", True)
-							self.__setAchievementsText()
-							y = self.__descriptionLabel.y + self.__descriptionLabel.height + 20
-							for b in self.__badgePanels:
-								b.setCoords(b.x, y)
-								y += b.height + 10
-					else:
-						self.__descriptionLabel.setText("View and update your achievements here.", True)
-				else:
-					self.__descriptionLabel.setText("View and update your achievements here.", True)
 			elif selectedText == "Reboot":
 				self.__headerLabel.setText("Reboot")
 				self.__descriptionLabel.setText("Select this menu item to reboot your system.", True)
@@ -1945,14 +1811,19 @@ class HomeScreen(Screen):
 				self.__descriptionLabel.setText("Select this menu item to power off your system.", True)
 				
 	def updateRecentBadges(self):
-		if self.app.achievementUser:
+		if self.__gamesAdded and self.app.achievementUser:
 			logging.debug("HomeScreen.updateRecentBadges: updating...")
-			self.__setAchievementsText()
+			self.__welcomeText = "Welcome back to PES %s.\n\nPoints: %d (%d)\nRank: %d" % (self.app.achievementUser.getName(), self.app.achievementUser.getTotalPoints(), self.app.achievementUser.getTotalTruePoints(), self.app.achievementUser.getRank())
 			for b in self.__badgePanels:
 				self.removeUiObject(b)
 				b.destroy()
 			self.__badgePanels = []
 			badges = self.app.achievementUser.getRecentBadges(10)
+			if len(badges) == 0:
+				self.__welcomeText += "\n\nNo recent badges.\n\nYou may want to go to \"Update Badges\" under the \"Settings\" menu."
+			else:
+				self.__welcomeText += "\n\nYour recent badges:\n"
+			self.__descriptionLabel.setText(self.__welcomeText, True)
 			x = self.screenRect[0] + self.screenMargin
 			y = self.__descriptionLabel.y + self.__descriptionLabel.height + 20
 			width = self.screenRect[2] - (self.screenMargin * 2)
@@ -1962,11 +1833,6 @@ class HomeScreen(Screen):
 				y += badgePanel.height + 10
 				if y + badgePanel.height > self.screenRect[1] + self.screenRect[3]:
 					break
-		else:
-			if self.app.retroAchievementConn:
-				self.__descriptionLabel.setText("Please go to the Achievements screen to update your records.", True)
-			else:
-				self.__descriptionLabel.setText("PES can display and track gaming achievements. To do so, please register an account at www.retroachievements.org and then enter your username, password and API key into pes.ini.", True)
 				
 class PlayScreen(Screen):
 	
@@ -1977,6 +1843,7 @@ class PlayScreen(Screen):
 		self.__titleLabel = None
 		self.__consoleName = None
 		self.__achievementsList = None
+		logging.debug("PlayScreen.init: intialised")
 		
 	def drawScreen(self):
 		super(PlayScreen, self).drawScreen()
@@ -2530,7 +2397,7 @@ class SettingsScreen(Screen):
 								elif self.__deselectAllButton.hasFocus():
 									self.__deselectAllButton.setFocus(False)
 									self.__selectAllButton.setFocus(True)
-				elif selected == "Timezone":
+				elif selected == "Timezone" and self.__timezoneList:
 					self.__timezoneList.processEvent(event)
 				elif selected == "Joystick Set-Up":
 					if self.__ignoreJsEvents:
