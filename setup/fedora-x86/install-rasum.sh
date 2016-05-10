@@ -36,8 +36,9 @@ header "Installing rasum"
 rasum="$rootDir/src/rasum.c"
 checkFile $rasum
 run cd $buildDir
+rmSourceDir rasum
 run mkdir rasum
 cd rasum
 run gcc -lcrypto -lssl -o rasum $rasum
 run checkFile rasum
-run sudo install -D -m 0755 rasum $pesDir/bin/rasum
+run sudo install -D -m 0755 -v rasum $pesDir/bin/rasum
