@@ -560,15 +560,14 @@ class PESApp(object):
 			self.runCommand("sleep 1")
         
 	def run(self):
-		#sdl2.SDL_Init(sdl2.SDL_INIT_EVERYTHING)
-		sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO | sdl2.SDL_INIT_JOYSTICK | sdl2.SDL_INIT_GAMECONTROLLER)
+		if sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO | sdl2.SDL_INIT_JOYSTICK | sdl2.SDL_INIT_GAMECONTROLLER) != 0:
+			pesExit("Failed to inialise SDL!", True)
 		sdl2.SDL_ShowCursor(0)
 		sdl2.sdlttf.TTF_Init()
 		imgFlags = sdl2.sdlimage.IMG_INIT_JPG | sdl2.sdlimage.IMG_INIT_PNG
 		initted = sdl2.sdlimage.IMG_Init(imgFlags)
 		if initted != imgFlags:
-			logging.error("PESApp.run: failed to initialise SDL_Image")
-			self.exit(1)
+			pesExit("Failed to inialise SDL_Image!", True)
 		videoMode = sdl2.video.SDL_DisplayMode()
 		if sdl2.video.SDL_GetDesktopDisplayMode(0, videoMode) != 0:
 			pesExit("PESApp.run: unable to get current video mode!")
@@ -1668,11 +1667,14 @@ class HomeScreen(Screen):
 		#self.__headerLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], "Achievements", self.app.titleFont, self.app.textColour))
 		
 		self.__gamesAdded = self.app.getGameTotal() > 0
-		self.__welcomeText = " "
-		if not self.__gamesAdded:
-			self.__welcomeText = "Before you can start playing any games, please add some to PES and then go to \"Update Games\" under the \"Settings\" screen.\n\nNote: if you sign up for an account at www.retroachievements.org and enter your details into your pes.ini file, PES will show your achievements here.\n\nFor help please visit http://pes.mundayweb.com."
+		
+		self.__noGamesAddedWelcomeText = "Before you can start playing any games, please add some to PES and then go to \"Update Games\" under the \"Settings\" screen.\n\nNote: if you sign up for an account at www.retroachievements.org and enter your details into your pes.ini file, PES will show your achievements here.\n\nFor help please visit http://pes.mundayweb.com."
+		self.__gamesAddedWelcomeText = "Please select an item from the menu on the left.\n\nNote: if you sign up for an account at www.retroachievements.org and enter your details into your pes.ini file, PES will show your achievements here.\n\nFor help please visit http://pes.mundayweb.com."
+		
+		if self.__gamesAdded:
+			self.__welcomeText = self.__gamesAddedWelcomeText
 		else:
-			self.__welcomeText = "Welcome back to PES. Please select an item from the menu on the left.\n\nNote: if you sign up for an account at www.retroachievements.org and enter your details into your pes.ini file, PES will show your achievements here.\n\nFor help please visit http://pes.mundayweb.com."
+			self.__welcomeText = self.__noGamesAddedWelcomeText
 				
 		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__welcomeText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
 		#self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), "BLAH", self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
@@ -1766,7 +1768,13 @@ class HomeScreen(Screen):
 					self.__recentlyAddedThumbPanels[consoleName].setGames(games)
 		self.menu.setSelected(0, deselectAll=True)
 		self.__gamesAdded = self.app.getGameTotal() > 0
-		self.updateRecentBadges()
+		if self.__gamesAdded and self.app.achievementUser:
+			self.updateRecentBadges()
+		else:
+			if self.__gamesAdded:
+				self.__welcomeText = self.__gamesAddedWelcomeText
+			else:
+				self.__welcomeText = self.__noGamesAddedWelcomeText
 		self.update()
 		
 	def stop(self):
@@ -1814,7 +1822,7 @@ class HomeScreen(Screen):
 	def updateRecentBadges(self):
 		if self.__gamesAdded and self.app.achievementUser:
 			logging.debug("HomeScreen.updateRecentBadges: updating...")
-			self.__welcomeText = "Welcome back to PES %s.\n\nPoints: %d (%d)\nRank: %d" % (self.app.achievementUser.getName(), self.app.achievementUser.getTotalPoints(), self.app.achievementUser.getTotalTruePoints(), self.app.achievementUser.getRank())
+			self.__welcomeText = "Welcome to PES %s.\n\nPoints: %d (%d)\nRank: %d" % (self.app.achievementUser.getName(), self.app.achievementUser.getTotalPoints(), self.app.achievementUser.getTotalTruePoints(), self.app.achievementUser.getRank())
 			for b in self.__badgePanels:
 				self.removeUiObject(b)
 				b.destroy()
@@ -2084,7 +2092,8 @@ class SettingsScreen(Screen):
 			self.__descriptionLabel.draw()
 		elif selected == "Timezone":
 			self.__descriptionLabel.draw()
-			self.__timezoneList.draw()
+			if self.__timezoneList:
+				self.__timezoneList.draw()
 		elif selected == "Joystick Set-Up":
 			if self.__jsTimeRemaining > -1 and self.__jsPrompt < self.__jsPromptLen:
 				tick = sdl2.SDL_GetTicks()
@@ -2426,14 +2435,15 @@ class SettingsScreen(Screen):
 			if event.type == sdl2.SDL_KEYDOWN:
 				if event.key.keysym.sym == sdl2.SDLK_BACKSPACE:
 					logging.debug("SettingsScreen.processEvent: trapping backspace event")
-					self.__reset()
+					self.__reset(False)
 					
-	def __reset(self):
+	def __reset(self, resetMenu=True):
 		self.__init = True
 		self.__headerLabel.setText(self.__defaultHeaderText)
 		self.__descriptionLabel.setText(self.__initText, True)
 		self.__ignoreJsEvents = True
-		self.menu.setSelected(0)
+		if resetMenu:
+			self.menu.setSelected(0)
 		self.app.doJsToKeyEvents = True
 		
 	def __setTimezone(self, timezone):
