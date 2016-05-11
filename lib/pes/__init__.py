@@ -25,8 +25,8 @@ import shutil
 import sys
 import logging
 
-VERSION_NUMBER = '2.0 (BETA 1)'
-VERSION_DATE = '2016-03'
+VERSION_NUMBER = '2.0 (BETA 2)'
+VERSION_DATE = '2016-05'
 VERSION_AUTHOR = 'Neil Munday'
 
 baseDir = os.path.abspath('%s%s../../' % (os.path.dirname(os.path.realpath(__file__)), os.sep))
@@ -34,6 +34,7 @@ rasumExe = os.path.join("%s/bin/rasum" % baseDir)
 resourceDir = os.path.join(baseDir, 'resources')
 defaultFontFile = os.path.join(resourceDir, 'verdana.ttf')
 gamepadImageFile = os.path.join(resourceDir, 'gamepad.png')
+gamepadLayoutImageFile = os.path.join(resourceDir, 'gamepad-layout.png')
 networkImageFile = os.path.join(resourceDir, 'network.png')
 remoteImageFile = os.path.join(resourceDir, 'remote.png')
 confDir = os.path.join(baseDir, 'conf.d')

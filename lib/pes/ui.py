@@ -483,6 +483,7 @@ class Icon(UIObject):
 					self.__texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, self.__image)
 				texture = self.__texture
 			sdl2.SDL_RenderCopy(self.renderer, texture, None, sdl2.SDL_Rect(self.x, self.y, self.width, self.height))
+			
 	def setImage(self, image):
 		self.__image = image
 			

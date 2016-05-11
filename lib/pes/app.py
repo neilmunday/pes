@@ -2002,6 +2002,7 @@ class SettingsScreen(Screen):
 		self.__scanButton = None
 		self.__selectAllButton = None
 		self.__deselectAllButton = None
+		self.__gamepadLayoutIcon = None
 		self.__jsIndex= None
 		self.__jsName = None
 		self.__jsPromptLabel = None
@@ -2257,6 +2258,7 @@ class SettingsScreen(Screen):
 			
 			self.__jsPromptLabel.draw()
 			self.__jsTimerLabel.draw()
+			self.__gamepadLayoutIcon.draw()
 			
 	def isBusy(self):
 		return self.__isBusy
@@ -2361,6 +2363,16 @@ class SettingsScreen(Screen):
 						self.__jsTimerLabel.setCoords(self.__jsPromptLabel.x, self.__jsPromptLabel.y + self.__jsPromptLabel.height + 10)
 						self.__jsTimerLabel.setVisible(True)
 						
+					if not self.__gamepadLayoutIcon:
+						try:
+							img = Image.open(gamepadLayoutImageFile)
+							imgWidth, imgHeight = img.size
+						except IOError as e:
+							logging.error(e)
+							self.app.exit(1)
+						self.__gamepadLayoutIcon = self.addUiObject(Icon(self.renderer, self.screenRect[0] + ((self.screenRect[2] - imgWidth) / 2), self.__jsTimerLabel.y + self.__jsTimerLabel.height, imgWidth, imgHeight, gamepadLayoutImageFile, False))
+					self.__gamepadLayoutIcon.setVisible(True)
+						
 					joystickTotal = sdl2.joystick.SDL_NumJoysticks()
 					if joystickTotal > 0:
 						#logging.debug("PESApp.run: found %d control pads" % joystickTotal)
@@ -2370,7 +2382,7 @@ class SettingsScreen(Screen):
 					
 				self.__init = False
 		else:
-				if selected == "Update Games":
+				if selected == "Update Games" and self.__consoleList:
 					if event.type == sdl2.SDL_KEYDOWN:
 						if event.key.keysym.sym == sdl2.SDLK_RIGHT:
 							self.__consoleList.setFocus(False)
