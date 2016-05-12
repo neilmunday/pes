@@ -59,6 +59,7 @@ class RetroAchievementGameTask(object):
 					con.commit()
 				con.close()
 			except sqlite3.Error, e:
+				logging.error("Query failed: %s" % query)
 				logging.exception(e)
 			finally:
 				if con:
