@@ -1809,6 +1809,9 @@ class HomeScreen(Screen):
 			elif selectedText == "Reboot":
 				self.__headerLabel.setText("Reboot")
 				self.__descriptionLabel.setText("Select this menu item to reboot your system.", True)
+			elif selectedText == "Reload":
+				self.__headerLabel.setText("Reload")
+				self.__descriptionLabel.setText("Select this menu item to reload the PES GUI - handy if you have edited any config files.", True)
 			elif selectedText == "Exit":
 				self.__headerLabel.setText("Exit")
 				self.__descriptionLabel.setText("Select this menu item to exit the PES GUI and return to the command line.", True)
