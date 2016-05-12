@@ -48,14 +48,8 @@ header "Setting up groups for pi user"
 run sudo usermod -a -G audio,input,video,users pi
 
 header "Adding udev rules for USB control pads"
-
 run sudo bash -c "cat > /etc/udev/rules.d/99-evdev.rules" << 'EOF'
 KERNEL=="event*", NAME="input/%k", MODE="666"
-EOF
-
-header "Enabling bluetooth adapter at boot time..."
-run sudo bash -c "cat > /etc/udev/rules.d/10-local.rules" << 'EOF'
-ACTION=="add", KERNEL=="hci0", RUN+="/usr/bin/hciconfig hci0 up pscan"
 EOF
 
 header "Disabling core files in /etc/systemd/system.conf"
