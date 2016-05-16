@@ -41,6 +41,6 @@ checkDir imame4all-libretro
 cd imame4all-libretro
 export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -O3"
 export CXXFLAGS=$CFLAGS
-run make ARM=1 -j
+run make ARM=1
 checkFile mame2000_libretro.so
 run sudo cp -v mame2000_libretro.so $retroArchCoresDir/imame4all_libretro.so

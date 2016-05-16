@@ -42,4 +42,4 @@ cd libretro-fba
 checkFile makefile.libretro
 run make -f makefile.libretro platform=rpi2 profile=performance
 checkFile fba_libretro.so
-run cp fba_libretro.so $retroArchCoresDir
+run sudo cp fba_libretro.so $retroArchCoresDir

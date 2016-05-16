@@ -41,4 +41,4 @@ cd mupen64plus-libretro
 
 run make WITH_DYNAREC=arm platform=rpi2 V=1
 checkFile mupen64plus_libretro.so
-run cp -v mupen64plus_libretro.so $retroArchCoresDir
+run sudo cp -v mupen64plus_libretro.so $retroArchCoresDir
