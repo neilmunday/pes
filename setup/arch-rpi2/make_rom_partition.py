@@ -143,6 +143,12 @@ if __name__ == "__main__":
 	logging.debug("making %s" % pesDir)
 	os.mkdir(pesDir)
 	os.chown(pesDir, userAttrs.pw_uid, userAttrs.pw_gid)
+
+	pesLink = os.path.join('/home', user, 'pes')
+	if not os.path.lexists(pesLink):
+		logging.debug("creating symlink: %s -> %s" % (pesLink, pesDir))
+		os.symlink(pesDir, pesLink)
+		os.lchown(pesLink, userAttrs.pw_uid, userAttrs.pw_gid)
 	
 	logging.info("operations completed successfully")
 	sys.exit(0)
