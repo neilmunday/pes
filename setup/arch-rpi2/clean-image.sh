@@ -31,8 +31,7 @@ fi
 
 source $setupDir/functions.sh
 
-romDir=$pesUserDir/roms
-coverartDir=$pesUserDir/coverart
+pesDataDir="/data/pes"
 
 header "Clean Image"
 
@@ -40,12 +39,7 @@ echo "This script will prepare this SD card for imaging and for release into the
 echo ""
 
 echo "WARNING: Answering yes to the following question will perform the following operations:"
-echo -e "\t-Delete all ROMs from $romDir including any game saves"
-echo -e "\t-Delete all cover art from $coverartDir"
-echo -e "\t-Delete any BIOSes installed in $pesBiosDir"
-echo -e "\t-Delete PES user preferences and cover art cache from $coverartDir"
-echo -e "\t-Delete PES logs"
-echo -e "\t-Delete pi user RetroArch config"
+echo -e "\t-Delete all ROMs, coverart, badges, user configs, logs, and PES database from $pesDataDir"
 echo -e "\t-Delete all cached packages from pacman"
 echo -e "\t-Delete command history for root and pi users"
 echo -e "\t-Delete pip cache"
@@ -61,26 +55,14 @@ if [ "$response" == "y" ]; then
 	echo "Removing cached packages..."
 	run sudo pacman -Scc
 	echo ""
-	echo "Deleting ROMs from $romDir ..."
-	run rm -rfv $romDir/*
-	echo ""
-	echo "Deleting covert art from $coverartDir ..."
-	run rm -rfv $coverartDir/*
-	echo ""
-	echo "Deleting BIOSes..."
-	run rm -fv $pesBiosDir/*.bin
+	echo "Deleting PES data from $pesDataDir"
+	run rm -rfv $pesDataDir/*
 	echo ""
 	echo "Deleting PES build dir contents..."
 	run sudo rm -rfv $buildDir
 	echo ""
-	echo "Deleting PES user configs for pi user..."
-	run rm -rfv $pesUserDir/pes.db $pesUserDir/conf.d
-	echo ""
 	echo "Deleting RetroArch config for pi user..."
 	run rm -rfv $userDir/.config/retroarch
-	echo ""
-	echo "Deleting PES logs..."
-	run sudo rm -fv $pesUserDir/log/*
 	echo ""
 	echo "Removing unnecessary packages..."
 	run sudo $setupDir/remove-packages.sh
@@ -94,11 +76,11 @@ if [ "$response" == "y" ]; then
 	echo "Deleting root SSH known hosts..."
 	run sudo rm -fv /root/.ssh/known_hosts
 	echo ""
-	echo "Deleting pi user bash history..."
-	run rm -fv $userDir/.bash_history
+	echo "Deleting your bash history..."
+	run rm -fv ~/.bash_history
 	echo ""
-	echo "Deleting pi user SSH known hosts..."
-	run rm -fv $userDir/.ssh/known_hosts
+	echo "Deleting your SSH known hosts..."
+	run rm -fv ~/.ssh/known_hosts
 	echo ""
 	echo "Done"
 else
