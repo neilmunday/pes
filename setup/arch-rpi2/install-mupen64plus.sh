@@ -95,7 +95,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j 
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j all 
 run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install
 
 #
@@ -120,7 +120,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX V=1 VC=1 -j 
+run make PREFIX=$PREFIX V=1 VC=1 -j all 
 run sudo make PREFIX=$PREFIX V=1 VC=1 -j install
 
 #
@@ -145,7 +145,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j 
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j all 
 run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install
 
 #
@@ -172,7 +172,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX V=1 -j 
+run make PREFIX=$PREFIX V=1 -j all 
 run sudo make PREFIX=$PREFIX V=1 -j install
 
 #
@@ -185,7 +185,7 @@ component=mupen64plus-video-gles2rice
 
 if [ ! -e $component ]; then
 	header "Downloading $component"
-	run git clone https://github.com/ricrpi/$component
+	run git clone https://github.com/neilmunday/$component
 	checkDir $component
 	cd $component
 else
@@ -197,7 +197,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 VC=1
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 VC=1 all
 run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 VC=1 install
 
 #
@@ -222,7 +222,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" PREFIX=$PREFIX V=1 VC=1 
+run make SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" PREFIX=$PREFIX V=1 VC=1 all 
 run sudo make SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" PREFIX=$PREFIX V=1 VC=1 install
 # remove shared installation of gles2n64.conf so that PES' copy takes precedence
 run sudo rm -fv $PREFIX/share/mupen64plus/gles2n64.conf
