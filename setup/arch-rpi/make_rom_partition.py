@@ -6,7 +6,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2016 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -137,14 +137,12 @@ if __name__ == "__main__":
 	if rtn != 0:
 		die("unable to mount %s" % mountPoint)
 	logging.info("mounted %s" % mountPoint)
-	logging.info("setting owner to the %s user" % user)
 	userAttrs = getpwnam(user)
-	os.chown(mountPoint, userAttrs.pw_uid, userAttrs.pw_gid)
-	logging.debug("making %s" % romsDir)
-	os.mkdir(romsDir)
-	os.chown(romsDir, userAttrs.pw_uid, userAttrs.pw_gid)
-	logging.debug("making %s" % coverartDir)
-	os.mkdir(coverartDir)
-	os.chown(coverartDir, userAttrs.pw_uid, userAttrs.pw_gid)
+
+	pesDir = os.path.join(mountPoint, 'pes')
+	logging.debug("making %s" % pesDir)
+	os.mkdir(pesDir)
+	os.chown(pesDir, userAttrs.pw_uid, userAttrs.pw_gid)
+	
 	logging.info("operations completed successfully")
 	sys.exit(0)
