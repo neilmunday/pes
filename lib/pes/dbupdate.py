@@ -42,6 +42,7 @@ import time
 import multiprocessing
 
 URL_TIMEOUT = 10
+logging.getLogger("PIL").setLevel(logging.WARNING)
 	
 class ConsoleTask(object):
 	
@@ -326,6 +327,11 @@ class Consumer(multiprocessing.Process):
 		self.exitEvent = exitEvent
 		
 	def run(self):
+		# keep track of updated and added totals within the consumer
+		# rather than adding to the result queue, thus keeping the maximum
+		# result queue to the number of consumers and preventing deadlock
+		added = 0
+		updated = 0
 		while True:
 			task = self.taskQueue.get()
 			if task is None:
@@ -337,10 +343,11 @@ class Consumer(multiprocessing.Process):
 			else:
 				task.setLock(self.lock)
 				result = task.run()
+				added += result[0]
+				updated += result[1]
 				self.taskQueue.task_done()
-				self.resultQueue.put(result)
+		self.resultQueue.put((added, updated))
 		self.resultQueue.close()
-		return
 	
 class UpdateDbThread(Thread):
 	
@@ -500,13 +507,16 @@ class UpdateDbThread(Thread):
 		logging.debug("UpdateDbThread.run: added poison pills")
 		self.__queueSetUp = True
 		
+		logging.debug("UpdateDbThread.run: starting consumers...")
 		for w in consumers:
 			w.start()
 		
 		for w in consumers:
 			w.join()
+		logging.debug("UpdateDbThread.run: consumers joined!")
 		
 		self.__tasks.join()
+		logging.debug("UpdateDbThread.run: tasks joined!")
 		
 		logging.debug("UpdateDbThread.run: processing results...")
 		while not results.empty():

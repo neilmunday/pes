@@ -243,6 +243,10 @@ class RetroAchievementGameConsumer(multiprocessing.Process):
 		self.lock = lock
 		
 	def run(self):
+		# keep track of achievement total within the consumer
+		# rather than adding to the result queue, thus keeping the maximum
+		# result queue to the number of consumers and preventing deadlock
+		achievementTotal = 0
 		while True:
 			task = self.taskQueue.get()
 			if task is None:
@@ -253,9 +257,9 @@ class RetroAchievementGameConsumer(multiprocessing.Process):
 				self.taskQueue.task_done()
 			else:
 				task.setLock(self.lock)
-				result = task.run()
+				achievementTotal += task.run()
 				self.taskQueue.task_done()
-				self.resultQueue.put(result)
+		self.resultQueue.put(achievementTotal)
 		self.resultQueue.close()
 		return
 	
