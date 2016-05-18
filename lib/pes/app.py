@@ -63,8 +63,10 @@ except ImportError:
 	pass
 
 CONSOLE_TEXTURE_ALPHA = 50
-JOYSTICK_AXIS_MIN = -32700
-JOYSTICK_AXIS_MAX = 32700
+JOYSTICK_AXIS_MIN = -32766
+JOYSTICK_AXIS_MAX = 32766
+
+logging.getLogger("PIL").setLevel(logging.WARNING)
 
 def mapAxisToKey(axis, value):
 	if axis == sdl2.SDL_CONTROLLER_AXIS_LEFTY:
