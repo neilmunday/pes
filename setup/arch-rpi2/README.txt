@@ -41,11 +41,12 @@ This option tells the boot loader which device to use as the root partition. In 
 
 Edit ~/rpi/boot/cmdline.txt and uncomment the Turbo over clocking section.
 
-Also set check:
+Also set check the following are set:
 
-	gpu_mem=128
+	gpu_mem=384
+	dtparam=audio=on
 
-The extra GPU RAM is required for some of the emulators, e.g. Mupen64Plus.
+The extra GPU RAM is required for some of the emulators, e.g. Mupen64Plus and the "dtpara=audio" parameter enables the ALSA kernel module required for sound.
 	
 Note: if you want to do the rest of configuration via SSH of your Raspberry Pi also edit ~/rpi/root/ssh/sshd_config and add the line:
 
