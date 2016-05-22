@@ -35,7 +35,7 @@ cd $buildDir
 
 rmSourceDir "pcsx_rearmed"
 header "Downloading PSX emulator - pcsx_rearmed"
-run git clone https://github.com/notaz/pcsx_rearmed
+run git clone https://github.com/libretro/pcsx_rearmed
 checkDir "pcsx_rearmed"
 cd pcsx_rearmed
 run git submodule
