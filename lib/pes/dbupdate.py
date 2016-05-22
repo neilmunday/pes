@@ -29,7 +29,7 @@ from pes.util import *
 from subprocess import Popen, PIPE
 from threading import Thread
 from xml.etree import ElementTree
-from xml.etree.ElementTree import Element, SubElement
+from xml.etree.ElementTree import Element, ParseError, SubElement
 import glob
 import json
 import logging
