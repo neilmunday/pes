@@ -85,7 +85,7 @@ class RetroAchievementGameTask(object):
 		except Exception, e:
 			logging.error("RetroAchievementGameTask.run: could not get game data for %s" % self.__gameId)
 			logging.error(e)
-			return
+			return 0
 		
 		achievementTotal = 0
 		scoreTotal = 0
