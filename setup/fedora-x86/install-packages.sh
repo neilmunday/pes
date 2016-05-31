@@ -45,6 +45,7 @@ run sudo dnf install \
 	libjpeg-turbo-devel \
 	libpng-devel \
 	libtiff-devel \
+	libusb-devel \
 	mesa-libGL-devel \
 	mesa-libGLES-devel \
 	mesa-libEGL-devel \
