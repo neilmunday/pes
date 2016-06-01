@@ -9,13 +9,14 @@ Notes:
 * a custom build of SDL 2.0.4 will be installed under /opt/sdl2
 * Auto-login and PES start-up currently only configured for LXDE desktops
 
-Set-up sudo
-===========
+Set-up sudo and groups
+======================
 
 Run as root:
 
 	groupadd sudoers
 	usermod -a -G sudoers YOUR_USERNAME
+	usermod -a -G input YOUR_USERNAME
 	
 Run visudo and add a line like so:
 
