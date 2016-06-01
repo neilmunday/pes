@@ -35,6 +35,7 @@ source $setupDir/functions.sh
 
 run sudo dnf install \
 	alsa-lib-devel \
+	bluez-libs-devel \
 	boost-devel \
 	dbus-devel \
 	gcc \
