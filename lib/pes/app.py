@@ -1633,10 +1633,11 @@ class ConsoleScreen(Screen):
 				self.__favouriteThumbPanel.setGames(self.__favouriteGames[0:self.__showThumbs])
 			else:
 				self.__favouriteThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__favouriteGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
-			self.__gameInfoLabel.setText(self.__getGameInfoText(self.__favouriteGames[0]))
-			self.__gameOverviewLabel.setText(self.__favouriteGames[0].getOverview())
-			if self.__previewThumbnail != None:
-				self.__previewThumbnail.setGame(self.__favouriteGames[0])
+			if self.menu.getSelectedItem().getText() == "Favourites":
+				self.__gameInfoLabel.setText(self.__getGameInfoText(self.__favouriteGames[0]))
+				self.__gameOverviewLabel.setText(self.__favouriteGames[0].getOverview())
+				if self.__previewThumbnail != None:
+					self.__previewThumbnail.setGame(self.__favouriteGames[0])
 		
 	def stop(self):
 		super(ConsoleScreen, self).stop()
