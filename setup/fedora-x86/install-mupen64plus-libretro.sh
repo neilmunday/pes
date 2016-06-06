@@ -35,7 +35,7 @@ header "Building N64 emulator - mupenplus64"
 
 cd $buildDir
 rmSourceDir "mupen64plus-libretro"
-run git clone https://github.com/libretro/mupen64plus-libretro
+run git clone https://github.com/neilmunday/mupen64plus-libretro
 checkDir mupen64plus-libretro
 cd mupen64plus-libretro
 
