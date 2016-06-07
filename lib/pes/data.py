@@ -59,7 +59,6 @@ class Record(object):
 					if f not in keys:
 						raise Exception("Record.init: field \"%s\" not found in row for a \"%s\" record" % (f, self.__table))
 					self.__properties[f] = row[f]
-				print self.__properties
 				self.__isNew = False
 				self.__dataLoaded = True
 			else:
