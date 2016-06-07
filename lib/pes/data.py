@@ -35,7 +35,7 @@ def regexp(expr, item):
 
 class Record(object):
 
-	def __init__(self, db, table, fields, keyField, keyValue = None, autoIncrement = True, loadData = True):
+	def __init__(self, db, table, fields, keyField, keyValue = None, autoIncrement = True, loadData = True, row = None):
 		self.__db = db
 		self.__autoIncrement = autoIncrement
 		self.__table = table
@@ -52,7 +52,18 @@ class Record(object):
 			self.refresh()
 			self.__dataLoaded = True
 		else:
-			self.__dataLoaded = False
+			if row != None and self.__keyValue != None:
+				# check all our fields are present in the record
+				keys = row.keys()
+				for f in self.__fields:
+					if f not in keys:
+						raise Exception("Record.init: field \"%s\" not found in row for a \"%s\" record" % (f, self.__table))
+					self.__properties[f] = row[f]
+				print self.__properties
+				self.__isNew = False
+				self.__dataLoaded = True
+			else:
+				self.__dataLoaded = False
 
 	def connect(self):
 		if self.__con:
@@ -94,19 +105,16 @@ class Record(object):
 		self.__cur.execute(query)
 		return self.__cur
 
-	def __getFieldsQuery(self):
-		i = 0
-		total = len(self.__fields)
-		query = ''
-		for f in self.__fields:
-			query += '`%s`' % f
-			if i < total - 1:
-				query += ','
-			i += 1
-		return query
-
 	def getDb(self):
 		return self.__db
+	
+	def getFieldsAsSql(self, includeTableName=False):
+		if not includeTableName:
+			return ','.join("`%s`" % f for f in self.__fields)
+		fields = []
+		for f in self.__fields:
+			fields.append("`%s`.`%s`" % (self.__table, f))
+		return ','.join(fields)
 
 	def getId(self):
 		return self.__properties[self.__keyField]
@@ -137,7 +145,7 @@ class Record(object):
 			raise sqlite3.Error('Database %s not connected' % self.__db)
 
 		if self.__properties[self.__keyField] != None:
-			self.doQuery('SELECT %s FROM `%s` WHERE `%s` = %d;' % (self.__getFieldsQuery(), self.__table, self.__keyField, self.__properties[self.__keyField]))
+			self.doQuery('SELECT %s FROM `%s` WHERE `%s` = %d;' % (','.join("`%s`" % f for f in self.__fields), self.__table, self.__keyField, self.__properties[self.__keyField]))
 			row = self.__cur.fetchone()
 			if row == None:
 				#raise sqlite3.Error('No record found for field "%s" in table "%s"' % (self.__primaryKey, self.__table)
@@ -417,6 +425,7 @@ class Console(Record):
 		self.__imgCacheDir = imgCacheDir
 		self.__gameTotal = None
 		self.__ignoreRoms = []
+		self.__gameDict = {}
 		
 	def addIgnoreRom(self, rom):
 		if rom not in self.__ignoreRoms:
@@ -433,11 +442,16 @@ class Console(Record):
 
 	def getEmulator(self):
 		return self.__emulator
+	
+	def getGame(self, i):
+		return self.__gameDict[i]
 		
 	def getGames(self, limit=0, count=0, refeshGames=False):
 		if self.__games == None or refeshGames:
+			self.__gameDict = {}
 			self.connect()
-			query = 'SELECT `game_id` FROM `games` WHERE `console_id` = %d ORDER BY UPPER(`name`)' % self.getId()
+			#query = 'SELECT `game_id` FROM `games` WHERE `console_id` = %d ORDER BY UPPER(`name`)' % self.getId()
+			query = 'SELECT * FROM `games` WHERE `console_id` = %d ORDER BY UPPER(`name`)' % self.getId()
 			if limit >= 0 and count > 0:
 				query += ' LIMIT %d, %d' % (limit, count)
 			query += ';'
@@ -447,7 +461,9 @@ class Console(Record):
 				row = cur.fetchone()
 				if row == None:
 					break
-				self.__games.append(Game(row['game_id'], self.getDb(), self, False))
+				g = Game(row['game_id'], self.getDb(), self, False, row)
+				self.__gameDict[int(row['game_id'])] = g
+				self.__games.append(g)
 			self.disconnect()
 		return self.__games
 
@@ -472,6 +488,19 @@ class Console(Record):
 			games.append(Game(row['game_id'], self.getDb(), self))
 		self.disconnect()
 		return games
+		
+	def getGamesWithAchievementIds(self):
+		self.connect()
+		games = []
+		query = 'SELECT `game_id` FROM `games` WHERE `console_id` = %d AND `achievement_api_id` > 0 AND (SELECT COUNT(*) FROM `achievements_badges` WHERE `game_id` = `achievement_api_id`) > 0 ORDER BY UPPER(`name`)' % self.getId()
+		cur = self.doQuery(query)
+		while True:
+			row = cur.fetchone()
+			if row == None:
+				break
+			games.append(row['game_id'])
+		self.disconnect()
+		return games
 
 	def getExtensions(self):
 		return self.__extensions
@@ -488,6 +517,21 @@ class Console(Record):
 			if row == None:
 				break
 			favourites.append(Game(row['game_id'], self.getDb(), self))
+		self.disconnect()
+		return favourites
+		
+	def getFavouriteIds(self, limit=0, count=0):
+		self.connect()
+		favourites = []
+		query = 'SELECT `game_id` FROM `games` WHERE `console_id` = %d AND `favourite` = 1 ORDER BY UPPER(`name`)' % self.getId()
+		if limit >= 0 and count > 0:
+			query += ' LIMIT %d, %d' % (limit, count)
+		cur = self.doQuery(query)
+		while True:
+			row = cur.fetchone()
+			if row == None:
+				break
+			favourites.append(row['game_id'])
 		self.disconnect()
 		return favourites
 		
@@ -524,6 +568,21 @@ class Console(Record):
 			mostPlayed.append(Game(row['game_id'], self.getDb(), self))
 		self.disconnect()
 		return mostPlayed
+		
+	def getMostPlayedGameIds(self, limit=0, count=0):
+		self.connect()
+		mostPlayed = []
+		query = 'SELECT `game_id` FROM `games` WHERE `console_id` = %d AND `play_count` > 0 ORDER BY `play_count` DESC' % self.getId()
+		if limit >= 0 and count > 0:
+			query += ' LIMIT %d, %d' % (limit, count)
+		cur = self.doQuery(query)
+		while True:
+			row = cur.fetchone()
+			if row == None:
+				break
+			mostPlayed.append(row['game_id'])
+		self.disconnect()
+		return mostPlayed
 	
 	def getRecentlyAddedGames(self, limit=0, count=0):
 		self.connect()
@@ -540,6 +599,22 @@ class Console(Record):
 			recentlyAdded.append(Game(row['game_id'], self.getDb(), self))
 		self.disconnect()
 		return recentlyAdded
+		
+	def getRecentlyAddedGameIds(self, limit=0, count=0):
+		self.connect()
+		recentlyAdded = []
+		query = 'SELECT `game_id` FROM `games` WHERE `console_id` = %d ORDER BY `added`, UPPER(`name`)' % self.getId()
+		if limit >= 0 and count > 0:
+			query += ' LIMIT %d, %d' % (limit, count)
+		query += ';'
+		cur = self.doQuery(query)
+		while True:
+			row = cur.fetchone()
+			if row == None:
+				break
+			recentlyAdded.append(row['game_id'])
+		self.disconnect()
+		return recentlyAdded
 	
 	def getRecentlyPlayedGames(self, limit=0, count=0):
 		self.connect()
@@ -554,6 +629,22 @@ class Console(Record):
 			if row == None:
 				break
 			recentlyPlayed.append(Game(row['game_id'], self.getDb(), self))
+		self.disconnect()
+		return recentlyPlayed
+		
+	def getRecentlyPlayedGameIds(self, limit=0, count=0):
+		self.connect()
+		recentlyPlayed = []
+		query = 'SELECT `game_id` FROM `games` WHERE `console_id` = %d AND `last_played` > -1 ORDER BY `last_played`' % self.getId()
+		if limit >= 0 and count > 0:
+			query += ' LIMIT %d, %d' % (limit, count)
+		query += ';'
+		cur = self.doQuery(query)
+		while True:
+			row = cur.fetchone()
+			if row == None:
+				break
+			recentlyPlayed.append(row['game_id'])
 		self.disconnect()
 		return recentlyPlayed
 
@@ -589,8 +680,8 @@ class Console(Record):
 
 class Game(Record):
 
-	def __init__(self, gameId, db, console, loadData=True):
-		super(Game, self).__init__(db, 'games', ['thegamesdb_id', 'exists', 'console_id', 'name', 'cover_art', 'game_path', 'overview', 'released', 'last_played', 'favourite', 'play_count', 'size', 'rasum', 'achievement_api_id'], 'game_id', int(gameId), True, loadData)
+	def __init__(self, gameId, db, console, loadData=True, row=None):
+		super(Game, self).__init__(db, 'games', ['thegamesdb_id', 'exists', 'console_id', 'name', 'cover_art', 'game_path', 'overview', 'released', 'last_played', 'favourite', 'play_count', 'size', 'rasum', 'achievement_api_id'], 'game_id', int(gameId), True, loadData, row)
 		self.__console = console
 
 	def getAchievementApiId(self):

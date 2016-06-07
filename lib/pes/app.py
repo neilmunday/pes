@@ -1360,7 +1360,6 @@ class ConsoleScreen(Screen):
 	def __createMenu(self, games):
 		menu = Menu([])
 		for g in games:
-			g.refresh()
 			m = GameMenuItem(g, False, True, self.__playGame, g)
 			m.toggle(g.isFavourite())
 			menu.addItem(m)
@@ -1575,9 +1574,9 @@ class ConsoleScreen(Screen):
 						
 	def refresh(self):
 		logging.debug("ConsoleScreen.refresh: reloading content for %s..." % self.__consoleName)
-		self.__allGames = self.__console.getGames() # game objects will not be intialised with database info so only init self.__showThumbs amount
-		for g in self.__allGames[0:self.__showThumbs]:
-			g.refresh()
+		start = time.time()
+		# all games
+		self.__allGames = self.__console.getGames()
 		self.__allGamesTotal = len(self.__allGames)
 		if self.__allGamesList:
 			self.__allGamesList.setMenu(self.__createMenu(self.__allGames))
@@ -1585,35 +1584,51 @@ class ConsoleScreen(Screen):
 			self.__allGamesThumbPanel.setGames(self.__allGames[0:self.__showThumbs])
 		else:
 			self.__allGamesThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__allGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
-		self.__recentlyAddedGames = self.__console.getRecentlyAddedGames()
-		self.__recentlyAddedGamesTotal = len(self.__recentlyAddedGames)
+		# recently added
+		recentlyAddedGameIds = self.__console.getRecentlyAddedGameIds()
+		self.__recentlyAddedGamesTotal = len(recentlyAddedGameIds)
+		self.__recentlyAddedGames = []
+		for i in recentlyAddedGameIds:
+			self.__recentlyAddedGames.append(self.__console.getGame(i))
 		if self.__recentlyAddedGamesList:
 			self.__recentlyAddedGamesList.setMenu(self.__createMenu(self.__recentlyAddedGames))
 		if self.__recentlyAddedThumbPanel:
 			self.__recentlyAddedThumbPanel.setGames(self.__recentlyAddedGames[0:self.__showThumbs])
 		else:
 			self.__recentlyAddedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__recentlyAddedGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
-		self.__mostPlayedGames = self.__console.getMostPlayedGames()
-		self.__mostPlayedGamesTotal = len(self.__mostPlayedGames)
+		# most played
+		mostPlayedGameIds = self.__console.getMostPlayedGameIds()
+		self.__mostPlayedGamesTotal = len(mostPlayedGameIds)
+		self.__mostPlayedGames = []
 		if self.__mostPlayedGamesTotal > 0:
+			for i in mostPlayedGameIds:
+				self.__mostPlayedGames.append(self.__console.getGame(i))
 			if self.__mostPlayedList:
 				self.__mostPlayedList.setMenu(self.__createMenu(self.__mostPlayedGames))
 			if self.__mostPlayedThumbPanel:
 				self.__mostPlayedThumbPanel.setGames(self.__mostPlayedGames[0:self.__showThumbs])
 			else:
 				self.__mostPlayedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__mostPlayedGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
-		self.__recentlyPlayedGames = self.__console.getRecentlyPlayedGames()
-		self.__recentlyPlayedGamesTotal = len(self.__recentlyPlayedGames)
+		# recently played
+		recentlyPlayedGameIds = self.__console.getRecentlyPlayedGameIds()
+		self.__recentlyPlayedGamesTotal = len(recentlyPlayedGameIds)
+		self.__recentlyPlayedGames = []
 		if self.__recentlyPlayedGamesTotal > 0:
+			for i in recentlyPlayedGameIds:
+				self.__recentlyPlayedGames.append(self.__console.getGame(i))
 			if self.__recentlyPlayedList:
 				self.__recentlyPlayedList.setMenu(self.__createMenu(self.__recentlyPlayedGames))
 			if self.__recentlyPlayedThumbPanel:
 				self.__recentlyPlayedThumbPanel.setGames(self.__recentlyPlayedGames[0:self.__showThumbs])
 			else:
 				self.__recentlyPlayedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__recentlyPlayedGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
-		self.__gamesWithAchievements = self.__console.getGamesWithAchievements()
-		self.__gamesWithAchievementsTotal = len(self.__gamesWithAchievements)
+		# games with achievements
+		gamesWithAchievementIds = self.__console.getGamesWithAchievementIds()
+		self.__gamesWithAchievementsTotal = len(gamesWithAchievementIds)
+		self.__gamesWithAchievements = []
 		if self.__gamesWithAchievementsTotal > 0:
+			for i in gamesWithAchievementIds:
+				self.__gamesWithAchievements.append(self.__console.getGame(i))
 			if self.__achievementsList:
 				self.__achievementsList.setMenu(self.__createMenu(self.__gamesWithAchievements))
 			if self.__achievementsThumbPanel:
@@ -1622,11 +1637,16 @@ class ConsoleScreen(Screen):
 				self.__achievementsThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__gamesWithAchievements[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
 		self.__updateFavourites()
 		self.refreshNeeded = False
+		logging.debug("ConsoleScreen.__refresh: time taken = %0.02fs" % (time.time() - start))
 		
 	def __updateFavourites(self):
-		self.__favouriteGames = self.__console.getFavourites()
-		self.__favouriteGamesTotal = len(self.__favouriteGames)
+		self.__favouriteGames = []
+		favouriteGameIds = self.__console.getFavouriteIds()
+		self.__favouriteGamesTotal = len(favouriteGameIds)
+		logging.debug("ConsoleScreen.__updateFavourites: favourite total: %d" % self.__favouriteGamesTotal)
 		if self.__favouriteGamesTotal > 0:
+			for i in favouriteGameIds:
+				self.__favouriteGames.append(self.__console.getGame(i))
 			if self.__favouritesList:
 				self.__favouritesList.setMenu(self.__createMenu(self.__favouriteGames))
 			if self.__favouriteThumbPanel:
@@ -1638,6 +1658,10 @@ class ConsoleScreen(Screen):
 				self.__gameOverviewLabel.setText(self.__favouriteGames[0].getOverview())
 				if self.__previewThumbnail != None:
 					self.__previewThumbnail.setGame(self.__favouriteGames[0])
+		else:
+			if self.__favouritesList:
+				self.__favouritesList.destroy()
+				self.__favouritesList = None
 		
 	def stop(self):
 		super(ConsoleScreen, self).stop()

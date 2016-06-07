@@ -230,6 +230,13 @@ class GameMenuItem(MenuItem):
 	def getGame(self):
 		return self.__game
 	
+	def toggle(self, t):
+		super(GameMenuItem, self).toggle(t)
+		self.__game.setFavourite(t)
+	
+	def isToggled(self):
+		return self.__game.isFavourite()
+	
 	def __repr__(self):
 		return "<GameMenuItem: text: %s >" % self.__game.getName()
 
