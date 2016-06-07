@@ -53,6 +53,7 @@ run sudo dnf install \
 	openssl-devel \
 	patch \
 	pkgconfig \
+	pulseaudio-libs-devel \
 	python-devel \
 	python-Levenshtein \
 	python-pillow \
