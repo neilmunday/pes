@@ -48,6 +48,6 @@ run sudo mkdir -p $retroArchCoresDir
 run sudo mkdir -p $retroArchConfigDir
 export PKG_CONFIG_PATH=/opt/sdl2/default/lib/pkgconfig
 
-run ./configure --prefix="$retroArchInstallDir" --enable-udev --disable-ffmpeg --enable-netplay --disable-pulse --enable-x11 --enable-sdl2 --enable-zlib --enable-7zip
+run ./configure --prefix="$retroArchInstallDir" --enable-udev --disable-ffmpeg --enable-netplay --enable-pulse --enable-x11 --enable-sdl2 --enable-zlib --enable-7zip
 run make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1 -j
 run sudo make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1 -j install
