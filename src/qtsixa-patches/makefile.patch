@@ -1,0 +1,11 @@
+--- Makefile.orig	2016-06-14 23:45:47.226687820 +0100
++++ Makefile	2016-06-14 23:45:58.676608402 +0100
+@@ -4,7 +4,7 @@
+ CXXFLAGS ?= -O2 -Wall
+ LDFLAGS += -Wl,-Bsymbolic-functions
+ 
+-GASIA_GAMEPAD_HACKS = false # Set to 'true' to enable hacks
++GASIA_GAMEPAD_HACKS = true # Set to 'true' to enable hacks
+ 
+ ifeq ($(GASIA_GAMEPAD_HACKS),true)
+ CXXFLAGS += -DGASIA_GAMEPAD_HACKS

@@ -46,8 +46,14 @@ checkDir "qtsixa"
 cd qtsixa
 checkDir "sixad"
 cd sixad
-run sed -i -r "s/GASIA_GAMEPAD_HACKS = false/GASIA_GAMEPAD_HACKS = true/" Makefile
-run sed -i -r "s#/usr/sbin/sixad-sixaxis#$installDir/sbin/sixad-sixaxis#" bluetooth.cpp
+
+# apply patches
+patchDir="$rootDir/src/qtsixa-patches"
+checkDir $patchDir
+for p in $patchDir/*.patch; do
+	echo "Applying patch ${p}..."
+	patch < $p
+done
 
 run make -j
 
