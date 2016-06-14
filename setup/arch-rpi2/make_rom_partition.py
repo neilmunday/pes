@@ -59,12 +59,13 @@ if __name__ == "__main__":
 		die("%s does not exist" % args.device)
 	
 	fstabFile = '/etc/fstab'
-	fsType = 'ext4'
+	fsType = 'vfat'
 	label = "data"
 	mountPoint = os.sep + label
 	romsDir = mountPoint + os.sep + "roms"
 	coverartDir = mountPoint + os.sep + "coverart"
 	user = 'pi'
+	userAttrs = getpwnam(user)
 	
 	# look for existing "roms" partition - uses disk label to see if we have already made it or not
 	logging.debug("looking for existing \"%s\" partition" % label)
@@ -101,7 +102,7 @@ if __name__ == "__main__":
 		sys.exit(1)
 	
 	logging.info("partition created")
-	command = "mkfs -L %s -t %s %s" % (label, fsType, dataDevice)
+	command = "mkfs.vfat -n %s %s" % (label, dataDevice)
 	logging.debug("now formatting using command: %s" % command)
 	process = subprocess.Popen(command.split(' '), stdout=subprocess.PIPE, bufsize=1)
 	with process.stdout:
@@ -129,7 +130,7 @@ if __name__ == "__main__":
 			
 	if not foundDataMount:
 		logging.info("adding entry to %s" % fstabFile)
-		fstab.lines.append(Line("%s  %s           %s    defaults        0       0" % (dataDevice, mountPoint, fsType)))
+		fstab.lines.append(Line("%s  %s           %s    defaults,uid=%d,gid=%d        0       0" % (dataDevice, mountPoint, fsType, userAttrs.pw_uid, userAttrs.pw_gid)))
 		fstab.write(fstabFile)
 	
 	logging.debug("attempting to mount")
@@ -142,7 +143,7 @@ if __name__ == "__main__":
 	pesDir = os.path.join(mountPoint, 'pes')
 	logging.debug("making %s" % pesDir)
 	os.mkdir(pesDir)
-	os.chown(pesDir, userAttrs.pw_uid, userAttrs.pw_gid)
+	#os.chown(pesDir, userAttrs.pw_uid, userAttrs.pw_gid)
 
 	pesLink = os.path.join('/home', user, 'pes')
 	if not os.path.lexists(pesLink):
