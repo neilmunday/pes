@@ -42,6 +42,6 @@ cd picodrive
 run git submodule init
 run git submodule update
 run ./configure
-make -f Makefile.libretro platform="raspberrypi"
+make -f Makefile.libretro platform=armv ARM_ASM=1 use_fame=0 use_cyclone=1 use_sh2drc=1 use_svpdrc=1 use_cz80=0 use_drz80=1
 run sudo cp picodrive_libretro.so $retroArchCoresDir
 
