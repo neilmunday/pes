@@ -93,12 +93,14 @@ class ConsoleTask(object):
 		updated = 0
 		
 		filename = os.path.split(rom)[1]
-		if not console.ignoreRom(filename):
-			logging.debug("ConsoleTask: processing -> %s" % filename)
-			name = filename
-			fileSize = os.path.getsize(rom)
-			for e in console.getExtensions():
-				name = name.replace(e, '')
+		#if not console.ignoreRom(filename):
+		logging.debug("ConsoleTask: processing -> %s" % filename)
+		name = filename
+		fileSize = os.path.getsize(rom)
+		for e in console.getExtensions():
+			name = name.replace(e, '')
+			
+		if not console.ignoreRom(name):
 				
 			row = self.__execute("SELECT `full_name` FROM `games_catalogue` WHERE `short_name` = \"%s\"" % name, True)
 			if row:
