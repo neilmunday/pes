@@ -809,6 +809,22 @@ class List(UIObject):
 			logging.debug("List.processMenuEvent: item selected")
 			self.__selectLabel(self.__menu.getSelectedIndex())
 			self.__fireListenEvent(List.LISTEN_ITEM_SELECTED, item)
+		elif eventType == Menu.LISTEN_ITEM_REMOVED:
+			logging.debug("List.processMenuEvent: item removed")
+			self.__menuCount = self.__menu.getCount()
+			self.__visibleMenuItems = int(self.height / self.__fontHeight)
+			if self.__visibleMenuItems > self.__menuCount:
+				# get last label and destroy it
+				l = self.__labels[-1]
+				self.__labels.remove(l)
+				l.destroy()
+				self.__visibleMenuItems = self.__menuCount
+			else:
+				if self.__showScrollbarPref == List.SCROLLBAR_AUTO or self.__showScrollbarPref == List.SCROLLBAR_ENABLED:
+					self.__setupScrollbar()
+			# update label text
+			self.__selectLabel(0)
+			self.__fireListenEvent(List.LISTEN_ITEM_REMOVED, item)
 		elif eventType == Menu.LISTEN_ITEM_TOGGLED:
 			logging.debug("List.processMenuEvent: item toggled")
 			self.__fireListenEvent(List.LISTEN_ITEM_TOGGLED, item)
@@ -818,7 +834,7 @@ class List(UIObject):
 			self.__listeners.remove(l)
 		
 	def __selectLabel(self, menuIndex):
-		logging.debug("List.__selectLabel: selecting index %d (%s)" % (menuIndex, self.__menu.getSelectedItem().getText()))
+		logging.debug("List.__selectLabel: selecting index %d (%s)" % (menuIndex, self.__menu.getItem(menuIndex).getText()))
 		self.__labels[self.__labelIndex].setBackgroundColour(None)
 		self.__labels[self.__labelIndex].setColour(self.__colour)
 		if menuIndex < self.__visibleMenuItems:
