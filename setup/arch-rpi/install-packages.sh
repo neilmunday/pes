@@ -39,7 +39,7 @@ run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
 	python2 python2-levenshtein python2-pip python2-imaging \
 	ntp \
 	freetype2 \
-	parted \
+	dosfstools parted \
 	rsync \
 	samba \
 	fbset mesa mesa-libgl alsa-utils \
