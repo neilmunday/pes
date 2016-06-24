@@ -375,8 +375,8 @@ class PESApp(object):
 							with open(jsConfig, 'w') as f:
 								# control pad id etc.
 								f.write("input_device = \"%s\"\n" % jsName)
-								f.write("input_vendor_id = \"%s\"\n" % vendorId)
-								f.write("input_product_id = \"%s\"\n" % productId)
+								#f.write("input_vendor_id = \"%s\"\n" % vendorId)
+								#f.write("input_product_id = \"%s\"\n" % productId)
 								f.write("input_driver = \"udev\"\n")
 								# buttons
 								f.write(self.getRetroArchConfigButtonValue("input_a", c, sdl2.SDL_CONTROLLER_BUTTON_B))
