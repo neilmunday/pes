@@ -50,7 +50,7 @@ run sudo mkdir -p $retroArchConfigDir
 export CFLAGS="-O3 -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
 export CXXFLAGS=$CFLAGS
 
-run ./configure --prefix="$retroArchInstallDir" --enable-udev --disable-ffmpeg --enable-netplay --disable-pulse --disable-x11 --disable-sdl
+run ./configure --prefix="$retroArchInstallDir" --enable-udev --disable-ffmpeg --enable-netplay --disable-pulse --disable-x11 --enable-sdl
 run make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1
 run sudo make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1 install
 
