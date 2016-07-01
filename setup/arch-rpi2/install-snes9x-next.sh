@@ -40,7 +40,7 @@ header "Downloading SNES emulator - snes9x-next"
 run git clone git://github.com/libretro/snes9x-next
 checkDir snes9x-next
 cd "snes9x-next"
-checkRetro Makefile.libretro
+checkFile Makefile.libretro
 export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -O3"
 export CXXFLAGS=$CFLAGS
 run make platform=rpi2 -j -f Makefile.libretro
