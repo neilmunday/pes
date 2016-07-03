@@ -44,7 +44,7 @@ run git submodule update
 export CFLAGS="-mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
 export CXXFLAGS=$CFLAGS
 
-run ./configure --platform=libretro
+run ./configure --platform=libretro --disable-neon
 run make
 run sudo cp libretro.so $retroArchCoresDir/pcsx_libretro.so
 
