@@ -25,7 +25,7 @@ cd ~
 mkdir rpi
 cd rpi
 mkdir boot root
-wget http://archlinuxarm.org/os/ArchLinuxARM-rpi-latest.tar.gz
+wget http://archlinuxarm.org/os/ArchLinuxARM-rpi-2-latest.tar.gz
 mount /dev/sdd1 boot
 mount /dev/sdd2 root
 cd root
