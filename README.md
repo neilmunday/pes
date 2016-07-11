@@ -3,7 +3,7 @@ PES
 
 PES is a graphical front end for a variety of games console emulators that has been written in [Python](https://www.python.org>) which is intended for use on the Raspberry Pi.
 
-At the heart of PES is the pes.py GUI. This can be used on any OS that supports [Python](https://www.python.org>) and [PySDL2](http://pysdl2.readthedocs.org/>).
+At the heart of PES is the PES GUI. This can be used on any OS that supports [Python](https://www.python.org>) and [PySDL2](http://pysdl2.readthedocs.org/>).
 
 ![PES GUI 1](http://pes.mundayweb.com/html/_images/pes-main.png)
 ![PES GUI 2](http://pes.mundayweb.com/html/_images/pes-nes.png)
@@ -79,3 +79,7 @@ I would like to thank the following people/groups as without them PES would not 
 * Gerald Davies for lending me his NES and SNES USB control pads for testing
 * Paul Palmer for lending me his XBOX 360 control pad for testing
 * [Michell F](https://github.com/mfwhite) for testing and reviewing PES
+* Paul Panther for testing and suggesting features for PES
+* Fredrik for testing and suggesting features for PES
+
+
