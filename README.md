@@ -5,8 +5,8 @@ PES is a graphical front end for a variety of games console emulators that has b
 
 At the heart of PES is the PES GUI. This can be used on any OS that supports [Python](https://www.python.org>) and [PySDL2](http://pysdl2.readthedocs.org/>).
 
-![PES GUI 1](http://pes.mundayweb.com/html/_images/pes-main.png)
-![PES GUI 2](http://pes.mundayweb.com/html/_images/pes-nes.png)
+![PES GUI 1](http://pes.mundayweb.com/html/_images/pes-main.png?)
+![PES GUI 2](http://pes.mundayweb.com/html/_images/pes-nes.png?)
 
 For use on the Raspberry Pi, PES is distributed via an ArchLinux image (see http://pes.mundayweb.com/html/Installation.html#downloading for the latest image) which contains pre-compiled emulators for the Raspberry Pi. The configuration and compilation scripts used to create the image are also included in this repository.
 
