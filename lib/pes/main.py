@@ -32,20 +32,8 @@ import sys
 from pes import *
 from pes.data import Console
 from pes.app import PESApp
+from pes.config import PESConfig
 from pes.util import *
-
-def processColour(colour):
-	if len(colour) != 3:
-		logging.error("processColour: colour array does not contain 3 elements!")
-		return None
-	rtn = []
-	for c in colour:
-		try:
-			rtn.append(int(c))
-		except ValueError, e:
-			logging.error("processColour: %s is not an integer!" % c)
-			return None
-	return rtn
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Launch the Pi Entertainment System (PES)', add_help=True)
@@ -75,7 +63,6 @@ if __name__ == '__main__':
 		logging.debug("PES config dir: %s" % confDir)
 		checkDir(confDir)
 		logging.debug("PES user dir: %s" % userDir)
-		
 		mkdir(userDir)
 		mkdir(userConfDir)
 		mkdir(userRetroArchConfDir)
@@ -93,91 +80,34 @@ if __name__ == '__main__':
 		
 		logging.info("loading settings...")
 		checkFile(userPesConfigFile)
-		configParser = ConfigParser.ConfigParser()
-		configParser.read(userPesConfigFile)
-		
-		if not configParser.has_section("colours"):
-			pesExit("%s has no \"colours\" section!" % userPesConfigFile)
-		
-		romsDir = None
-		coverartDir = None
-		fontFile = None
-		backgroundColour = None
-		menuBackgroundColour = None
-		headerBackgroundColour = None
-		lineColour = None
-		textColour = None
-		cecEnabled = False
-		screenSaverTimeout = 0
-		
-		userHome = os.path.expanduser('~')
-		
-		retroAchievementsUserName = None
-		retroAchievementsPassword = None
-		retroAchievementsApiKey = None
 		
 		try:
-			# pes settings
-			cecEnabled = configParser.getboolean('settings', 'hdmi-cec')
-			fontFile = configParser.get('settings', 'fontFile').replace('%%BASE%%', baseDir)
-			romsDir = configParser.get('settings', 'romsDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
-			coverartDir = configParser.get('settings', 'coverartDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
-			badgeDir = configParser.get('settings', 'badgeDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
-			biosDir = configParser.get('settings', 'biosDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
-			screenSaverTimeout = configParser.getint('settings', 'screenSaverTimeout')
-			mkdir(romsDir)
-			mkdir(coverartDir)
-			mkdir(badgeDir)
-			mkdir(biosDir)
-			checkFile(fontFile)
-			# colour settings
-			backgroundColour = processColour(configParser.get("colours", "background").split(','))
-			if backgroundColour == None:
-				pesExit("invalid background colour in %s" % userPesConfigFile)
-			menuBackgroundColour = processColour(configParser.get("colours", "menuBackground").split(','))
-			headerBackgroundColour = processColour(configParser.get("colours", "headerBackground").split(','))
-			lineColour = processColour(configParser.get("colours", "line").split(','))
-			menuTextColour = processColour(configParser.get("colours", "menuText").split(','))
-			menuSelectedTextColour = processColour(configParser.get("colours", "menuSelectedText").split(','))
-			textColour = processColour(configParser.get("colours", "text").split(','))
-			lightBackgroundColour = processColour(configParser.get("colours", "lightBackground").split(','))
-			# coverart settings
-			coverartSize = configParser.getfloat("settings", "coverartSize")
-			coverartCacheLen = configParser.getint("settings", "coverartCacheLen")
-			# icon settings
-			iconCacheLen = configParser.getint("settings", "iconCacheLen")
-			# command settings
-			shutdownCommand = configParser.get("commands", "shutdown")
-			rebootCommand = configParser.get("commands", "reboot")
-			listTimezonesCommand = configParser.get("commands", "listTimezones")
-			setTimezoneCommand = configParser.get("commands", "setTimezone")
-			getTimezoneCommand = configParser.get("commands", "getTimezone")
-			# RetroAchievements settings
-			if configParser.has_section("RetroAchievements"):
-				retroAchievementsUserName = configParser.get("RetroAchievements", "username")
-				retroAchievementsPassword = configParser.get("RetroAchievements", "password")
-				retroAchievementsApiKey = configParser.get("RetroAchievements", "apiKey")
+			pesConfig = PESConfig(userPesConfigFile)
 		except ConfigParser.NoOptionError, e:
 			pesExit("Error parsing config file %s: %s" % (userPesConfigFile, e.message), True)
 		except ValueError, e:
 			pesExit("Error parsing config file %s: %s" % (userPesConfigFile, e.message), True)
-			
-		mkdir(romsDir)
 		
-		if cecEnabled:
-			cecEnabled = False
+		mkdir(pesConfig.romsDir)
+		mkdir(pesConfig.coverartDir)
+		mkdir(pesConfig.badgeDir)
+		mkdir(pesConfig.biosDir)
+		checkFile(pesConfig.fontFile)
+		
+		if pesConfig.cecEnabled:
+			pesConfig.cecEnabled = False
 			try:
 				import cec
 				logging.info("CEC module enabled")
-				cecEnabled = True
+				pesConfig.cecEnabled = True
 			except ImportError, e:
 				logging.info("CEC module not found, disabling CEC functions")
 		else:
 			logging.debug("CEC disabled in pes.ini")
 		
-		app = PESApp(dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, iconCacheLen, badgeDir, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, lightBackgroundColour, shutdownCommand, rebootCommand, listTimezonesCommand, getTimezoneCommand, setTimezoneCommand)
+		app = PESApp(dimensions, pesConfig)
 		
-		if cecEnabled:
+		if pesConfig.cecEnabled:
 			# set-up CEC
 			try:
 				logging.debug("creating CEC config...")
@@ -201,15 +131,11 @@ if __name__ == '__main__':
 					else:
 						logging.error("unable to open CEC adapter!")
 			except Exception, e:
-				cecEnabled = False
+				pesConfig.cecEnabled = False
 				logging.error("CEC module initilisation failed, disabling CEC functions")
 				logging.error(e)
 		
-		app.setCecEnabled(cecEnabled)
-		app.setScreenSaverTimeout(screenSaverTimeout)
-		
-		if retroAchievementsApiKey != None and retroAchievementsUserName != None and retroAchievementsPassword != None and len(retroAchievementsUserName) > 0 and len(retroAchievementsPassword) > 0 and len(retroAchievementsApiKey) > 0:
-			app.setRetroAchievements(retroAchievementsUserName, retroAchievementsPassword, retroAchievementsApiKey)
+		app.setCecEnabled(pesConfig.cecEnabled)
 		
 		logging.info("loading GUI...")
 		app.run()

@@ -152,41 +152,46 @@ class PESApp(object):
 			sdl2.video.SDL_DestroyWindow(self.__window)
 			self.__window = None
 
-	def __init__(self, dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, iconCacheLen, badgeDir, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, lightBackgroundColour, shutdownCommmand, rebootCommand, listTimezonesCommand, getTimezoneCommand, setTimezoneCommand):
+	#def __init__(self, dimensions, fontFile, romsDir, coverartDir, coverartSize, coverartCacheLen, iconCacheLen, badgeDir, backgroundColour, menuBackgroundColour, headerBackgroundColour, lineColour, textColour, menuTextColour, menuSelectedTextColour, lightBackgroundColour, shutdownCommmand, rebootCommand, listTimezonesCommand, getTimezoneCommand, setTimezoneCommand):
+	def __init__(self, dimensions, pesConfig):
 		super(PESApp, self).__init__()
 		self.__dimensions = dimensions
-		self.__shutdownCommand = shutdownCommmand
-		self.__rebootCommand = rebootCommand
-		self.listTimezonesCommand = listTimezonesCommand
-		self.getTimezoneCommand = getTimezoneCommand
-		self.setTimezoneCommand = setTimezoneCommand
+		self.__shutdownCommand = pesConfig.shutdownCommand
+		self.__rebootCommand = pesConfig.rebootCommand
+		self.listTimezonesCommand = pesConfig.listTimezonesCommand
+		self.getTimezoneCommand = pesConfig.getTimezoneCommand
+		self.setTimezoneCommand = pesConfig.setTimezoneCommand
 		self.timezones = []
 		self.currentTimezone = None
-		self.fontFile = fontFile
-		self.romsDir = romsDir
-		self.coverartDir = coverartDir
-		self.badgeDir = badgeDir
+		self.fontFile = pesConfig.fontFile
+		self.romsDir = pesConfig.romsDir
+		self.coverartDir = pesConfig.coverartDir
+		self.badgeDir = pesConfig.badgeDir
 		
-		ConsoleTask.SCALE_WIDTH = coverartSize
-		Thumbnail.CACHE_LEN = coverartCacheLen
-		Icon.CACHE_LEN = iconCacheLen
+		self.__screenSaverTimeout = pesConfig.screenSaverTimeout
 		
-		self.coverartCacheLen = coverartCacheLen
+		self.__fontSizes = pesConfig.fontSizes
+		
+		ConsoleTask.SCALE_WIDTH = pesConfig.coverartSize
+		Thumbnail.CACHE_LEN = pesConfig.coverartCacheLen
+		Icon.CACHE_LEN = pesConfig.iconCacheLen
+		
+		self.coverartCacheLen = pesConfig.coverartCacheLen
 		self.consoles = []
 		self.consoleSurfaces = {}
 		self.__uiObjects = [] # list of UI objects created so we can destroy them upon exit
 		
-		self.lineColour = sdl2.SDL_Color(lineColour[0], lineColour[1], lineColour[2])
-		self.backgroundColour = sdl2.SDL_Color(backgroundColour[0], backgroundColour[1], backgroundColour[2])
-		self.headerBackgroundColour = sdl2.SDL_Color(headerBackgroundColour[0], headerBackgroundColour[1], headerBackgroundColour[2])
-		self.menuBackgroundColour = sdl2.SDL_Color(menuBackgroundColour[0], menuBackgroundColour[1], menuBackgroundColour[2])
-		self.menuTextColour = sdl2.SDL_Color(menuTextColour[0], menuTextColour[1], menuTextColour[2])
-		self.menuSelectedTextColour = sdl2.SDL_Color(menuSelectedTextColour[0], menuSelectedTextColour[1], menuSelectedTextColour[2])
+		self.lineColour = sdl2.SDL_Color(pesConfig.lineColour[0], pesConfig.lineColour[1], pesConfig.lineColour[2])
+		self.backgroundColour = sdl2.SDL_Color(pesConfig.backgroundColour[0], pesConfig.backgroundColour[1], pesConfig.backgroundColour[2])
+		self.headerBackgroundColour = sdl2.SDL_Color(pesConfig.headerBackgroundColour[0], pesConfig.headerBackgroundColour[1], pesConfig.headerBackgroundColour[2])
+		self.menuBackgroundColour = sdl2.SDL_Color(pesConfig.menuBackgroundColour[0], pesConfig.menuBackgroundColour[1], pesConfig.menuBackgroundColour[2])
+		self.menuTextColour = sdl2.SDL_Color(pesConfig.menuTextColour[0], pesConfig.menuTextColour[1], pesConfig.menuTextColour[2])
+		self.menuSelectedTextColour = sdl2.SDL_Color(pesConfig.menuSelectedTextColour[0], pesConfig.menuSelectedTextColour[1], pesConfig.menuSelectedTextColour[2])
 		self.menuSelectedBgColour = self.lineColour
-		self.textColour = sdl2.SDL_Color(textColour[0], textColour[1], textColour[2])
-		self.lightBackgroundColour = sdl2.SDL_Color(lightBackgroundColour[0], lightBackgroundColour[1], lightBackgroundColour[2])
+		self.textColour = sdl2.SDL_Color(pesConfig.textColour[0], pesConfig.textColour[1], pesConfig.textColour[2])
+		self.lightBackgroundColour = sdl2.SDL_Color(pesConfig.lightBackgroundColour[0], pesConfig.lightBackgroundColour[1], pesConfig.lightBackgroundColour[2])
 		
-		self.__headerHeight = 30
+		self.__headerHeight = pesConfig.headerHeight
 		self.__footerHeight = 0
 
 		self.doJsToKeyEvents = True
@@ -194,6 +199,13 @@ class PESApp(object):
 		self.__cecEnabled = False
 		self.retroAchievementConn = None
 		self.achievementUser = None
+		
+		if pesConfig.retroAchievementsUserName != None and pesConfig.retroAchievementsPassword != None and pesConfig.retroAchievementsApiKey != None:
+			#self.__setRetroAchievements(self, pesConfig.retroAchievementsUserName, pesConfig.retroAchievementsPassword, pesConfig.retroAchievementsApiKey):
+			logging.debug("PESApp.__init__: RetroAchievements user = %s, apiKey = %s" % (pesConfig.retroAchievementsUserName, pesConfig.retroAchievementsApiKey))
+			self.retroAchievementConn = RetroAchievementConn(pesConfig.retroAchievementsUserName, pesConfig.retroAchievementsApiKey)
+			self.__retroAchievementsPassword = pesConfig.retroAchievementsPassword
+			self.setUpRetroAchievementUser()
 		
 	def exit(self, rtn=0, confirm=False):
 		if confirm:
@@ -601,12 +613,12 @@ class PESApp(object):
 		
 		logging.debug("PESApp.run: window dimensions: (%d, %d)" % (self.__dimensions[0], self.__dimensions[1]))
 		
-		self.splashFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, 50)
-		self.menuFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, 20)
-		self.headerFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, 22)
-		self.titleFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, 20)
-		self.bodyFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, 18)
-		self.smallBodyFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, 14)
+		self.splashFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, self.__fontSizes['splash'])
+		self.menuFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, self.__fontSizes['menu'])
+		self.headerFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, self.__fontSizes['header'])
+		self.titleFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, self.__fontSizes['title'])
+		self.bodyFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, self.__fontSizes['body'])
+		self.smallBodyFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, self.__fontSizes['smallBody'])
 		
 		self.renderer = sdl2.SDL_CreateRenderer(self.__window, -1, sdl2.render.SDL_RENDERER_ACCELERATED)
 		
@@ -977,12 +989,6 @@ class PESApp(object):
 	def setCecEnabled(self, enabled):
 		self.__cecEnabled = enabled
 		
-	def setRetroAchievements(self, user, password, apiKey):
-		logging.debug("PESApp.setRetroAchievements: user = %s, apiKey = %s" % (user, apiKey))
-		self.retroAchievementConn = RetroAchievementConn(user, apiKey)
-		self.__retroAchievementsPassword = password
-		self.setUpRetroAchievementUser()
-		
 	def setScreen(self, screen, doAppend=True):
 		if not screen in self.screens:
 			logging.warning("PESApp.setScreen: invalid screen selection \"%s\"" % screen)
@@ -992,9 +998,6 @@ class PESApp(object):
 			if doAppend:
 				self.screenStack.append(screen)
 			self.screens[screen].setMenuActive(True)
-			
-	def setScreenSaverTimeout(self, t):
-		self.__screenSaverTimeout = t
 		
 	def setUpRetroAchievementUser(self):
 		if self.retroAchievementConn:
