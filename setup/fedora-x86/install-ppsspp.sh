@@ -33,17 +33,17 @@ source $setupDir/functions.sh
 
 cd $buildDir
 
-#rmSourceDir "ppsspp"
+rmSourceDir "ppsspp"
 
 header "Downloading Sony PSP emulator - ppsspp (standalone)"
 
 installDir="$emulatorInstallDir/ppsspp"
 run sudo mkdir -pv $installDir
-#run git clone git://github.com/hrydgard/ppsspp
+run git clone git://github.com/hrydgard/ppsspp
 checkDir "ppsspp"
 cd ppsspp
-#run git submodule init
-#run git submodule update
+run git submodule init
+run git submodule update
 checkFile b.sh
 export CMAKE_ARGS="-D SDL2_LIBRARY:PATH=/opt/sdl2/default/lib/libSDL2.so -D SDL2_INCLUDE_DIR:PATH=/opt/sdl2/default/include/SDL2 CMAKE_INSTALL_PREFIX:PATH=$installDir"
 run ./b.sh
