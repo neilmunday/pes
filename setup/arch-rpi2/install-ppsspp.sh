@@ -47,6 +47,7 @@ run git submodule init
 run git submodule update
 checkFile b.sh
 export CMAKE_ARGS="-D SDL2_LIBRARY:PATH=/opt/sdl2/default/lib/libSDL2.so -D SDL2_INCLUDE_DIR:PATH=/opt/sdl2/default/include/SDL2 -D CMAKE_INSTALL_PREFIX:PATH=$installDir"
+export CFLAGS="-ffast-math -march=armv7-a -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
 run ./b.sh
 checkDir build
 checkFile build/PPSSPPSDL
