@@ -23,11 +23,16 @@
 #
 
 import argparse
+import atexit
 import ConfigParser
+import cProfile
 import logging
 import os
+import pstats
 import shutil
+import signal
 import sqlite3
+import StringIO
 import sys
 from pes import *
 from pes.data import Console
@@ -35,12 +40,61 @@ from pes.app import PESApp
 from pes.config import PESConfig
 from pes.util import *
 
+def exitHandler():
+	global profile, profileObj
+	
+	if profile and profileObj != None:
+		profileObj.disable()
+		# dump stats
+		s = StringIO.StringIO()
+		ps = pstats.Stats(profileObj, stream=s).sort_stats('cumulative')
+		ps.print_stats()
+		logging.info("Profile Stats:")
+		logging.info(s.getvalue())
+
+def signalHandler(sig, frame):
+	global app, profile, profileObj
+	
+	if sig == signal.SIGINT:
+		logging.debug("signalHandler: SIGINT")
+		app.exit()
+	elif sig == signal.SIGHUP:
+		if profile:
+			logging.info("disabling profiling")
+			# profiling is on, so turn it off
+			if profileObj != None:
+				profileObj.disable()
+				# dump stats
+				s = StringIO.StringIO()
+				ps = pstats.Stats(profileObj, stream=s).sort_stats('cumulative')
+				ps.print_stats()
+				logging.info("Profile Stats:")
+				logging.info(s.getvalue())
+			profile = False
+		else:
+			logging.info("enabling profiling")
+			# profiling is not on, so turn it on
+			if profileObj == None:
+				profileObj = cProfile.Profile()
+			profileObj.enable()
+			profile = True
+	
+
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Launch the Pi Entertainment System (PES)', add_help=True)
 	parser.add_argument('-w', '--window', help='Run PES in a window', dest='window', action='store_true')
 	parser.add_argument('-v', '--verbose', help='Turn on debug messages', dest='verbose', action='store_true')
 	parser.add_argument('-l', '--log', help='File to log messages to', type=str, dest='logfile')
+	parser.add_argument('-p', '--profile', help='Turn on profiling', dest='profile', action='store_true')
 	args = parser.parse_args()
+	
+	profile = args.profile
+	
+	profileObj = None
+	
+	if profile:
+		profileObj = cProfile.Profile()
+		profileObj.enable()
 	
 	logLevel = logging.INFO
 	if args.verbose:
@@ -138,6 +192,9 @@ if __name__ == '__main__':
 		app.setCecEnabled(pesConfig.cecEnabled)
 		
 		logging.info("loading GUI...")
+		signal.signal(signal.SIGINT, signalHandler)
+		signal.signal(signal.SIGHUP, signalHandler)
+		atexit.register(exitHandler)
 		app.run()
 	except Exception, e:
 		logging.exception(e)
