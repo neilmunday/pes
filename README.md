@@ -48,15 +48,17 @@ Starting PES
 
 From the command line run:
 
- bin/pes
+```bash
+bin/pes
+```
  
-By default PES will start in fullscreen mode. To start in windowed mode, please use the "-w" command line option.
+By default PES will start in fullscreen mode. To start in windowed mode, please use the `-w` command line option.
 
-To enable debug messages, use the "-v" command line option.
+To enable debug messages, use the `-v` command line option.
 
-To enable Python profiling of the PES code, please use the "-p" command line option.
+To enable Python profiling of the PES code, please use the `-p` command line option.
 
-You can also turn profiling on and off whilst PES is executing by sending the SIGHUP signal to the main.py Python process. Once profiling is disabled, the stats for the last profiling session will be printed.
+You can also turn profiling on and off whilst PES is executing by sending the `SIGHUP` signal to the main.py Python process. Once profiling is disabled, the stats for the last profiling session will be printed.
 
 Acknowledgements
 ----------------
