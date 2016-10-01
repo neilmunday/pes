@@ -67,6 +67,8 @@ run $setupDir/install-fuse-libretro.sh
 run $setupDir/install-fba-libretro.sh
 run $setupDir/install-imame4all.sh
 run $setupDir/install-stella-libretro.sh
+run $setupDir/install-ppsspp.sh
+run $setupDir/install-blueMSX-libretro.sh
 
 header "Installing rasum..."
 run $setupDir/install-rasum.sh
