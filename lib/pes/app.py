@@ -559,25 +559,6 @@ class PESApp(object):
 								f.write(self.getViceButtonValue(c, i, sdl2.SDL_CONTROLLER_BUTTON_A, 16))
 								f.write(self.getViceButtonValue(c, i, sdl2.SDL_CONTROLLER_BUTTON_BACK, -4))
 								f.write(self.getViceButtonValue(c, i, sdl2.SDL_CONTROLLER_BUTTON_GUIDE, -4))
-								
-								#if r != None:
-								#	f.write("%d 1 %d 1 0 8\n" % (i, r))
-								#r = self.getViceButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT)
-								#if r != None:
-								#	f.write("%d 1 %d 1 0 4\n" % (i, r))
-								#r = self.getViceButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP)
-								#if r != None:
-								#	f.write("%d 1 %d 1 0 1\n" % (i, r))
-								#r = self.getViceButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN)
-								#if r != None:
-								#	f.write("%d 1 %d 1 0 2\n" % (i, r))
-								#r = self.getViceButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_A)
-								#if r != None:
-								#	f.write("%d 1 %d 1 0 16\n" % (i, r))
-								#r = self.getViceButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_GUIDE)
-								#if r != None:
-								#	f.write("%d 1 %d 4" % (i, r))
-					
 		
 		logging.info("loading game: %s" % game.getName())
 		game.setPlayCount()
