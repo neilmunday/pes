@@ -22,14 +22,8 @@
 #    along with PES.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-setupDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-if [ ! -e $setupDir/functions.sh ]; then
-	echo "Error! $setupDir/functions does not exist!"
-	exit 1
-fi
-
-source $setupDir/functions.sh
+functions=`realpath $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../common/functions.sh`
+source $functions || exit 1
 
 header "Updating OS..."
 
@@ -69,6 +63,7 @@ run $setupDir/install-imame4all.sh
 run $setupDir/install-stella-libretro.sh
 run $setupDir/install-ppsspp.sh
 run $setupDir/install-blueMSX-libretro.sh
+run $setupDir/install-vice.sh
 
 header "Installing rasum..."
 run $setupDir/install-rasum.sh

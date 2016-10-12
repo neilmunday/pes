@@ -22,14 +22,8 @@
 #    along with PES.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-setupDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-if [ ! -e $setupDir/functions.sh ]; then
-	echo "Error! $setupDir/functions does not exist!"
-	exit 1
-fi
-
-source $setupDir/functions.sh
+functions=`realpath $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../common/functions.sh`
+source $functions || exit 1
 
 pesDataDir="/data/pes"
 
@@ -65,7 +59,7 @@ if [ "$response" == "y" ]; then
 	run rm -rfv $userDir/.config/retroarch
 	echo ""
 	echo "Removing unnecessary packages..."
-	run sudo $setupDir/remove-packages.sh
+	run $setupDir/remove-packages.sh
 	echo ""
 	echo "Deleting root bash history..."
 	run sudo rm -fv /root/.bash_history
