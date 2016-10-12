@@ -36,6 +36,9 @@ tarFile=$srcDir/vice-${version}.tar.gz
 
 header "Building C64 emulator - vice"
 
+patchFile="$rootDir/src/vice-patches/gifdrv.patch"
+checkFile $patchFile
+
 if [ ! -e $tarFile ]; then
 	run wget -O $tarFile http://sourceforge.net/projects/vice-emu/files/releases/vice-${version}.tar.gz/download
 fi
@@ -43,6 +46,14 @@ fi
 run tar xvfz $tarFile
 checkDir vice-${version}
 cd vice-${version}
+
+# apply patches
+checkDir src/gfxoutputdrv
+cd src/gfxoutputdrv
+patch < $patchFile
+
+cd ../..
+
 run ./configure --prefix=$PREFIX --enable-sdlui
 run make -j 2
 run sudo make install

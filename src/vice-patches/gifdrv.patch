@@ -1,0 +1,38 @@
+--- gifdrv.c	2012-07-26 00:46:05.000000000 +0100
++++ gifdrv.c.new	2016-10-12 23:39:03.108665107 +0100
+@@ -114,7 +114,7 @@
+   if (EGifPutScreenDesc(sdata->fd, screenshot->width, screenshot->height, 8, 0, gif_colors) == GIF_ERROR ||
+       EGifPutImageDesc(sdata->fd, 0, 0, screenshot->width, screenshot->height, 0, NULL) == GIF_ERROR)
+   {
+-    EGifCloseFile(sdata->fd);
++    EGifCloseFile(sdata->fd, NULL);
+     VICE_FreeMapObject(gif_colors);
+     lib_free(sdata->data);
+     lib_free(sdata->ext_filename);
+@@ -145,7 +145,7 @@
+ 
+     sdata = screenshot->gfxoutputdrv_data;
+ 
+-    EGifCloseFile(sdata->fd);
++    EGifCloseFile(sdata->fd, NULL);
+     VICE_FreeMapObject(gif_colors);
+ 
+     /* for some reason giflib will create a file with unexpected
+@@ -184,7 +184,7 @@
+ 
+ static int gifdrv_close_memmap(void)
+ {
+-  EGifCloseFile(gifdrv_memmap_fd);
++  EGifCloseFile(gifdrv_memmap_fd, NULL);
+   VICE_FreeMapObject(gif_colors);
+   lib_free(gifdrv_memmap_ext_filename);
+ 
+@@ -231,7 +231,7 @@
+   if (EGifPutScreenDesc(gifdrv_memmap_fd, x_size, y_size, 8, 0, gif_colors) == GIF_ERROR ||
+       EGifPutImageDesc(gifdrv_memmap_fd, 0, 0, x_size, y_size, 0, NULL) == GIF_ERROR)
+   {
+-    EGifCloseFile(gifdrv_memmap_fd);
++    EGifCloseFile(gifdrv_memmap_fd, NULL);
+     VICE_FreeMapObject(gif_colors);
+     lib_free(gifdrv_memmap_ext_filename);
+     return -1;
