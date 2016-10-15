@@ -121,6 +121,7 @@ if __name__ == '__main__':
 		mkdir(userConfDir)
 		mkdir(userRetroArchConfDir)
 		mkdir(userRetroArchJoysticksConfDir)
+		mkdir(userViceConfDir)
 		initConfig()
 		
 		checkFile(userPesConfigFile)
