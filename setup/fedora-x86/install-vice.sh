@@ -6,7 +6,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2016 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 functions=`realpath $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../common/functions.sh`
 source $functions || exit 1
 
-version=2.4
+version=2.4.31
 
 cd $buildDir
 
@@ -37,13 +37,14 @@ tarFile=$srcDir/vice-${version}.tar.gz
 header "Building C64 emulator - vice"
 
 if [ ! -e $tarFile ]; then
-	run wget -O $tarFile http://sourceforge.net/projects/vice-emu/files/releases/vice-${version}.tar.gz/download
+	run wget -O $tarFile https://sourceforge.net/projects/vice-emu/files/development-releases/vice-${version}.tar.gz/download
 fi
 
 run tar xvfz $tarFile
 checkDir vice-${version}
 cd vice-${version}
-run ./configure --prefix=$PREFIX --enable-sdlui
+
+run ./configure --prefix=$PREFIX --enable-sdlui2 --enable-fullscreen --with-uithreads
 run make -j
 run sudo make install
 
