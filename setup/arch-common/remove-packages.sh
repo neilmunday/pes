@@ -46,7 +46,11 @@ python2-pip
 scons
 shared-mime-info
 swig
-wget"
+wget
+bison
+m4
+byacc
+flex"
 
 for p in $packages; do
 	echo "Removing $p"
