@@ -6,7 +6,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2016 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -25,7 +25,11 @@
 functions=`realpath $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../common/functions.sh`
 source $functions || exit 1
 
-version=2.4
+version=2.4.31
+
+SDL2_CONFIG=/opt/sdl2/default/bin/sdl2-config
+SDL_CFLAGS="-I/opt/sdl2/default/include -I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host/linux -D_REENTRANT -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard "
+SDL_LDLIBS=`$SDL2_CONFIG --libs`
 
 cd $buildDir
 
@@ -36,26 +40,20 @@ tarFile=$srcDir/vice-${version}.tar.gz
 
 header "Building C64 emulator - vice"
 
-patchFile="$rootDir/src/vice-patches/gifdrv.patch"
-checkFile $patchFile
-
 if [ ! -e $tarFile ]; then
-	run wget -O $tarFile http://sourceforge.net/projects/vice-emu/files/releases/vice-${version}.tar.gz/download
+	run wget -O $tarFile https://sourceforge.net/projects/vice-emu/files/development-releases/vice-${version}.tar.gz/download
 fi
 
 run tar xvfz $tarFile
 checkDir vice-${version}
 cd vice-${version}
 
-# apply patches
-checkDir src/gfxoutputdrv
-cd src/gfxoutputdrv
-patch < $patchFile
+export CFLAGS="$SDL_CFLAGS"
+export LDFLAGS="$SDL_LDLIBS"
 
-cd ../..
-
-run ./configure --prefix=$PREFIX --enable-sdlui
-run make -j 2
+#run ./configure --prefix=$PREFIX --enable-sdlui2 --disable-sdlui --enable-fullscreen --with-uithreads --with-sdlsound --without-oss --without-pulse
+run ./configure --prefix=$PREFIX --enable-sdlui2 --disable-sdlui --enable-fullscreen 
+run make -j 2 V=1 
 run sudo make install
 
 # now copy over data files
