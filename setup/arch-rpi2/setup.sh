@@ -35,6 +35,9 @@ run $setupDir/install-packages.sh
 header "Customising OS..."
 run $setupDir/customise-os.sh
 
+header "Installing splash screen..."
+run $setupDir/install-splash-screen.sh
+
 header "Setting up PS3 Bluetooth control pad support.."
 run $setupDir/install-qtsixad.sh
 
