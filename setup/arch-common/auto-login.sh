@@ -38,7 +38,8 @@ EOF
 
 if [ ! -e ~/.bash_pes ]; then
 	echo "Creating ~/.bash_pes ..."
-	echo "if [ ! -n \"\$SSH_CONNECTION\" ] && [ ! -n \"\$DESKTOP_SESSION\" ]; then" > ~/.bash_pes
+	echo "chvt 1" > ~/.bash_pes
+	echo "if [ ! -n \"\$SSH_CONNECTION\" ] && [ ! -n \"\$DESKTOP_SESSION\" ]; then" >> ~/.bash_pes
 	echo -e "\tif [ ! -d /data/pes ]; then" >> ~/.bash_pes
 	echo -e "\t\techo \"Setting up /data partition - this will use all available space on your SD card!\"" >> ~/.bash_pes
 	echo -e "\t\tsudo /opt/sbin/make_rom_partition.py -v -d /dev/mmcblk0" >> ~/.bash_pes

@@ -50,7 +50,10 @@ wget
 bison
 m4
 byacc
-flex"
+flex
+mkinitcpio
+mkinitcpio-busybox
+"
 
 for p in $packages; do
 	echo "Removing $p"
