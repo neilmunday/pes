@@ -60,6 +60,7 @@ class PESConfig(object):
 		
 		# layout
 		self.headerHeight = configParser.getint("layout", "headerHeight")
+		self.menuWidth = configParser.getint("layout", "menuWidth")
 		
 		# command settings
 		self.shutdownCommand = configParser.get("commands", "shutdown")

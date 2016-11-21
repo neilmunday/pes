@@ -192,6 +192,7 @@ class PESApp(object):
 		self.lightBackgroundColour = sdl2.SDL_Color(pesConfig.lightBackgroundColour[0], pesConfig.lightBackgroundColour[1], pesConfig.lightBackgroundColour[2])
 		
 		self.__headerHeight = pesConfig.headerHeight
+		self.menuWidth = pesConfig.menuWidth
 		self.__footerHeight = 0
 
 		self.doJsToKeyEvents = True
@@ -646,7 +647,6 @@ class PESApp(object):
 			logging.debug("PESApp.run: running windowed")
 			self.__window = sdl2.video.SDL_CreateWindow('PES', sdl2.video.SDL_WINDOWPOS_UNDEFINED, sdl2.video.SDL_WINDOWPOS_UNDEFINED, self.__dimensions[0], self.__dimensions[1], 0)
 		
-		self.menuWidth = 200
 		self.menuHeight = self.__dimensions[1] - self.__footerHeight - self.__headerHeight
 		
 		self.menuRect = [0, self.__headerHeight + 1, self.menuWidth, self.__dimensions[1] - self.__headerHeight + 1]
@@ -1632,7 +1632,7 @@ class ConsoleScreen(Screen):
 		if self.__allGamesThumbPanel:
 			self.__allGamesThumbPanel.setGames(self.__allGames[0:self.__showThumbs])
 		else:
-			self.__allGamesThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__allGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
+			self.__allGamesThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__allGames[0:self.__showThumbs], self.app.smallBodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
 		# recently added
 		recentlyAddedGameIds = self.__console.getRecentlyAddedGameIds()
 		self.__recentlyAddedGamesTotal = len(recentlyAddedGameIds)
@@ -1644,7 +1644,7 @@ class ConsoleScreen(Screen):
 		if self.__recentlyAddedThumbPanel:
 			self.__recentlyAddedThumbPanel.setGames(self.__recentlyAddedGames[0:self.__showThumbs])
 		else:
-			self.__recentlyAddedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__recentlyAddedGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
+			self.__recentlyAddedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__recentlyAddedGames[0:self.__showThumbs], self.app.smallBodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
 		# most played
 		mostPlayedGameIds = self.__console.getMostPlayedGameIds()
 		self.__mostPlayedGamesTotal = len(mostPlayedGameIds)
@@ -1657,7 +1657,7 @@ class ConsoleScreen(Screen):
 			if self.__mostPlayedThumbPanel:
 				self.__mostPlayedThumbPanel.setGames(self.__mostPlayedGames[0:self.__showThumbs])
 			else:
-				self.__mostPlayedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__mostPlayedGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
+				self.__mostPlayedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__mostPlayedGames[0:self.__showThumbs], self.app.smallBodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
 		# recently played
 		recentlyPlayedGameIds = self.__console.getRecentlyPlayedGameIds()
 		self.__recentlyPlayedGamesTotal = len(recentlyPlayedGameIds)
@@ -1670,7 +1670,7 @@ class ConsoleScreen(Screen):
 			if self.__recentlyPlayedThumbPanel:
 				self.__recentlyPlayedThumbPanel.setGames(self.__recentlyPlayedGames[0:self.__showThumbs])
 			else:
-				self.__recentlyPlayedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__recentlyPlayedGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
+				self.__recentlyPlayedThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__recentlyPlayedGames[0:self.__showThumbs], self.app.smallBodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
 		# games with achievements
 		gamesWithAchievementIds = self.__console.getGamesWithAchievementIds()
 		self.__gamesWithAchievementsTotal = len(gamesWithAchievementIds)
@@ -1683,7 +1683,7 @@ class ConsoleScreen(Screen):
 			if self.__achievementsThumbPanel:
 				self.__achievementsThumbPanel.setGames(self.__gamesWithAchievements[0:self.__showThumbs])
 			else:
-				self.__achievementsThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__gamesWithAchievements[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
+				self.__achievementsThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__gamesWithAchievements[0:self.__showThumbs], self.app.smallBodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
 		self.__updateFavourites()
 		self.refreshNeeded = False
 		logging.debug("ConsoleScreen.__refresh: time taken = %0.02fs" % (time.time() - start))
@@ -1701,7 +1701,7 @@ class ConsoleScreen(Screen):
 			if self.__favouriteThumbPanel:
 				self.__favouriteThumbPanel.setGames(self.__favouriteGames[0:self.__showThumbs])
 			else:
-				self.__favouriteThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__favouriteGames[0:self.__showThumbs], self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
+				self.__favouriteThumbPanel = self.addUiObject(ThumbnailPanel(self.renderer, self.__listX, self.__listY, self.screenRect[2] - self.screenMargin,  self.__favouriteGames[0:self.__showThumbs], self.app.smallBodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs))
 			if self.menu.getSelectedItem().getText() == "Favourites":
 				self.__gameInfoLabel.setText(self.__getGameInfoText(self.__favouriteGames[0]))
 				self.__gameOverviewLabel.setText(self.__favouriteGames[0].getOverview())
@@ -1802,12 +1802,12 @@ class HomeScreen(Screen):
 			if console.getGameTotal() > 0:
 				games = console.getRecentlyAddedGames(0, self.__showThumbs)
 				if len(games) > 0:
-					t = ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyAddedLabel.y + self.__recentlyAddedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs)
+					t = ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyAddedLabel.y + self.__recentlyAddedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.smallBodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs)
 					t.loadTextures()
 					self.__recentlyAddedThumbPanels[console.getName()] = self.addUiObject(t)
 				games = console.getRecentlyPlayedGames(0, self.__showThumbs)
 				if len(games) > 0:
-					t = ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyPlayedLabel.y + self.__recentlyPlayedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs)
+					t = ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyPlayedLabel.y + self.__recentlyPlayedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.smallBodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs)
 					t.loadTextures()
 					self.__recentlyPlayedThumbPanels[console.getName()] = self.addUiObject(t)
 		
@@ -1837,7 +1837,7 @@ class HomeScreen(Screen):
 				games = c.getRecentlyAddedGames(0, self.__showThumbs)
 				if consoleName not in self.__recentlyAddedThumbPanels:
 					if len(games) > 0:
-						t = ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyAddedLabel.y + self.__recentlyAddedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs)
+						t = ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyAddedLabel.y + self.__recentlyAddedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.smallBodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs)
 						t.loadTextures()
 						self.__recentlyAddedThumbPanels[consoleName] = self.addUiObject(t)
 				else:
