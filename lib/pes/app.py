@@ -196,7 +196,6 @@ class PESApp(object):
 		self.__footerHeight = 0
 
 		self.doJsToKeyEvents = True
-		self.__screenSaverTimeout = screenSaverTimeout
 		self.__cecEnabled = False
 		self.retroAchievementConn = None
 		self.achievementUser = None
