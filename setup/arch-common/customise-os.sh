@@ -46,6 +46,9 @@ run sudo bash -c "cat > /etc/udev/rules.d/99-evdev.rules" << 'EOF'
 KERNEL=="event*", NAME="input/%k", MODE="666"
 EOF
 
+header "Fixing systemd udev service for Bluetooth"
+run sudo sed -r -i "s/^(RestrictAddressFamilies=)(.*?)/\1AF_UNIX AF_NETLINK AF_INET AF_INET6 AF_BLUETOOTH/" /usr/lib/systemd/system/systemd-udevd.service
+
 header "Disabling core files in /etc/systemd/system.conf"
 
 if egrep -q "^DumpCore=no" /etc/systemd/system.conf; then
