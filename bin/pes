@@ -47,7 +47,7 @@ setterm -blank 0
 # set-up environment
 
 libcecPath="/opt/libcec/current/lib"
-pythonPath="/opt/libcec/current/lib/python2.7/dist-packages:$pesInstallDir/lib:/opt/python/lib/python2.7/site-packages"
+pythonPath="/opt/libcec/current/lib/python2.7/dist-packages:/opt/libcec/current/lib/python2.7/dist-packages/cec:$pesInstallDir/lib"
 
 if [ -d $libcecPath ]; then
 	if [ -z $LD_LIBRARY_PATH ]; then
