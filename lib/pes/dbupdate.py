@@ -41,7 +41,7 @@ import urllib2
 import time
 import multiprocessing
 
-URL_TIMEOUT = 10
+URL_TIMEOUT = 30
 logging.getLogger("PIL").setLevel(logging.WARNING)
 	
 class ConsoleTask(object):
