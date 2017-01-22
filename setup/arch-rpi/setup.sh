@@ -25,6 +25,8 @@
 functions=`realpath $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../common/functions.sh`
 source $functions || exit 1
 
+setupDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 header "Updating OS..."
 
 run sudo pacman -Syu

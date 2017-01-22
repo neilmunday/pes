@@ -26,6 +26,7 @@ functions=`realpath $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../common/
 source $functions || exit 1
 
 pesDataDir="/data/pes"
+setupDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 header "Clean Image"
 
