@@ -58,6 +58,8 @@ if [ "$response" == "y" ]; then
 	echo ""
 	echo "Deleting RetroArch config for pi user..."
 	run rm -rfv $userDir/.config/retroarch
+	echo "Deleting PPSSPP config for pi user..."
+	run rm -rfv $userDir/.config/ppsspp
 	echo ""
 	echo "Removing unnecessary packages..."
 	run $setupDir/remove-packages.sh
