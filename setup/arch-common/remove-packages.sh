@@ -48,9 +48,9 @@ shared-mime-info
 swig
 wget
 bison
-m4
 byacc
 flex
+m4
 mkinitcpio
 mkinitcpio-busybox
 "
