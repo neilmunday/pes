@@ -3,6 +3,25 @@ PES Changelog
 =============
 
 ----------------------------
+PES 2.1
+----------------------------
+
+Date: 2016-02-10
+
+Changes (and bug fixes):
+
+	- Added support for Commodore 64 thanks to the Vice emulator.
+	- Added suupport for MSX thanks to libretro BlueMSX core.
+	- Added support for MAME 2003 thanks to libretro MAME 2003 core.
+	- Added support for PSP thanks to the PPSSPP emulator.
+	- Updated RetroArch to version 1.3.6.
+	- Layout config options added to pes.ini.
+	- Splash screen added for Raspberry Pi Arch Linux builds.
+	- Remote control icon updated.
+	- Re-organised set-up scripts.
+	- Python profiling support added for debugging purposes.
+
+----------------------------
 PES 2.0
 ----------------------------
 
