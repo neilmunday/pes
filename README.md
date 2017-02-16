@@ -23,8 +23,10 @@ The PES Raspberry Pi image has the following features:
 * Provides game platform emulation for:
 
   * Atari 2600
+  * Commodore64
   * Final Burn Alpha (FBA)
   * MAME
+  * MSX
   * Neo Geo
   * Nintendo 64 (N64)
   * Nintendo Entertainment System (NES)
@@ -38,6 +40,7 @@ The PES Raspberry Pi image has the following features:
   * Sega Mega Drive (aka Genesis)
   * Sega Mega Drive (aka Genesis) 32x
   * Sony PlayStation
+  * Sony PSP
   * Turbo Grafx 16 (aka PC Engine)
   * ZX Spectrum
   
@@ -49,7 +52,7 @@ Starting PES
 From the command line run:
 
 ```bash
-bin/pes
+/opt/pes/bin/pes
 ```
  
 By default PES will start in fullscreen mode. To start in windowed mode, please use the `-w` command line option.
@@ -69,18 +72,22 @@ I would like to thank the following people/groups as without them PES would not 
 * The maintainers of [RetroArch](http://www.libretro.com>) and all of the emulators that PES uses:
 
   * beetle-pce-fast https://github.com/libretro/beetle-pce-fast-libretro
+  * blueMSX-libretro https://github.com/libretro/blueMSX-libretro
   * fceu-next https://github.com/libretro/fceu-next
   * fuse-libretro https://github.com/libretro/fuse-libretro
   * gambatte-libretro https://github.com/libretro/gambatte-libretro
   * Genesis-Plus-GX https://github.com/ekeeke/Genesis-Plus-GX
   * gpsp https://github.com/libretro/gpsp
   * imame4all-libretro https://github.com/libretro/imame4all-libretro
+  * mame2003-libretro https://github.com/libretro
   * libretro-fba https://github.com/libretro/libretro-fba
   * pcsx_rearmed https://github.com/notaz/pcsx_rearmed
   * PicoDrive https://github.com/libretro/picodrive
   * Pocket SNES https://github.com/libretro/pocketsnes-libretro
+  * ppsspp https://github.com/hrydgard/ppsspp
   * Ric RPi's Mupen64Plus fork https://github.com/ricrpi
-  * stella-libretro: https://github.com/libretro/stella-libretro
+  * stella-libretro https://github.com/libretro/stella-libretro
+  * vice-emu https://sourceforge.net/projects/vice-emu
 
 * falkTX for creating the [QtSixA](http://qtsixa.sourceforge.net) daemon and utilities which is used by PES for using Sony PlayStation 3 control pads via Bluetooth.
 * All the maintainers of [Arch Linux](http://archlinuxarm.org/platforms/armv6/raspberry-pi>)
