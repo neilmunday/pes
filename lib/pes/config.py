@@ -68,6 +68,11 @@ class PESConfig(object):
 		self.listTimezonesCommand = configParser.get("commands", "listTimezones")
 		self.setTimezoneCommand = configParser.get("commands", "setTimezone")
 		self.getTimezoneCommand = configParser.get("commands", "getTimezone")
+		if configParser.has_option("commands", "kodi"):
+			self.kodiCommand = configParser.get("commands", "kodi")
+		else:
+			logging.warning("PESConfig.init: Kodi command not found, disabling Kodi menu item")
+			self.kodiCommand = None
 		
 		# RetroAchievements settings
 		if configParser.has_section("RetroAchievements"):

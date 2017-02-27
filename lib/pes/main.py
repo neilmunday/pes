@@ -138,9 +138,9 @@ if __name__ == '__main__':
 		
 		try:
 			pesConfig = PESConfig(userPesConfigFile)
-		except ConfigParser.NoOptionError, e:
+		except ConfigParser.NoOptionError as e:
 			pesExit("Error parsing config file %s: %s" % (userPesConfigFile, e.message), True)
-		except ValueError, e:
+		except ValueError as e:
 			pesExit("Error parsing config file %s: %s" % (userPesConfigFile, e.message), True)
 		
 		mkdir(pesConfig.romsDir)
@@ -155,7 +155,7 @@ if __name__ == '__main__':
 				import cec
 				logging.info("CEC module enabled")
 				pesConfig.cecEnabled = True
-			except ImportError, e:
+			except ImportError as e:
 				logging.info("CEC module not found, disabling CEC functions")
 		else:
 			logging.debug("CEC disabled in pes.ini")
@@ -185,7 +185,7 @@ if __name__ == '__main__':
 						logging.info("CEC adapter opened")
 					else:
 						logging.error("unable to open CEC adapter!")
-			except Exception, e:
+			except Exception as e:
 				pesConfig.cecEnabled = False
 				logging.error("CEC module initilisation failed, disabling CEC functions")
 				logging.error(e)
@@ -197,6 +197,6 @@ if __name__ == '__main__':
 		signal.signal(signal.SIGHUP, signalHandler)
 		atexit.register(exitHandler)
 		app.run()
-	except Exception, e:
+	except Exception as e:
 		logging.exception(e)
 		sys.exit(1)

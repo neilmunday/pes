@@ -37,6 +37,7 @@ run sudo dnf install \
 	make \
 	cmake \
 	freetype-devel \
+	kodi \
 	libjpeg-turbo-devel \
 	libpng-devel \
 	libtiff-devel \

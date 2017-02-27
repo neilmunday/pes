@@ -45,7 +45,6 @@ pkg-config
 python2-pip
 scons
 shared-mime-info
-swig
 wget
 bison
 byacc

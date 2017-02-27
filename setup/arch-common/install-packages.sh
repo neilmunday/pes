@@ -40,7 +40,8 @@ run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
 	crda iw  wpa_supplicant \
 	p7zip zip unzip \
 	sdl \
-	mkinitcpio
+	mkinitcpio \
+	kodi-rbp kodi-rbp-eventclients kodi-rbp-tools-texturepacker
 
 run sudo pip2 install --upgrade pip
 run sudo pip2 install reparted

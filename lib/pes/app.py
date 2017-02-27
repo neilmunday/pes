@@ -161,6 +161,7 @@ class PESApp(object):
 		self.listTimezonesCommand = pesConfig.listTimezonesCommand
 		self.getTimezoneCommand = pesConfig.getTimezoneCommand
 		self.setTimezoneCommand = pesConfig.setTimezoneCommand
+		self.kodiCommand = pesConfig.kodiCommand
 		self.timezones = []
 		self.currentTimezone = None
 		self.fontFile = pesConfig.fontFile
@@ -1026,6 +1027,10 @@ class PESApp(object):
 			f.write("exec %s %s\n" % (os.path.join(baseDir, 'bin', 'pes') , ' '.join(sys.argv[1:])))
 		self.exit(0)
 		
+	def runKodi(self):
+		logging.debug("PESApp.runKodi: launching kodi using: %s" % self.kodiCommand)
+		self.runCommand(self.kodiCommand)
+		
 	def setCecEnabled(self, enabled):
 		self.__cecEnabled = enabled
 		
@@ -1725,7 +1730,8 @@ class HomeScreen(Screen):
 		for c in self.app.consoles:
 			if c.getGameTotal() > 0:
 				self.menu.addItem(ConsoleMenuItem(c, False, False, self.__loadConsoleScreen, c))
-		#self.menu.addItem(MenuItem("Achievements", False, False, self.app.setScreen, "Achievements"))
+		if self.app.kodiCommand:
+			self.menu.addItem(MenuItem("Kodi", False, False, self.app.runKodi))
 		self.menu.addItem(MenuItem("Settings", False, False, self.app.setScreen, "Settings"))
 		self.menu.addItem(MenuItem("Reload", False, False, self.app.reload))
 		self.menu.addItem(MenuItem("Reboot", False, False, self.app.reboot))
@@ -1881,6 +1887,9 @@ class HomeScreen(Screen):
 			if selectedText == "Home":
 				self.__headerLabel.setText("Welcome to PES!")
 				self.__descriptionLabel.setText(self.__welcomeText, True)
+			elif selectedText == "Kodi":
+				self.__headerLabel.setText("Kodi")
+				self.__descriptionLabel.setText("Launch Kodi, the award winning media centre application.")
 			elif selectedText == "Reboot":
 				self.__headerLabel.setText("Reboot")
 				self.__descriptionLabel.setText("Select this menu item to reboot your system.", True)
