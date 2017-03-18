@@ -35,6 +35,7 @@ echo ""
 
 echo "WARNING: Answering yes to the following question will perform the following operations:"
 echo -e "\t-Delete all ROMs, coverart, badges, user configs, logs, and PES database from $pesDataDir"
+echo -e "\t-Delete all Kodi media including config files"
 echo -e "\t-Delete all cached packages from pacman"
 echo -e "\t-Delete command history for root and pi users"
 echo -e "\t-Delete pip cache"
@@ -60,6 +61,8 @@ if [ "$response" == "y" ]; then
 	run rm -rfv $userDir/.config/retroarch
 	echo "Deleting PPSSPP config for pi user..."
 	run rm -rfv $userDir/.config/ppsspp
+	echo "Deleting Kodi config files for pi user..."
+	run rm -rfv $userDir/.kodi
 	echo ""
 	echo "Removing unnecessary packages..."
 	run $setupDir/remove-packages.sh
