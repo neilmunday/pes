@@ -147,6 +147,57 @@ if __name__ == '__main__':
 		mkdir(pesConfig.coverartDir)
 		mkdir(pesConfig.badgeDir)
 		mkdir(pesConfig.biosDir)
+		mkdir(userKodiConfDir)
+		mkdir(pesConfig.kodiDir)
+		
+		# now make kodi sub dirs
+		for d in ['Music', 'Movies', 'TV']:
+			mkdir(os.path.join(pesConfig.kodiDir, d))
+			
+		# create kodi sources file (if it does not already exist)
+		kodiUserDataDir = os.path.join(userKodiConfDir, 'userdata')
+		mkdir(kodiUserDataDir)
+		kodiSourceFile = os.path.join(kodiUserDataDir, 'sources.xml')
+		if not os.path.exists(kodiSourceFile):
+			logging.info("creating kodi sources file: %s" % kodiSourceFile)
+			
+			with open(kodiSourceFile, 'w') as f:
+				f.write(
+"""<sources>
+	<programs>
+		<default pathversion="1"></default>
+	</programs>
+	<video>
+		<default pathversion="1"></default>
+		<source>
+			<name>TV</name>
+			<path pathversion="1">%s/TV/</path>
+			<allowsharing>true</allowsharing>
+		</source>
+		<source>
+			<name>Movies</name>
+			<path pathversion="1">%s/Movies/</path>
+			<allowsharing>true</allowsharing>
+		</source>
+	</video>
+	<music>
+		<default pathversion="1"></default>
+		<source>
+			<name>Music</name>
+			<path pathversion="1">%s/Music</path>
+			<allowsharing>true</allowsharing>
+		</source>
+	</music>
+	<pictures>
+		<default pathversion="1"></default>
+	</pictures>
+	<files>
+		<default pathversion="1"></default>
+	</files>
+</sources>""" % (pesConfig.kodiDir, pesConfig.kodiDir, pesConfig.kodiDir))
+		else:
+			logging.debug("%s already exists, no need to create it" % kodiSourceFile)
+		
 		checkFile(pesConfig.fontFile)
 		
 		if pesConfig.cecEnabled:

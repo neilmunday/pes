@@ -25,6 +25,7 @@ class PESConfig(object):
 		self.coverartDir = configParser.get('settings', 'coverartDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
 		self.badgeDir = configParser.get('settings', 'badgeDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
 		self.biosDir = configParser.get('settings', 'biosDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
+		self.kodiDir = configParser.get('settings', 'kodiDir').replace('%%HOME%%', userHome).replace('%%USERDIR%%', userDir)
 		self.screenSaverTimeout = configParser.getint('settings', 'screenSaverTimeout')
 			
 		# colour settings

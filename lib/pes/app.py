@@ -1837,7 +1837,10 @@ class HomeScreen(Screen):
 			if c.getGameTotal() > 0:
 				consoleName = c.getName()
 				logging.debug("HomeScreen.refreshMenu: inserting %s" % consoleName)
-				self.menu.insertItem(len(self.menu.getItems()) - 5, ConsoleMenuItem(c, False, False, self.app.setScreen, "Console %s" % consoleName))
+				menuLength = 5
+				if self.app.kodiCommand:
+					menuLength += 1
+				self.menu.insertItem(len(self.menu.getItems()) - menuLength, ConsoleMenuItem(c, False, False, self.app.setScreen, "Console %s" % consoleName))
 				# update recently added thumbnails
 				games = c.getRecentlyAddedGames(0, self.__showThumbs)
 				if consoleName not in self.__recentlyAddedThumbPanels:
