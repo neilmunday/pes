@@ -367,10 +367,13 @@ class BadgePanel(IconPanel):
 		super(BadgePanel, self).__init__(renderer, x, y, width, font, smallFont, colour, bgColour, selectedBgColour, badge.getTitle(), self.__createDescription(badge), badge.getPath(), badge)
 		
 	def __createDescription(self, badge):
-		dateEarned = badge.getDateEarned("%d/%m/%Y")
+		dateEarned = badge.getDateEarned(fmt="%d/%m/%Y")
 		if dateEarned == None:
 			dateEarned = "N/A"
-		return "%s\nPoints: %d\nEarned: %s" % (badge.getDescription(), badge.getPoints(), dateEarned)
+		dateEarnedHardcore = badge.getDateEarned(hardcore=True, fmt="%d/%m/%Y")
+		if dateEarnedHardcore == None:
+			dateEarnedHardcore = "N/A"
+		return "%s\nPoints: %d\nEarned: %s     Earned Hardcore: %s" % (badge.getDescription(), badge.getPoints(), dateEarned, dateEarnedHardcore)
 		
 	def setDataObject(self, badge):
 		super(BadgePanel, self).setDataObject(badge)

@@ -200,12 +200,13 @@ class PESApp(object):
 		self.__cecEnabled = False
 		self.retroAchievementConn = None
 		self.achievementUser = None
+		self.__achievementsHardcoreMode = False
 		
 		if pesConfig.retroAchievementsUserName != None and pesConfig.retroAchievementsPassword != None and pesConfig.retroAchievementsApiKey != None:
-			#self.__setRetroAchievements(self, pesConfig.retroAchievementsUserName, pesConfig.retroAchievementsPassword, pesConfig.retroAchievementsApiKey):
 			logging.debug("PESApp.__init__: RetroAchievements user = %s, apiKey = %s" % (pesConfig.retroAchievementsUserName, pesConfig.retroAchievementsApiKey))
 			self.retroAchievementConn = RetroAchievementConn(pesConfig.retroAchievementsUserName, pesConfig.retroAchievementsApiKey)
 			self.__retroAchievementsPassword = pesConfig.retroAchievementsPassword
+			self.__achievementsHardcoreMode = pesConfig.retroAchievementsHardcore
 			self.setUpRetroAchievementUser()
 		
 	def exit(self, rtn=0, confirm=False):
@@ -455,6 +456,10 @@ class PESApp(object):
 				s += "cheevos_username = %s\n" % self.retroAchievementConn.getUsername()
 				s += "cheevos_password = %s\n" % self.__retroAchievementsPassword
 				s += "cheevos_enable = true\n"
+				if self.__achievementsHardcoreMode:
+					s += "cheevos_hardcore_mode_enable = true\n"
+				else:
+					s += "cheevos_hardcore_mode_enable = false\n"
 			with open(userRetroArchCheevosConfFile, "w") as f:
 				f.write(s)
 		elif emulator == "Mupen64Plus":
@@ -1130,7 +1135,7 @@ class PESLoadingThread(threading.Thread):
 			cur.execute('CREATE INDEX IF NOT EXISTS "achievements_game_index" on achievements_games (game_id ASC)')
 			cur.execute('CREATE TABLE IF NOT EXISTS `achievements_badges`(`badge_id` INTEGER PRIMARY KEY, `title` TEXT, `game_id` INT, `description` TEXT, `points` INT, `badge_path` TEXT, `badge_locked_path` TEXT)')
 			cur.execute('CREATE INDEX IF NOT EXISTS "achievements_badge_index" on achievements_badges (badge_id ASC)')
-			cur.execute('CREATE TABLE IF NOT EXISTS `achievements_earned`(`user_id` INT, `badge_id` INT, `date_earned` INT, PRIMARY KEY (user_id, badge_id))')
+			cur.execute('CREATE TABLE IF NOT EXISTS `achievements_earned`(`user_id` INT, `badge_id` INT, `date_earned` INT, `date_earned_hardcore` INT, PRIMARY KEY (user_id, badge_id))')
 			cur.execute('CREATE INDEX IF NOT EXISTS "achievements_earned_index" on achievements_earned (user_id ASC, badge_id ASC)')
 			
 			self.progress = 16

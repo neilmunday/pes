@@ -255,13 +255,13 @@ class AchievementUser(Record):
 	
 	def getRecentBadges(self, count):
 		self.connect()
-		cur = self.doQuery('SELECT `achievements_badges`.`badge_id`, `date_earned` FROM `achievements_earned`, `achievements_badges` WHERE `achievements_earned`.`badge_id` = `achievements_badges`.`badge_id` AND `user_id` = %d ORDER BY `date_earned` DESC LIMIT 0,%d;' % (self.getProperty('user_id'), count))
+		cur = self.doQuery('SELECT `achievements_badges`.`badge_id`, `date_earned`, `date_earned_hardcore` FROM `achievements_earned`, `achievements_badges` WHERE `achievements_earned`.`badge_id` = `achievements_badges`.`badge_id` AND `user_id` = %d ORDER BY `date_earned` DESC LIMIT 0,%d;' % (self.getProperty('user_id'), count))
 		badges = []
 		while True:
 			row = cur.fetchone()
 			if row == None:
 				break
-			badges.append(Badge(self.getDb(), int(row['badge_id']), int(row['date_earned'])))
+			badges.append(Badge(self.getDb(), int(row['badge_id']), int(row['date_earned']), int(row['date_earned_hardcore'])))
 		self.disconnect()
 		return badges
 	
@@ -312,16 +312,19 @@ class AchievementGame(Record):
 	def getBadges(self):
 		if self.__badges == None:
 			self.connect()
-			cur = self.doQuery('SELECT `badge_id`, (SELECT `date_earned` FROM `achievements_earned` WHERE `achievements_badges`.`badge_id` = `achievements_earned`.`badge_id` AND `achievements_earned`.`user_id` = %d) As `date_earned` FROM `achievements_badges` WHERE `game_id` = %d ORDER BY `title`;' % (self.__userId, self.getId()))
+			cur = self.doQuery('SELECT `badge_id`, (SELECT `date_earned` FROM `achievements_earned` WHERE `achievements_badges`.`badge_id` = `achievements_earned`.`badge_id` AND `achievements_earned`.`user_id` = %d) As `date_earned`, (SELECT `date_earned_hardcore` FROM `achievements_earned` WHERE `achievements_badges`.`badge_id` = `achievements_earned`.`badge_id` AND `achievements_earned`.`user_id` = %d) As `date_earned_hardcore` FROM `achievements_badges` WHERE `game_id` = %d ORDER BY `title`;' % (self.__userId, self.__userId, self.getId()))
 			self.__badges = []
 			while True:
 				row = cur.fetchone()
 				if row == None:
 					break
+				dateEarned = None
+				dateEarnedHardcore = None
 				if row['date_earned']:
-					self.__badges.append(Badge(self.getDb(), int(row['badge_id']), int(row['date_earned'])))
-				else:
-					self.__badges.append(Badge(self.getDb(), int(row['badge_id']), None))
+					dateEarned = int(row['date_earned'])
+				if row['date_earned_hardcore']:
+					dateEarnedHardcore = int(row['date_earned_hardcore'])
+				self.__badges.append(Badge(self.getDb(), int(row['badge_id']), dateEarned, dateEarnedHardcore))
 			self.disconnect()
 		return self.__badges
 	
@@ -362,19 +365,24 @@ class AchievementGame(Record):
 		return self.__userPointsTotal
 		
 class Badge(Record):
-	def __init__(self, db, badgeId, dateEarned=None):
+	def __init__(self, db, badgeId, dateEarned=None, dateEarnedHardcore=None):
 		super(Badge, self).__init__(db, 'achievements_badges', ['badge_id', 'title', 'game_id', 'description', 'points', 'badge_path', 'badge_locked_path'], 'badge_id', badgeId, True)
 		self.__dateEarned = dateEarned
-		if self.__dateEarned:
+		self.__dateEarnedHardcore = dateEarnedHardcore
+		if self.__dateEarned or self.__dateEarnedHardcore:
 			self.__isLocked = False
 		else:
 			self.__isLocked = True
 		logging.debug("Badge.init: created badge with title: \"%s\"" % self.getTitle())
 		
-	def getDateEarned(self, fmt=None):
-		if self.__isLocked:
+	def getDateEarned(self, hardcore=False, fmt=None):
+		#if self.__isLocked:
+		d = self.__dateEarned
+		if hardcore:
+			d = self.__dateEarnedHardcore
+		if d == None:
 			return None
-		timestamp = int(self.__dateEarned)
+		timestamp = int(d)
 		if timestamp == -1:
 			return None
 		if fmt == None:

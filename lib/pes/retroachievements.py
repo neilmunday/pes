@@ -118,16 +118,30 @@ class RetroAchievementGameTask(object):
 				if not os.path.exists(badgeLockedPath):
 					self.__downloadBadge("http://i.retroachievements.org/Badge/%s_lock.png" % achievement["BadgeName"], badgeLockedPath)
 				# has the user earned this achievement?
-				if 'DateEarned' in achievement:
-					row = self.__execute("SELECT COUNT(*) AS `total` FROM `achievements_earned` WHERE `user_id` = %d AND `badge_id` = %d;" % (self.__userId, badgeId), True)
-					if row == None or row['total'] == 0:
-						ts = time.mktime(datetime.strptime(achievement['DateEarned'], '%Y-%m-%d %H:%M:%S').timetuple())
-						insertEarnedValues.append("(%d, %d, %d)" % (self.__userId, badgeId, ts))
+				if 'DateEarned' in achievement or 'DateEarnedHardcore' in achievement:
+					earnedTs = 0
+					earnedHardcoreTs = 0
+					if 'DateEarned' in achievement:
+						row = self.__execute("SELECT COUNT(*) AS `total` FROM `achievements_earned` WHERE `user_id` = %d AND `badge_id` = %d AND `date_earned` < 1;" % (self.__userId, badgeId), True)
+						if row == None or row['total'] == 0:
+							earnedTs = time.mktime(datetime.strptime(achievement['DateEarned'], '%Y-%m-%d %H:%M:%S').timetuple())
+					if 'DateEarnedHardcore' in achievement:
+						row = self.__execute("SELECT COUNT(*) AS `total` FROM `achievements_earned` WHERE `user_id` = %d AND `badge_id` = %d AND `date_earned_hardcore` < 1;" % (self.__userId, badgeId), True)
+						if row == None or row['total'] == 0:
+							earnedHardcoreTs = time.mktime(datetime.strptime(achievement['DateEarnedHardcore'], '%Y-%m-%d %H:%M:%S').timetuple())
+					insertEarnedValues.append("(%d, %d, %d, %d)" % (self.__userId, badgeId, earnedTs, earnedHardcoreTs))
+				
+				#if 'DateEarned' in achievement:
+				#	row = self.__execute("SELECT COUNT(*) AS `total` FROM `achievements_earned` WHERE `user_id` = %d AND `badge_id` = %d;" % (self.__userId, badgeId), True)
+				#	if row == None or row['total'] == 0:
+				#		ts = time.mktime(datetime.strptime(achievement['DateEarned'], '%Y-%m-%d %H:%M:%S').timetuple())
+				#		insertEarnedValues.append("(%d, %d, %d)" % (self.__userId, badgeId, ts))
+
 			# process inserts in one go - much quicker!
 			if len(insertBadgesValues) > 0:
 				self.__execute("INSERT INTO `achievements_badges` (`badge_id`, `game_id`, `title`, `description`, `points`, `badge_path`, `badge_locked_path`) VALUES %s;" % ",".join(insertBadgesValues))
 			if len(insertEarnedValues) > 0:
-				self.__execute("INSERT INTO `achievements_earned` (`user_id`, `badge_id`, `date_earned`) VALUES %s;" % ",".join(insertEarnedValues))
+				self.__execute("INSERT INTO `achievements_earned` (`user_id`, `badge_id`, `date_earned`, `date_earned_hardcore`) VALUES %s;" % ",".join(insertEarnedValues))
 				
 			row = self.__execute("SELECT `achievement_total`, `score_total` FROM `achievements_games` WHERE `game_id` = %d" % self.__gameId, True)
 			if row == None:

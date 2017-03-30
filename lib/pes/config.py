@@ -80,6 +80,7 @@ class PESConfig(object):
 			self.retroAchievementsUserName = configParser.get("RetroAchievements", "username")
 			self.retroAchievementsPassword = configParser.get("RetroAchievements", "password")
 			self.retroAchievementsApiKey = configParser.get("RetroAchievements", "apiKey")
+			self.retroAchievementsHardcore = configParser.getboolean("RetroAchievements", "hardcore")
 			
 			if len(self.retroAchievementsUserName) == 0 or len(self.retroAchievementsPassword) == 0 or len(self.retroAchievementsApiKey) == 0:
 				self.retroAchievementsUserName = None
