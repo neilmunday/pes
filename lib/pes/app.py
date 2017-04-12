@@ -168,6 +168,7 @@ class PESApp(object):
 		self.romsDir = pesConfig.romsDir
 		self.coverartDir = pesConfig.coverartDir
 		self.badgeDir = pesConfig.badgeDir
+		self.biosDir = pesConfig.biosDir
 		
 		self.__screenSaverTimeout = pesConfig.screenSaverTimeout
 		
@@ -388,7 +389,14 @@ class PESApp(object):
 				logging.debug("PESApp.initSurfaces: pre-loaded %s surface from %s" % (consoleName, image))
 			
 	def playGame(self, game):
-		emulator = game.getConsole().getEmulator()
+		console = game.getConsole()
+		# are there any files required to use this emulator?
+		for f in console.getRequiredFiles():
+			if not os.path.exists(f):
+				self.showMessageBox("The file %s is required to play games for %s. Please add this file and try again." % (f, console.getName()), None, None)
+				return
+				
+		emulator = console.getEmulator()
 		logging.debug("PESApp.playGame: emulator is %s" % emulator)
 		if emulator == "RetroArch":
 			# note: RetroArch uses a SNES control pad button layout, SDL2 uses XBOX 360 layout!
@@ -1220,6 +1228,10 @@ class PESLoadingThread(threading.Thread):
 						console.addIgnoreRom(r.strip())
 				if configParser.has_option(c, 'achievement_id'):
 					console.setAchievementApiId(configParser.get(c, 'achievement_id'))
+				if configParser.has_option(c, 'require'):
+					for f in configParser.get(c, 'require').split(','):
+						console.addRequiredFile(f.strip().replace('%%USERBIOSDIR%%', self.app.biosDir))
+				
 				if console.isNew():
 					console.save()
 				self.app.consoles.append(console)

@@ -433,11 +433,17 @@ class Console(Record):
 		self.__gameTotal = None
 		self.__ignoreRoms = []
 		self.__gameDict = {}
+		self.__requiredFiles = []
 		
 	def addIgnoreRom(self, rom):
 		if rom not in self.__ignoreRoms:
 			self.__ignoreRoms.append(rom)
-			
+	
+	def addRequiredFile(self, f):
+		if f not in self.__requiredFiles:
+			self.__requiredFiles.append(f)
+			logging.debug("Console.addRequiredFile: added %s for console %s" % (f, self.getName()))
+	
 	def getAchievementApiId(self):
 		return self.getProperty('achievement_api_id')
 
@@ -654,6 +660,9 @@ class Console(Record):
 			recentlyPlayed.append(row['game_id'])
 		self.disconnect()
 		return recentlyPlayed
+	
+	def getRequiredFiles(self):
+		return self.__requiredFiles
 
 	def getRomDir(self):
 		return self.__romDir
