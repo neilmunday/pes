@@ -499,7 +499,7 @@ class Icon(UIObject):
 			
 class Label(UIObject):
 	
-	def __init__(self, renderer, x, y, text, font, colour, bgColour=None, fixedWidth=0, fixedHeight=0, autoScroll=False, bgAlpha=255):
+	def __init__(self, renderer, x, y, text, font, colour, bgColour=None, fixedWidth=0, fixedHeight=0, autoScroll=False, bgAlpha=255, pack=False):
 		self.__text = text
 		self.__colour = colour
 		self.__font = font
@@ -508,7 +508,14 @@ class Label(UIObject):
 			width = self.__surface.contents.w
 		else:
 			self.__surface = sdl2.sdlttf.TTF_RenderText_Blended_Wrapped(self.__font, self.__text, self.__colour, fixedWidth)
-			width = fixedWidth
+			if pack:
+				s = sdl2.sdlttf.TTF_RenderText_Blended(self.__font, self.__text, self.__colour)
+				if s.contents.w < self.__surface.contents.w:
+					sdl2.SDL_FreeSurface(self.__surface)
+					self.__surface = s
+				width = self.__surface.contents.w
+			else:
+				width = fixedWidth
 		self.__fixedWidth = fixedWidth
 		self.__textWidth = self.__surface.contents.w
 		self.__textHeight = self.__surface.contents.h
@@ -1214,19 +1221,22 @@ class MessageBox(UIObject):
 	
 	def __init__(self, renderer, text, font, colour, bgColour, borderColour, callback, *callbackArgs):
 		# renderer, x, y, text, font, colour, bgColour=None, fixedWidth=0, fixedHeight=0, autoScroll=False, bgAlpha=255):
-		self.__label = Label(renderer, 0, 0, text, font, colour, bgColour)
-		self.__labelMargin = 100
 		rendererWidth = c_int()
 		rendererHeight = c_int()
 		sdl2.SDL_GetRendererOutputSize(renderer, byref(rendererWidth), byref(rendererHeight))
-		width = self.__label.width + self.__labelMargin
-		height = self.__label.height * 3
+		self.__labelMargin = 20
+		width = int(rendererWidth.value) - 100
+		labelWidth = width - (self.__labelMargin * 2)
+		self.__label = Label(renderer, 0, 0, text, font, colour, bgColour, fixedWidth=labelWidth, pack=True)
+		labelWidth = self.__label.width # may have been resized by packing
+		height = self.__label.height + (self.__labelMargin * 2)
 		x = int((rendererWidth.value - width) / 2.0)
 		y = int((rendererHeight.value - height) / 2.0)
 		super(MessageBox, self).__init__(renderer, x, y, width, height)
 		self.__borderColour = borderColour
 		self.__bgColour = bgColour
-		self.__label.setCoords(x + int((self.__labelMargin / 2.0)), y + self.__label.height)
+		self.__label.setText(text, True)
+		self.__label.setCoords(x + self.__labelMargin + ((width - labelWidth - (self.__labelMargin * 2)) / 2), y + self.__labelMargin)
 		self.__rendererWidth = rendererWidth.value
 		self.__rendererHeight = rendererHeight.value
 		self.__callback = callback
