@@ -156,19 +156,9 @@ class PESApp(object):
 	def __init__(self, dimensions, pesConfig):
 		super(PESApp, self).__init__()
 		self.__dimensions = dimensions
-		self.__shutdownCommand = pesConfig.shutdownCommand
-		self.__rebootCommand = pesConfig.rebootCommand
-		self.listTimezonesCommand = pesConfig.listTimezonesCommand
-		self.getTimezoneCommand = pesConfig.getTimezoneCommand
-		self.setTimezoneCommand = pesConfig.setTimezoneCommand
-		self.kodiCommand = pesConfig.kodiCommand
+		self.config = pesConfig
 		self.timezones = []
 		self.currentTimezone = None
-		self.fontFile = pesConfig.fontFile
-		self.romsDir = pesConfig.romsDir
-		self.coverartDir = pesConfig.coverartDir
-		self.badgeDir = pesConfig.badgeDir
-		self.biosDir = pesConfig.biosDir
 		
 		self.__screenSaverTimeout = pesConfig.screenSaverTimeout
 		
@@ -178,7 +168,6 @@ class PESApp(object):
 		Thumbnail.CACHE_LEN = pesConfig.coverartCacheLen
 		Icon.CACHE_LEN = pesConfig.iconCacheLen
 		
-		self.coverartCacheLen = pesConfig.coverartCacheLen
 		self.consoles = []
 		self.consoleSurfaces = {}
 		self.__uiObjects = [] # list of UI objects created so we can destroy them upon exit
@@ -201,13 +190,11 @@ class PESApp(object):
 		self.__cecEnabled = False
 		self.retroAchievementConn = None
 		self.achievementUser = None
-		self.__achievementsHardcoreMode = False
 		
 		if pesConfig.retroAchievementsUserName != None and pesConfig.retroAchievementsPassword != None and pesConfig.retroAchievementsApiKey != None:
 			logging.debug("PESApp.__init__: RetroAchievements user = %s, apiKey = %s" % (pesConfig.retroAchievementsUserName, pesConfig.retroAchievementsApiKey))
 			self.retroAchievementConn = RetroAchievementConn(pesConfig.retroAchievementsUserName, pesConfig.retroAchievementsApiKey)
 			self.__retroAchievementsPassword = pesConfig.retroAchievementsPassword
-			self.__achievementsHardcoreMode = pesConfig.retroAchievementsHardcore
 			self.setUpRetroAchievementUser()
 		
 	def exit(self, rtn=0, confirm=False):
@@ -244,6 +231,9 @@ class PESApp(object):
 			sdl2.SDL_Quit()
 			logging.info("PESApp.exit: exiting...")
 			sys.exit(rtn)
+			
+	def getDimensions(self):
+		return self.__dimensions
 			
 	def getGameTotal(self):
 		# get number of games
@@ -464,7 +454,7 @@ class PESApp(object):
 				s += "cheevos_username = %s\n" % self.retroAchievementConn.getUsername()
 				s += "cheevos_password = %s\n" % self.__retroAchievementsPassword
 				s += "cheevos_enable = true\n"
-				if self.__achievementsHardcoreMode:
+				if self.config.retroAchievementsHardcore:
 					s += "cheevos_hardcore_mode_enable = true\n"
 				else:
 					s += "cheevos_hardcore_mode_enable = false\n"
@@ -594,7 +584,7 @@ class PESApp(object):
 			self.showMessageBox("Are you sure?", self.reboot, False)
 		else:
 			logging.info("PES is rebooting...")
-			self.runCommand(self.__rebootCommand)
+			self.runCommand(self.config.rebootCommand)
 			
 	def reload(self, confirm=True):
 		if confirm:
@@ -667,12 +657,12 @@ class PESApp(object):
 		
 		logging.debug("PESApp.run: window dimensions: (%d, %d)" % (self.__dimensions[0], self.__dimensions[1]))
 		
-		self.splashFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, self.__fontSizes['splash'])
-		self.menuFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, self.__fontSizes['menu'])
-		self.headerFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, self.__fontSizes['header'])
-		self.titleFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, self.__fontSizes['title'])
-		self.bodyFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, self.__fontSizes['body'])
-		self.smallBodyFont = sdl2.sdlttf.TTF_OpenFont(self.fontFile, self.__fontSizes['smallBody'])
+		self.splashFont = sdl2.sdlttf.TTF_OpenFont(self.config.fontFile, self.__fontSizes['splash'])
+		self.menuFont = sdl2.sdlttf.TTF_OpenFont(self.config.fontFile, self.__fontSizes['menu'])
+		self.headerFont = sdl2.sdlttf.TTF_OpenFont(self.config.fontFile, self.__fontSizes['header'])
+		self.titleFont = sdl2.sdlttf.TTF_OpenFont(self.config.fontFile, self.__fontSizes['title'])
+		self.bodyFont = sdl2.sdlttf.TTF_OpenFont(self.config.fontFile, self.__fontSizes['body'])
+		self.smallBodyFont = sdl2.sdlttf.TTF_OpenFont(self.config.fontFile, self.__fontSizes['smallBody'])
 		
 		self.renderer = sdl2.SDL_CreateRenderer(self.__window, -1, sdl2.render.SDL_RENDERER_ACCELERATED)
 		
@@ -1041,8 +1031,8 @@ class PESApp(object):
 		self.exit(0)
 		
 	def runKodi(self):
-		logging.debug("PESApp.runKodi: launching kodi using: %s" % self.kodiCommand)
-		self.runCommand(self.kodiCommand)
+		logging.debug("PESApp.runKodi: launching kodi using: %s" % self.config.kodiCommand)
+		self.runCommand(self.config.kodiCommand)
 		
 	def setCecEnabled(self, enabled):
 		self.__cecEnabled = enabled
@@ -1096,7 +1086,7 @@ class PESApp(object):
 			self.showMessageBox("Are you sure?", self.shutdown, False)
 		else:
 			logging.info("PES is shutting down...")
-			self.runCommand(self.__shutdownCommand)
+			self.runCommand(self.config.shutdownCommand)
 			
 	def updateControlPad(self, jsIndex):
 		if jsIndex == self.__controlPadIndex:
@@ -1194,9 +1184,9 @@ class PESLoadingThread(threading.Thread):
 		for c in supportedConsoles:
 			# check the console definition from the config file
 			try:
-				consolePath = self.app.romsDir + os.sep + c
+				consolePath = self.app.config.romsDir + os.sep + c
 				mkdir(consolePath)
-				consoleCoverartDir = self.app.coverartDir + os.sep + c
+				consoleCoverartDir = self.app.config.coverartDir + os.sep + c
 				mkdir(consoleCoverartDir)
 				extensions = configParser.get(c, 'extensions').split(' ')
 				command = configParser.get(c, 'command').replace('%%BASE%%', baseDir)
@@ -1230,7 +1220,7 @@ class PESLoadingThread(threading.Thread):
 					console.setAchievementApiId(configParser.get(c, 'achievement_id'))
 				if configParser.has_option(c, 'require'):
 					for f in configParser.get(c, 'require').split(','):
-						console.addRequiredFile(f.strip().replace('%%USERBIOSDIR%%', self.app.biosDir))
+						console.addRequiredFile(f.strip().replace('%%USERBIOSDIR%%', self.app.config.biosDir))
 				
 				if console.isNew():
 					console.save()
@@ -1251,7 +1241,7 @@ class PESLoadingThread(threading.Thread):
 		
 		self.progress = 48
 		self.status = "Loading timezone info..."
-		process = Popen(self.app.listTimezonesCommand, stdout=PIPE, stderr=PIPE, shell=True)
+		process = Popen(self.app.config.listTimezonesCommand, stdout=PIPE, stderr=PIPE, shell=True)
 		stdout, stderr = process.communicate()
 		if process.returncode != 0:
 			logging.error("PESLoadingThread.run: could not get time zones")
@@ -1261,7 +1251,7 @@ class PESLoadingThread(threading.Thread):
 				self.app.timezones.append(l)
 			logging.debug("PESLoadingThread.run: loaded %d timezones" % len(self.app.timezones))
 				
-			process = Popen(self.app.getTimezoneCommand, stdout=PIPE, stderr=PIPE, shell=True)
+			process = Popen(self.app.config.getTimezoneCommand, stdout=PIPE, stderr=PIPE, shell=True)
 			stdout, stderr = process.communicate()
 			if process.returncode != 0:
 				logging.error("PESLoadingThread.run: could not get current time zone!")
@@ -1747,7 +1737,7 @@ class HomeScreen(Screen):
 		for c in self.app.consoles:
 			if c.getGameTotal() > 0:
 				self.menu.addItem(ConsoleMenuItem(c, False, False, self.__loadConsoleScreen, c))
-		if self.app.kodiCommand:
+		if self.app.config.kodiCommand:
 			self.menu.addItem(MenuItem("Kodi", False, False, self.app.runKodi))
 		self.menu.addItem(MenuItem("Settings", False, False, self.app.setScreen, "Settings"))
 		self.menu.addItem(MenuItem("Reload", False, False, self.app.reload))
@@ -1855,7 +1845,7 @@ class HomeScreen(Screen):
 				consoleName = c.getName()
 				logging.debug("HomeScreen.refreshMenu: inserting %s" % consoleName)
 				menuLength = 5
-				if self.app.kodiCommand:
+				if self.app.config.kodiCommand:
 					menuLength += 1
 				self.menu.insertItem(len(self.menu.getItems()) - menuLength, ConsoleMenuItem(c, False, False, self.app.setScreen, "Console %s" % consoleName))
 				# update recently added thumbnails
@@ -2081,7 +2071,8 @@ class SettingsScreen(Screen):
 		super(SettingsScreen, self).__init__(app, renderer, "Settings", Menu([
 			MenuItem("Update Games"),
 			MenuItem("Update Badges"),
-			MenuItem("Joystick Set-Up")]),
+			MenuItem("Joystick Set-Up"),
+			MenuItem("Gameplay")]),
 		menuRect, screenRect)
 		
 		if self.app.currentTimezone != None:
@@ -2090,6 +2081,9 @@ class SettingsScreen(Screen):
 		self.menu.addItem(MenuItem("Reset Database", False, False, app.resetDatabase))
 		self.menu.addItem(MenuItem("Reset Config", False, False, app.resetConfig))
 		self.menu.addItem(MenuItem("About"))
+		
+		self.__hardcoreModeMenuItem = MenuItem("Hardcore mode", True, True)
+		self.__hardcoreModeMenuItem.toggle(self.app.config.retroAchievementsHardcore)
 		
 		self.__init = True
 		self.__updateDatabaseMenu = Menu([])
@@ -2109,6 +2103,7 @@ class SettingsScreen(Screen):
 		self.__scanButton = None
 		self.__selectAllButton = None
 		self.__deselectAllButton = None
+		self.__gameplaySaveButton = None
 		self.__gamepadLayoutIcon = None
 		self.__jsIndex= None
 		self.__jsName = None
@@ -2150,6 +2145,7 @@ class SettingsScreen(Screen):
 		self.__jsLastEventTick = 0
 		self.__isBusy = False
 		self.__timezoneList = None
+		self.__gameplayList = None
 
 	def drawScreen(self):
 		super(SettingsScreen, self).drawScreen()
@@ -2202,6 +2198,12 @@ class SettingsScreen(Screen):
 			self.__descriptionLabel.draw()
 			if self.__timezoneList:
 				self.__timezoneList.draw()
+		elif selected == "Gameplay":
+			self.__descriptionLabel.draw()
+			if self.__gameplayList:
+				self.__gameplayList.draw()
+			if self.__gameplaySaveButton:
+				self.__gameplaySaveButton.draw()
 		elif selected == "Joystick Set-Up":
 			if self.__jsTimeRemaining > -1 and self.__jsPrompt < self.__jsPromptLen:
 				tick = sdl2.SDL_GetTicks()
@@ -2427,7 +2429,7 @@ class SettingsScreen(Screen):
 					else:
 						self.__descriptionLabel.setText("Preparing to synchronise PES with your www.retroachievements.org account...")
 						if not self.__updateAchievementsThread:
-							self.__updateAchievementsThread = RetroAchievementsUpdateThread(self.app.retroAchievementConn, self.app.badgeDir)
+							self.__updateAchievementsThread = RetroAchievementsUpdateThread(self.app.retroAchievementConn, self.app.config.badgeDir)
 							if self.__scanProgressBar == None:
 								self.__scanProgressBar = ProgressBar(self.renderer, self.screenRect[0] + self.screenMargin, self.__descriptionLabel.y + self.__descriptionLabel.height + 10, self.screenRect[2] - (self.screenMargin * 2), 40, self.app.lineColour, self.app.menuBackgroundColour)
 							else:
@@ -2444,6 +2446,18 @@ class SettingsScreen(Screen):
 						timezoneListY = self.__descriptionLabel.y + self.__descriptionLabel.height + 10
 						self.__timezoneList = self.addUiObject(List(self.renderer, self.__descriptionLabel.x + self.__toggleMargin, timezoneListY, 300, self.screenRect[3] - timezoneListY, timezoneMenu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, drawBackground=True))
 					self.__timezoneList.setFocus(True)
+				elif selected == "Gameplay":
+					self.__descriptionLabel.setText("Gameplay settings can be modified below.", True)
+					if self.__gameplayList == None:
+						menuItems = []
+						menuItems.append(self.__hardcoreModeMenuItem)
+						gamePlayMenu = Menu(menuItems)
+						gamePlayListY = self.__descriptionLabel.y + self.__descriptionLabel.height + 10
+						self.__gameplayList = self.addUiObject(List(self.renderer, self.__descriptionLabel.x, gamePlayListY, 300, self.screenRect[3] - gamePlayListY, gamePlayMenu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, graphicalToggle=False))
+						if self.__gameplaySaveButton == None:
+							screenDimensions = self.app.getDimensions()
+							self.__gameplaySaveButton = self.addUiObject(Button(self.renderer, screenDimensions[0] - 160, screenDimensions[1] - 60, 150, 50, "Save", self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.saveSettings))
+					self.__gameplayList.setFocus(True)
 				elif selected == "About":
 					self.__headerLabel.setText(selected)
 					self.__descriptionLabel.setText("Pi Entertainment System version %s\n\nReleased: %s\n\nLicense: Licensed under version 3 of the GNU Public License (GPL)\n\nAuthor: %s\n\nContributors: Eric Smith\n\nCover art: theGamesDB.net\n\nDocumentation: http://pes.mundayweb.com\n\nFacebook: https://www.facebook.com/pientertainmentsystem\n\nHelp: pes@mundayweb.com\n\nIP Address: %s" % (VERSION_NUMBER, VERSION_DATE, VERSION_AUTHOR, self.app.ip), True)
@@ -2528,6 +2542,17 @@ class SettingsScreen(Screen):
 									self.__selectAllButton.setFocus(True)
 				elif selected == "Timezone" and self.__timezoneList:
 					self.__timezoneList.processEvent(event)
+				elif selected == "Gameplay" and self.__gameplayList:
+					if event.type == sdl2.SDL_KEYDOWN:
+						if event.key.keysym.sym == sdl2.SDLK_RIGHT:
+							self.__gameplayList.setFocus(False)
+							self.__gameplaySaveButton.setFocus(True)
+						elif event.key.keysym.sym == sdl2.SDLK_LEFT:
+							self.__gameplayList.setFocus(True)
+							self.__gameplaySaveButton.setFocus(False)
+						else:
+							self.__gameplayList.processEvent(event)
+							self.__gameplaySaveButton.processEvent(event)
 				elif selected == "Joystick Set-Up":
 					if self.__ignoreJsEvents:
 						# don't accept an axis movement as the first input, only accept a button or hat
@@ -2566,7 +2591,7 @@ class SettingsScreen(Screen):
 		self.app.doJsToKeyEvents = True
 		
 	def __setTimezone(self, timezone):
-		process = Popen("%s %s" % (self.app.setTimezoneCommand, timezone), stdout=PIPE, stderr=PIPE, shell=True)
+		process = Popen("%s %s" % (self.app.config.setTimezoneCommand, timezone), stdout=PIPE, stderr=PIPE, shell=True)
 		stdout, stderr = process.communicate()
 		if process.returncode != 0:
 			logging.error("SettingsScreen.__setTimezone: failed to set timezone: %s" % stderr)
@@ -2575,6 +2600,11 @@ class SettingsScreen(Screen):
 		self.app.currentTimezone = timezone
 		self.__descriptionLabel.setText("You can change the current timezone from \"%s\" by selecting one from the list below." % self.app.currentTimezone, True)
 		self.app.showMessageBox("Timezone changed successfully", None, None)
+		
+	def saveSettings(self):
+		logging.debug("SettingsScreen.saveSettings: saving settings...")
+		self.app.config.set("RetroAchievements", "hardcore", self.__hardcoreModeMenuItem.isToggled())
+		self.app.config.save()
 
 	def startScan(self):
 		logging.debug("SettingsScreen.startScan: beginning scan...")
