@@ -2603,6 +2603,7 @@ class SettingsScreen(Screen):
 		
 	def saveSettings(self):
 		logging.debug("SettingsScreen.saveSettings: saving settings...")
+		self.app.config.retroAchievementsHardcore = self.__hardcoreModeMenuItem.isToggled()
 		self.app.config.set("RetroAchievements", "hardcore", self.__hardcoreModeMenuItem.isToggled())
 		self.app.config.save()
 
