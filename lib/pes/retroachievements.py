@@ -122,20 +122,14 @@ class RetroAchievementGameTask(object):
 					earnedTs = 0
 					earnedHardcoreTs = 0
 					if 'DateEarned' in achievement:
-						row = self.__execute("SELECT COUNT(*) AS `total` FROM `achievements_earned` WHERE `user_id` = %d AND `badge_id` = %d AND `date_earned` < 1;" % (self.__userId, badgeId), True)
-						if row == None or row['total'] == 0:
-							earnedTs = time.mktime(datetime.strptime(achievement['DateEarned'], '%Y-%m-%d %H:%M:%S').timetuple())
+						earnedTs = time.mktime(datetime.strptime(achievement['DateEarned'], '%Y-%m-%d %H:%M:%S').timetuple())
 					if 'DateEarnedHardcore' in achievement:
-						row = self.__execute("SELECT COUNT(*) AS `total` FROM `achievements_earned` WHERE `user_id` = %d AND `badge_id` = %d AND `date_earned_hardcore` < 1;" % (self.__userId, badgeId), True)
-						if row == None or row['total'] == 0:
-							earnedHardcoreTs = time.mktime(datetime.strptime(achievement['DateEarnedHardcore'], '%Y-%m-%d %H:%M:%S').timetuple())
-					insertEarnedValues.append("(%d, %d, %d, %d)" % (self.__userId, badgeId, earnedTs, earnedHardcoreTs))
-				
-				#if 'DateEarned' in achievement:
-				#	row = self.__execute("SELECT COUNT(*) AS `total` FROM `achievements_earned` WHERE `user_id` = %d AND `badge_id` = %d;" % (self.__userId, badgeId), True)
-				#	if row == None or row['total'] == 0:
-				#		ts = time.mktime(datetime.strptime(achievement['DateEarned'], '%Y-%m-%d %H:%M:%S').timetuple())
-				#		insertEarnedValues.append("(%d, %d, %d)" % (self.__userId, badgeId, ts))
+						earnedHardcoreTs = time.mktime(datetime.strptime(achievement['DateEarnedHardcore'], '%Y-%m-%d %H:%M:%S').timetuple())
+					row = self.__execute("SELECT `date_earned`, `date_earned_hardcore` FROM `achievements_earned` WHERE `user_id` = %d AND `badge_id` = %d" % (self.__userId, badgeId), True)
+					if row == None:
+						insertEarnedValues.append("(%d, %d, %d, %d)" % (self.__userId, badgeId, earnedTs, earnedHardcoreTs))
+					elif row['date_earned'] != earnedTs or row['date_earned_hardcore'] != earnedHardcoreTs:
+						self.__execute("UPDATE `achievements_earned` SET `date_earned` = %d, `date_earned_hardcore` = %d WHERE `user_id` = %d AND `badge_id` = %d" % (earnedTs, earnedHardcoreTs, self.__userId, badgeId))
 
 			# process inserts in one go - much quicker!
 			if len(insertBadgesValues) > 0:
