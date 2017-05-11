@@ -376,11 +376,10 @@ class Badge(Record):
 		logging.debug("Badge.init: created badge with title: \"%s\"" % self.getTitle())
 		
 	def getDateEarned(self, hardcore=False, fmt=None):
-		#if self.__isLocked:
 		d = self.__dateEarned
 		if hardcore:
 			d = self.__dateEarnedHardcore
-		if d == None:
+		if d == None or d == 0:
 			return None
 		timestamp = int(d)
 		if timestamp == -1:
@@ -409,8 +408,11 @@ class Badge(Record):
 	def isLocked(self):
 		return self.__isLocked
 
-	def setDateEarned(self, earned):
-		self.__dateEarned = earned
+	def setDateEarned(self, earned, hardcore=False):
+		if hardcore:
+			self.__dateEarnedHardcore = earned
+		else:
+			self.__dateEarned = earned
 		if earned:
 			self.__locked = False
 		else:
