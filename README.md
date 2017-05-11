@@ -68,8 +68,8 @@ Acknowledgements
 
 I would like to thank the following people/groups as without them PES would not be possible:
 
-* Frank Raiser for his [image scaling code](http://www.pygame.org/pcr/transform_scale>) that I have modified for use by PES to scale thumbnail images
-* The maintainers of [RetroArch](http://www.libretro.com>) and all of the emulators that PES uses:
+* Frank Raiser for his [image scaling code](http://www.pygame.org/pcr/transform_scale) that I have modified for use by PES to scale thumbnail images
+* The maintainers of [RetroArch](http://www.libretro.com) and all of the emulators that PES uses:
 
   * beetle-pce-fast https://github.com/libretro/beetle-pce-fast-libretro
   * blueMSX-libretro https://github.com/libretro/blueMSX-libretro
