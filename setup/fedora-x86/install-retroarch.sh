@@ -37,12 +37,12 @@ checkDir $retroarchDir
 header "Building RetroArch"
 
 cd $retroarchDir
-run git checkout tags/v1.3.6
+run git checkout tags/v1.5.0
 
 run sudo mkdir -p $retroArchCoresDir
 run sudo mkdir -p $retroArchConfigDir
 #export PKG_CONFIG_PATH=/opt/sdl2/default/lib/pkgconfig
 
-run ./configure --prefix="$retroArchInstallDir" --enable-udev --disable-ffmpeg --enable-netplay --enable-pulse --enable-x11 --enable-zlib --enable-7zip --enable-sdl --disable-sdl2
+run ./configure --prefix="$retroArchInstallDir" --enable-udev --disable-ffmpeg --enable-networking --enable-pulse --enable-x11 --enable-zlib --enable-7zip --enable-sdl --disable-sdl2
 run make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1 -j
 run sudo make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1 -j install

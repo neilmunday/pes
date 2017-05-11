@@ -37,7 +37,7 @@ checkDir $retroarchDir
 header "Building RetroArch"
 
 cd $retroarchDir
-run git checkout tags/v1.3.6
+run git checkout tags/v1.5.0
 
 run sudo mkdir -p $retroArchCoresDir
 run sudo mkdir -p $retroArchConfigDir
@@ -46,7 +46,7 @@ export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -O3"
 export CXXFLAGS=$CFLAGS
 #export PKG_CONFIG_PATH=/opt/sdl2/default/lib/pkgconfig
 
-run ./configure --prefix="$retroArchInstallDir" --enable-udev --disable-ffmpeg --enable-netplay --disable-pulse --disable-x11 --enable-sdl --enable-neon --enable-floathard
+run ./configure --prefix="$retroArchInstallDir" --enable-udev --disable-ffmpeg --enable-networking --disable-pulse --disable-x11 --enable-sdl --enable-neon --enable-floathard
 run make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1
 run sudo make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1 install
 

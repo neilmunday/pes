@@ -37,7 +37,7 @@ checkDir $retroarchDir
 header "Building RetroArch"
 
 cd $retroarchDir
-run git checkout tags/v1.3.6
+run git checkout tags/v1.5.0
 
 run sudo mkdir -p $retroArchCoresDir
 run sudo mkdir -p $retroArchConfigDir
@@ -45,7 +45,7 @@ run sudo mkdir -p $retroArchConfigDir
 export CFLAGS="-O3 -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
 export CXXFLAGS=$CFLAGS
 
-run ./configure --prefix="$retroArchInstallDir" --enable-udev --disable-ffmpeg --enable-netplay --disable-pulse --disable-x11 --enable-sdl
+run ./configure --prefix="$retroArchInstallDir" --enable-udev --disable-ffmpeg --enable-networking --disable-pulse --disable-x11 --enable-sdl
 run make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1
 run sudo make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1 install
 
