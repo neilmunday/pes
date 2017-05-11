@@ -255,7 +255,7 @@ class AchievementUser(Record):
 	
 	def getRecentBadges(self, count):
 		self.connect()
-		cur = self.doQuery('SELECT `achievements_badges`.`badge_id`, `date_earned`, `date_earned_hardcore` FROM `achievements_earned`, `achievements_badges` WHERE `achievements_earned`.`badge_id` = `achievements_badges`.`badge_id` AND `user_id` = %d ORDER BY `date_earned` DESC LIMIT 0,%d;' % (self.getProperty('user_id'), count))
+		cur = self.doQuery('SELECT `achievements_badges`.`badge_id`, `date_earned`, `date_earned_hardcore`, MAX(`date_earned`, `date_earned_hardcore`) AS `date_ts` FROM `achievements_earned`, `achievements_badges` WHERE `achievements_earned`.`badge_id` = `achievements_badges`.`badge_id` AND `user_id` = %d ORDER BY `date_ts` DESC LIMIT 0,%d;' % (self.getProperty('user_id'), count))
 		badges = []
 		while True:
 			row = cur.fetchone()
