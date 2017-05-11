@@ -638,9 +638,10 @@ class List(UIObject):
 	SCROLLBAR_DISABLED = 2
 	SCROLLBAR_ENABLED = 3
 	
-	def __init__(self, renderer, x, y, width, height, menu, font, colour, selectedColour, selectedBgColour, selectedBgColourNoFocus, showScrollbarPref=1, drawBackground=False, allowSelectAll=True, labelMargin=12):
+	def __init__(self, renderer, x, y, width, height, menu, font, colour, selectedColour, selectedBgColour, selectedBgColourNoFocus, showScrollbarPref=1, drawBackground=False, allowSelectAll=True, labelMargin=12, graphicalToggle=True):
 		super(List, self).__init__(renderer,x, y, width, height)
 		self.__drawBackground = drawBackground
+		self.__graphicalToggle = graphicalToggle
 		self.__menu = None
 		self.__font = font
 		self.__colour = colour
@@ -673,9 +674,26 @@ class List(UIObject):
 			super(List, self).draw()
 			i = self.__firstMenuItem
 			for l in self.__labels:
-				l.draw()
-				if self.__menu.getItem(i).isToggled():
-					sdl2.sdlgfx.filledCircleRGBA(self.renderer, l.x - 7, self.__toggleCenterY + l.y, self.__toggleRad, self.__colour.r, self.__colour.g, self.__colour.b, 255)
+				m = self.__menu.getItem(i)
+				if m.isToggable():
+					if self.__graphicalToggle:
+						l.draw()
+						if m.isToggled():
+							sdl2.sdlgfx.filledCircleRGBA(self.renderer, l.x - 7, self.__toggleCenterY + l.y, self.__toggleRad, self.__colour.r, self.__colour.g, self.__colour.b, 255)
+					else:
+						if m.isToggled():
+							l.setText("%s: On" % m.getText())
+						else:
+							l.setText("%s: Off" % m.getText())
+						l.draw()
+				else:
+						l.draw()
+				
+				
+				#l.draw()
+				#if self.__menu.getItem(i).isToggled():
+				#	sdl2.sdlgfx.filledCircleRGBA(self.renderer, l.x - 7, self.__toggleCenterY + l.y, self.__toggleRad, self.__colour.r, self.__colour.g, self.__colour.b, 255)
+						
 				i += 1
 			if self.__drawBackground:
 				sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__selectedBgColourNoFocus.r, self.__selectedBgColourNoFocus.g, self.__selectedBgColourNoFocus.b, 50)
