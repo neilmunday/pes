@@ -2603,9 +2603,13 @@ class SettingsScreen(Screen):
 		
 	def saveSettings(self):
 		logging.debug("SettingsScreen.saveSettings: saving settings...")
-		self.app.config.retroAchievementsHardcore = self.__hardcoreModeMenuItem.isToggled()
-		self.app.config.set("RetroAchievements", "hardcore", self.__hardcoreModeMenuItem.isToggled())
-		self.app.config.save()
+		try:
+			self.app.config.retroAchievementsHardcore = self.__hardcoreModeMenuItem.isToggled()
+			self.app.config.set("RetroAchievements", "hardcore", self.__hardcoreModeMenuItem.isToggled())
+			self.app.config.save()
+		except Exception as e:
+			self.app.showMessageBox("Unable to save your settings (see console)", None, None)
+			logging.error(e)
 
 	def startScan(self):
 		logging.debug("SettingsScreen.startScan: beginning scan...")
