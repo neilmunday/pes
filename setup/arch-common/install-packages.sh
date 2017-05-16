@@ -31,7 +31,7 @@ run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
 	bison byacc flex gcc git cmake make patch pkg-config scons swig vim wget \
 	libusb-compat linuxconsole libplatform \
 	python2 python2-levenshtein python2-pip python2-imaging \
-	ntp \
+	chrony \
 	freetype2 \
 	dosfstools parted \
 	rsync \
