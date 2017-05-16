@@ -3,17 +3,31 @@ PES Changelog
 =============
 
 ----------------------------
-PES 2.1
+PES 2.2
 ----------------------------
 
-Date: 2016-02-10
+Date: 2017-05-16
 
 Changes (and bug fixes):
 
-	- Added support for Commodore 64 thanks to the Vice emulator.
-	- Added suupport for MSX thanks to libretro BlueMSX core.
-	- Added support for MAME 2003 thanks to libretro MAME 2003 core.
-	- Added support for PSP thanks to the PPSSPP emulator.
+	- Added support for Kodi (issue #14)
+	- Added support for hardcore RetroAchievements (issue #20)
+	- Added required files feature to emulators in consoles.ini (issue #23)
+	- Updated RetroArch to version 1.5
+	- Additional Atari 2600 extensions added
+
+----------------------------
+PES 2.1
+----------------------------
+
+Date: 2017-02-10
+
+Changes (and bug fixes):
+
+	- Added support for Commodore 64 thanks to the Vice emulator (issue #18)
+	- Added suupport for MSX thanks to libretro BlueMSX core (issue #16)
+	- Added support for MAME 2003 thanks to libretro MAME 2003 core (issue #11)
+	- Added support for PSP thanks to the PPSSPP emulator (issue #11)
 	- Updated RetroArch to version 1.3.6.
 	- Layout config options added to pes.ini.
 	- Splash screen added for Raspberry Pi Arch Linux builds.
@@ -32,8 +46,8 @@ Brand new version of PES with a new GUI that is based on PySDL 2.0!
 	- ROM scanning is now up to 5x faster thanks to a parallel (multi processor) approach
 	- New GUI with various features!
 	- Added PS3 GASIA support
-	- Added support for RetroAchievements.org
-	- FAT32 now used for /data partition
+	- Added support for RetroAchievements.org (issue #13)
+	- FAT32 now used for /data partition (issue #15)
 
 ----------------------------
 PES 1.5.2
