@@ -79,8 +79,17 @@ run sudo systemctl enable sixad.service
 run sudo systemctl start sixad.service
 
 header "Enabling bluetooth adapter at boot time..."
+
+run sudo sed -i -r 's/#AutoEnable=false/AutoEnable=true/' /etc/bluetooth/main.conf
+
+run sudo bash -c "cat > /opt/sbin/start-bt.sh" << 'EOF'
+#!/bin/bash
+/usr/bin/btmgmt power on
+/usr/bin/btmgmt connectable on
+EOF
+
 run sudo bash -c "cat > /etc/udev/rules.d/10-local.rules" << 'EOF'
-ACTION=="add", KERNEL=="hci0", RUN+="/usr/bin/hciconfig hci0 up pscan"
+ACTION=="add", KERNEL=="hci0", RUN+="/opt/sbin/start-bt.sh"
 EOF
 
 header "Installing pairing utility..."
