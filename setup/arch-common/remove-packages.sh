@@ -52,6 +52,8 @@ flex
 m4
 mkinitcpio
 mkinitcpio-busybox
+kodi-rbp-dev
+fakeroot
 "
 
 for p in $packages; do
