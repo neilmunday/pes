@@ -25,25 +25,14 @@
 functions=`realpath $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../common/functions.sh`
 source $functions || exit 1
 
-# install packages
+cd $buildDir
 
-run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
-	bison byacc flex gcc git cmake make patch pkg-config scons swig vim wget \
-	libusb-compat linuxconsole libplatform \
-	python2 python2-levenshtein python2-pip python2-imaging \
-	chrony \
-	freetype2 \
-	dosfstools parted \
-	rsync \
-	samba \
-	fbset mesa mesa-libgl alsa-utils \
-	crda iw wpa_supplicant \
-	p7zip zip unzip \
-	sdl \
-	mkinitcpio \
-	kodi-rbp kodi-rbp-eventclients kodi-rbp-tools-texturepacker kodi-rbp-dev kodi-platform \
-	fakeroot 
+rmSourceDir "kodi-addon-peripheral-joystick"
 
-run sudo pip2 install --upgrade pip
-run sudo pip2 install reparted
-run sudo pip2 install fstab
+run mkdir kodi-addon-peripheral-joystick
+
+cd kodi-addon-peripheral-joystick
+
+run wget https://git.archlinux.org/svntogit/community.git/plain/trunk/PKGBUILD?h=packages/kodi-addon-peripheral-joystick -O PKGBUILD
+
+run makepkg -A -d -i

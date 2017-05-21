@@ -25,25 +25,18 @@
 functions=`realpath $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../common/functions.sh`
 source $functions || exit 1
 
-# install packages
+cd $buildDir
 
-run sudo pacman -S bluez bluez-libs bluez-plugins bluez-utils \
-	bison byacc flex gcc git cmake make patch pkg-config scons swig vim wget \
-	libusb-compat linuxconsole libplatform \
-	python2 python2-levenshtein python2-pip python2-imaging \
-	chrony \
-	freetype2 \
-	dosfstools parted \
-	rsync \
-	samba \
-	fbset mesa mesa-libgl alsa-utils \
-	crda iw wpa_supplicant \
-	p7zip zip unzip \
-	sdl \
-	mkinitcpio \
-	kodi-rbp kodi-rbp-eventclients kodi-rbp-tools-texturepacker kodi-rbp-dev kodi-platform \
-	fakeroot 
+# install makepkg first
+rmSourceDir package-query
+run git clone https://aur.archlinux.org/package-query.git
+checkDir package-query
+cd package-query
+run makepkg -si
 
-run sudo pip2 install --upgrade pip
-run sudo pip2 install reparted
-run sudo pip2 install fstab
+cd $buildDir
+rmSourceDir yaourt
+run git clone https://aur.archlinux.org/yaourt.git
+checkDir yaourt
+cd yaourt
+run makepkg -si

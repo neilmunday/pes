@@ -76,6 +76,10 @@ run $setupDir/install-rasum.sh
 header "Setting up Samba..."
 run $setupDir/install-samba.sh
 
+header "Setting up Kodi..."
+run $setupDir/install-yaourt.sh
+run $setupDir/install-kodi-joystick-add-on.sh
+
 header "Setting up auto login..."
 run $setupDir/auto-login.sh
 
