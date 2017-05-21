@@ -27,8 +27,7 @@ source $functions || exit 1
 
 # remove packages to reduce the size of the root partition
 
-packages="shared-mime-info
-gcc
+packages="gcc
 vim
 vim-runtime
 ruby
@@ -50,10 +49,9 @@ bison
 byacc
 flex
 m4
-mkinitcpio
-mkinitcpio-busybox
 kodi-rbp-dev
 fakeroot
+raspberrypi-firmware-examples
 "
 
 for p in $packages; do
