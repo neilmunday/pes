@@ -88,6 +88,8 @@ run sudo bash -c "cat > /opt/sbin/start-bt.sh" << 'EOF'
 /usr/bin/btmgmt connectable on
 EOF
 
+run sudo chmod 700 /opt/sbin/start-bt.sh
+
 run sudo bash -c "cat > /etc/udev/rules.d/10-local.rules" << 'EOF'
 ACTION=="add", KERNEL=="hci0", RUN+="/opt/sbin/start-bt.sh"
 EOF
