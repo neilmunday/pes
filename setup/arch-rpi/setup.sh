@@ -34,6 +34,9 @@ run sudo pacman -Syu
 header "Installing additional packages..."
 run $setupDir/install-packages.sh
 
+header "Installing yaourt..."
+run $setupDir/install-yaourt.sh
+
 header "Customising OS..."
 run $setupDir/customise-os.sh
 
@@ -76,7 +79,6 @@ header "Setting up Samba..."
 run $setupDir/install-samba.sh
 
 header "Setting up Kodi..."
-run $setupDir/install-yaourt.sh
 run $setupDir/install-kodi-joystick-add-on.sh
 
 header "Setting up auto login..."
