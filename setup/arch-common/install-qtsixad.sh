@@ -32,6 +32,11 @@ run sudo mkdir -p $installDir/sbin
 
 rmSourceDir "qtsixa"
 
+# need bluez-utils-compat from the AUR as this provides (now deprecated tools) from Bluez
+# that qtsixad relies upon
+header "Installing bluez-utils-compat from the AUR"
+run yaourt -A --m-arg --skipchecksums --m-arg --skippgpcheck -S bluez-utils-compat
+
 header "Downloading qtsixad"
 
 run git clone git://github.com/falkTX/qtsixa
