@@ -34,11 +34,17 @@ run sudo pacman -Syu
 header "Installing additional packages..."
 run $setupDir/install-packages.sh
 
+header "Installing yaourt..."
+run $setupDir/install-yaourt.sh
+
 header "Customising OS..."
 run $setupDir/customise-os.sh
 
 header "Installing splash screen..."
 run $setupDir/install-splash-screen.sh
+
+header "Installing Raspberry Pi 3 Bluetooth support..."
+run $setupDir/install-pi-bluetooth.sh
 
 header "Setting up PS3 Bluetooth control pad support.."
 run $setupDir/install-qtsixad.sh
