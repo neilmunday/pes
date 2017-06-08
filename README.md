@@ -106,4 +106,9 @@ I would like to thank the following people/groups as without them PES would not 
 * Paul Panther for testing and suggesting features for PES
 * Fredrik for testing and suggesting features for PES
 
+BerryBoot Images
+----------------
 
+If you are interested in creating a PES BerryBoot image then please see BERRYBOOT.md.
+
+It is also possible that PES BerryBoot images might be available at https://pes.mundayweb.com.
