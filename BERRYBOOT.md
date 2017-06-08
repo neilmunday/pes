@@ -78,7 +78,7 @@ You can umount the PES image:
 
 ```
 umount /mnt
-``
+```
 
 Now copy the PES BerryBoot image to your USB storage device.
 
