@@ -32,6 +32,15 @@ source $functions || exit 1
 header "Setting timezone to London, UK"
 run sudo timedatectl set-timezone Europe/London
 
+header "Setting up NTP"
+run sudo bash -c "cat > /etc/systemd/timesyncd.conf" << 'EOF'
+[Time]
+NTP=0.arch.pool.ntp.org 1.arch.pool.ntp.org 2.arch.pool.ntp.org 3.arch.pool.ntp.org
+FallbackNTP=0.pool.ntp.org 1.pool.ntp.org 0.fr.pool.ntp.org
+EOF
+run sudo timedatectl set-ntp true
+run sudo systemctl enable systemd-timesyncd
+
 header "Setting keyboard layout to UK"
 run sudo localectl set-keymap --no-convert uk
 
