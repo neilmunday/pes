@@ -4,15 +4,17 @@ PES Changelog
 PES 2.2
 -------
 
-Date: 2017-05-16
+Date: 2017-06-13
 
 Changes (and bug fixes):
 
 * Added support for Kodi (issue #14)
 * Added support for hardcore RetroAchievements (issue #20)
 * Added required files feature to emulators in consoles.ini (issue #23)
-* Updated RetroArch to version 1.5
+* Updated RetroArch to version 1.6
 * Additional Atari 2600 extensions added
+* Fixed time sync on Raspberry Pi
+* Added guide for creating BerryBoot images (issue #19)
 
 PES 2.1
 -------
