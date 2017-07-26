@@ -1,6 +1,15 @@
 PES Changelog
 =============
 
+PES 2.3
+-------
+
+Date: 2017-07-26
+
+Changes (and bug fixes):
+
+* Added confirmation upon escape key event (issue #26)
+
 PES 2.2
 -------
 
