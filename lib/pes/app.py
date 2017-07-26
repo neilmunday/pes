@@ -862,8 +862,7 @@ class PESApp(object):
 								
 				if event.type == sdl2.SDL_KEYDOWN and event.key.keysym.sym == sdl2.SDLK_ESCAPE:
 					logging.debug("PESApp.run: trapping escape key event")
-					running = False
-					break
+					self.exit(confirm=True)
 					
 				# joystick events
 				if event.type == sdl2.SDL_QUIT:
