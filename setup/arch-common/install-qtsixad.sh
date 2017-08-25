@@ -34,8 +34,11 @@ rmSourceDir "qtsixa"
 
 # need bluez-utils-compat from the AUR as this provides (now deprecated tools) from Bluez
 # that qtsixad relies upon
-header "Installing bluez-utils-compat from the AUR"
-run yaourt -A --m-arg --skipchecksums --m-arg --skippgpcheck -S bluez-utils-compat
+
+if ! pacman -Q bluez-utils-compat > /dev/null 2>&1; then
+	header "Installing bluez-utils-compat from the AUR"
+	run yaourt -A --m-arg --skipchecksums --m-arg --skippgpcheck -S bluez-utils-compat
+fi
 
 header "Downloading qtsixad"
 
@@ -108,6 +111,7 @@ header "Enabling auto pairing..."
 
 run sudo bash -c "cat > /etc/udev/rules.d/97-sixpair.rules" << EOF
 SUBSYSTEM=="usb", ATTRS{idVendor}=="054c", ENV{idProduct}="0268", RUN+="$installDir/sbin/sixpair"
+SUBSYSTEM=="input", ATTR{name}=="PLAYSTATION(R)3 Controller*", RUN+="$installDir/sbin/sixpair"
 EOF
 
 header "QtSixAd installation complete!"
