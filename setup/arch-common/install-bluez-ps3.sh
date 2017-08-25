@@ -25,27 +25,5 @@
 functions=`realpath $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../common/functions.sh`
 source $functions || exit 1
 
-# install packages
-
-# Note: as of PES 2.3, bluez and bluez-plugins are provided by the
-# bluez-ps3 package from the AUR - see install-bluez-ps.sh
-
-run sudo pacman -S bluez-libs bluez-utils \
-	bison byacc flex gcc git cmake make patch pkg-config scons swig vim wget \
-	libusb-compat linuxconsole libplatform \
-	python2 python2-levenshtein python2-pip python2-imaging \
-	freetype2 \
-	dosfstools parted \
-	rsync \
-	samba \
-	fbset mesa mesa-libgl alsa-utils \
-	crda iw wpa_supplicant \
-	p7zip zip unzip \
-	sdl \
-	mkinitcpio \
-	kodi-rbp kodi-rbp-eventclients kodi-rbp-tools-texturepacker kodi-rbp-dev kodi-platform \
-	fakeroot 
-
-run sudo pip2 install --upgrade pip
-run sudo pip2 install reparted
-run sudo pip2 install fstab
+# use Bluez fork with patches for additional PS3 control pad clones, e.g. shwan
+run yaourt -SA bluez-ps3

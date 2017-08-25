@@ -37,6 +37,9 @@ run $setupDir/install-packages.sh
 header "Installing yaourt..."
 run $setupDir/install-yaourt.sh
 
+header "Installing bluez-ps3.."
+run $setupDir/install-bluez-ps3.sh
+
 header "Customising OS..."
 run $setupDir/customise-os.sh
 
