@@ -9,6 +9,7 @@ Date: 2017-07-26
 Changes (and bug fixes):
 
 * Added confirmation upon escape key event (issue #26)
+* Added Bluetooth (Bluez) support for additional PS3 control pad clones (issue #28)
 
 PES 2.2
 -------

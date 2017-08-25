@@ -105,6 +105,7 @@ I would like to thank the following people/groups as without them PES would not 
 * [Michell F](https://github.com/mfwhite) for testing and reviewing PES
 * Paul Panther for testing and suggesting features for PES
 * Fredrik for testing and suggesting features for PES
+* nwildner for testing and suggesting features for PES
 
 BerryBoot Images
 ----------------
