@@ -1,0 +1,86 @@
+<html>
+<head>
+	<meta charset="utf-8">
+	<link href="../css/style.css" rel="stylesheet">
+	<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+	<script type="text/javascript" src="../../../js/jquery-1.12.4.min.js"></script>
+	<script type="text/javascript" src="../js/pes.js"></script>
+	<title>PES</title>
+	
+	<script type="text/javascript">
+		var menu = null;
+		
+		$(document).ready(function(){
+			var channel = new QWebChannel(qt.webChannelTransport, function(channel){
+				window.handler = channel.objects.handler; // make global
+				channelLoaded = true;
+				console.log("QWebChannel ready");
+			});
+		
+			menu = new Menu('menu');
+			menu.addMenuItem('Update Games', function(){
+				
+			});
+			menu.addMenuItem('Update Badges', function(){
+				
+			});
+			menu.addMenuItem('Control Pad', function(){
+				
+			});
+			menu.addMenuItem('About', function(){
+				showScreen("about");
+			});
+			menu.draw();
+			menu.selected = -1;
+			
+			$("#menu").keyup(function(event){
+				console.log(event.key);
+				switch (event.key){
+					case 'ArrowDown': menu.setSelected(menu.selected + 1); break;
+					case 'ArrowUp': menu.setSelected(menu.selected - 1); break;
+					case 'Enter': menu.fire(); break;
+					case 'Backspace': document.location = 'main.html';
+				}
+			});
+			$("#menu").focus();
+		});
+	</script>
+</head>
+
+<body>
+
+<div id="header">
+	<div id="headerContent">
+		<span id="headerTitle">Pi Entertainment System 3.0</span>
+		<div id="systray">
+			<img id="gamepadIcon" class="icon" />
+			<img id="remoteIcon" class="icon" />
+			<img id="networkIcon" class="icon" />
+			<span id="clock"></span>
+		</div>
+	</div>
+</div>
+
+<div id="main">
+	<div id="menu" tabindex="0"></div>
+	<div id="container">
+		<div id="content">
+			<div id="screen_main">
+				<h1>Settings</h1>
+				
+				<p>From the menu items on the left you can customise PES to your needs. For example, to add new games go to "Update Games".</p>
+			</div>
+			
+			<div id="screen_about" class="hidden">
+				<h1>About</h1>
+				<p>PES was created and is maintained by Neil Munday (www.mundayweb.com).</p>
+				<p>The PES software is released under the GNU Public License version 3.</p>
+				<p>For help and more information about PES, please visit http://pes.mundayweb.com</p>
+			</div>
+		</div>
+	</div>
+
+</body>
+</html>
+
+        

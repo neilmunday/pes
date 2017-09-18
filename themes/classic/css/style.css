@@ -1,0 +1,421 @@
+@font-face {
+    font-family: 'robotoregular';
+    src: url('Roboto-Regular-webfont.eot');
+    src: url('Roboto-Regular-webfont.eot?#iefix') format('embedded-opentype'),
+         url('Roboto-Regular-webfont.woff') format('woff'),
+         url('Roboto-Regular-webfont.ttf') format('truetype'),
+         url('Roboto-Regular-webfont.svg#robotoregular') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+html {
+	width: 100%;
+	height: 100%;
+	background: rgb(30, 30, 30);
+}
+
+body {
+	background: rgb(30, 30, 30);
+	color: rgb(233, 233, 233);
+	font-family: 'robotoregular';
+	margin: 0px;
+    min-height: 100%;
+	min-width: 100%;
+}
+
+::-webkit-scrollbar {
+      width: 15px;
+}
+
+::-webkit-scrollbar-track {
+      background-color: rgb(90, 90, 90);
+	  border-radius: 10px;
+}
+ 
+::-webkit-scrollbar-thumb {
+      background-color: rgb(204, 123, 25); 
+	  border-radius: 10px;
+}
+ 
+/*::-webkit-scrollbar-button {
+      background-color: rgb(204, 123, 25);
+	  border-radius: 1px;
+}
+ */
+/*::-webkit-scrollbar-corner {
+      background-color: white;
+}*/
+
+h1 {
+	letter-spacing: 2px;
+	font-size: 30pt;
+}
+
+p {
+	font-size: 22pt;
+}
+
+td {
+	font-size: 20pt;
+	padding: 5px;
+}
+
+select {
+	background: rgb(50, 50, 50);
+	color: rgb(233, 233, 233);
+	font-size: 20pt;
+	border-radius: 10px;
+	padding: 5px;
+}
+
+select:focus {
+	border-width: 1px;
+	border-color: rgb(204, 123, 25);
+}
+
+#header {
+	background: rgb(19, 19, 19);
+	font-weight: bold;
+	font-size: 14pt;
+	letter-spacing: 2px;
+	border-bottom: rgb(204, 123, 25) 1px solid;
+	padding: 0px;
+	height: 30px;
+	margin-top: 0px;
+}
+
+#headerContent {
+	padding-left: 5px;
+	padding-right: 5px;
+	padding-top: 5px;
+}
+
+.menu {
+	background: rgb(19, 19, 19);
+	position: fixed;
+	top: 31px;
+	left: 0;
+	bottom: 0;
+	width: 250px;
+	min-height: 100%;
+	padding-top: 100px;
+	display: block;
+}
+
+#menu_settings, #screen_settings, .panel, .preview {
+	display: none;
+}
+
+#container {
+	display: block;
+	margin-left: 250px;
+	padding: 0px;
+}
+
+#content {
+	display: block;
+	margin: 0px;
+	padding: 30px;
+/* 	background: red; */
+}
+
+#main {
+	display: none;
+}
+
+#progressContainer {
+	position: fixed;
+	width: 90%;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+}
+
+#progressBar {
+	width: 100%;
+	height: 50px;
+	background: rgb(19, 19, 19);
+	border: rgb(0, 0, 0) 1px solid;
+	padding: 2px;
+}
+
+#progressBarComplete {
+	width: 0px;
+	height: 50px;
+	background-color: rgb(204, 123, 25);
+}
+
+#dialogueLayer {
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 1;
+	background-color: rgb(19, 19, 19);
+	opacity: 0.8;
+	width: 100%;
+	height: 100%;
+	display: none;
+}
+
+#msgBoxLayer {
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 3;
+	background-color: rgb(19, 19, 19);
+	opacity: 0.8;
+	width: 100%;
+	height: 100%;
+	display: none;
+}
+
+#popupMenu {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	background-color: rgb(30, 30, 30);
+	width: 400px;
+	z-index: 2;
+	transform: translateX(-50%) translateY(-50%);
+	border-color: rgb(204, 123, 25);
+	border-width: 1px;
+	border-style: solid;
+	border-radius: 10px;
+	display: none;
+	font-size: 22pt;
+	padding: 20px;
+	text-align: center;
+}
+
+#msgBox {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	background-color: rgb(30, 30, 30);
+	width: 60%;
+	z-index: 4;
+	transform: translateX(-50%) translateY(-50%);
+	border-color: rgb(204, 123, 25);
+	border-width: 1px;
+	border-style: solid;
+	border-radius: 10px;
+	display: none;
+	font-size: 22pt;
+	padding: 20px;
+	text-align: center;
+}
+
+#msgBox:focus, .menu:focus, .panel:focus, select:focus {
+	outline: none;
+}
+
+#gamepadIcons {
+	display: inline;
+	position: relative;
+}
+
+#systray {
+	display: inline;
+	position: absolute;
+	right: 10px;
+}
+
+.menuItem {
+	font-size: 24pt;
+	padding: 3px;
+}
+
+.menuItemSelected {
+	background: rgb(204, 123, 25);
+}
+
+.menuItemSelectedNoFocus {
+	background: rgb(50, 50, 50) !important;
+}
+
+.icon {
+	width: 27px;
+	vertical-align: middle;
+}
+
+.horizontalSelect {
+	background: rgb(50, 50, 50);
+	padding: 4px;
+	width: 350px;
+}
+
+.horizontalSelect::before {
+	content: "";
+	margin-left: 0.5em;
+	display: inline-block;
+	width: 0.4em;
+    height: 0.4em;
+}
+
+.horizontalSelect:focus::before {
+	position: relative;
+    /* top: 3pt; Uncomment this to lower the icons as requested in comments*/
+    content: "";
+    display: inline-block;
+	width: 0.4em;
+    height: 0.4em;
+    border-right: 0.2em solid white;
+    border-top: 0.2em solid white;
+    transform: rotate(225deg);
+    margin-left: 0.5em;
+}
+
+.horizontalSelect:focus::after {
+	position: relative;
+    /* top: 3pt; Uncomment this to lower the icons as requested in comments*/
+    content: "";
+    display: inline-block;
+	width: 0.4em;
+    height: 0.4em;
+    border-right: 0.2em solid white;
+    border-top: 0.2em solid white;
+    transform: rotate(45deg);
+    margin-right: 0.5em;
+}
+
+.horizontalSelect:focus {
+	background: rgb(204, 123, 25);
+}
+
+.gamepadIcon {
+	content: url('../img/gamepad.png');
+	vertical-align: top;
+}
+
+#remoteIcon {
+	content: url('../img/remote.png');
+	display: none;
+	vertical-align: top;
+}
+
+#networkIcon {
+	content: url('../img/network.png');
+	vertical-align: top;
+	display: none;
+}
+
+label {
+	font-size: 20pt;
+}
+
+button {
+	font-family: 'robotoregular';
+	font-size: 16pt;
+	background: rgb(50, 50, 50);
+	color: rgb(233, 233, 233);
+	/*border-width: 1px;
+	border-color: rgb(233, 233, 233);*/
+	border: none;
+	border-radius: 10px;
+	padding-left: 15px;
+	padding-right: 15px;
+	margin-right: 5px;
+	margin-left: 5px;
+}
+
+button.menuBtn {
+	font-size: 20pt;
+	background: rgb(19, 19, 19);
+	width: 240px;
+	border: none;
+	text-align: left;
+}
+
+#popupMenu button {
+	font-size: 15pt;
+	display: block;
+	width: 100%;
+	padding: 20px;
+	margin-bottom: 10px;
+	margin-top: 10px;
+}
+
+button:focus {
+/* 	outline-style: solid; */
+/* 	outline-color: rgb(204, 123, 25); */
+	outline: none;
+	background-color: rgb(204, 123, 25);
+	border-width: 1px;
+	border-color: rgb(204, 123, 25);
+}
+
+input[type=checkbox]:not(old),
+input[type=radio   ]:not(old){
+  width     : 2em;
+  margin    : 0;
+  padding   : 0;
+  font-size : 1em;
+  opacity   : 0;
+}
+
+input[type=checkbox]:not(old) + label,
+input[type=radio   ]:not(old) + label{
+  display      : inline-block;
+  margin-left  : -2em;
+  line-height  : 1.5em;
+}
+
+input[type=checkbox]:not(old) + label > span,
+input[type=radio   ]:not(old) + label > span{
+  display          : inline-block;
+  width            : 0.875em;
+  height           : 0.875em;
+  margin           : 0.25em 0.5em 0.25em 0.25em;
+  border           : 0.0625em solid rgb(192,192,192);
+  border-radius    : 0.25em;
+  background       : rgb(224,224,224);
+  background-image :    -moz-linear-gradient(rgb(240,240,240),rgb(224,224,224));
+  background-image :     -ms-linear-gradient(rgb(240,240,240),rgb(224,224,224));
+  background-image :      -o-linear-gradient(rgb(240,240,240),rgb(224,224,224));
+  background-image : -webkit-linear-gradient(rgb(240,240,240),rgb(224,224,224));
+  background-image :         linear-gradient(rgb(240,240,240),rgb(224,224,224));
+  vertical-align   : bottom;
+}
+
+input[type=checkbox]:not(old):focus + label,
+input[type=radio   ]:not(old):focus + label {
+	outline-style: solid;
+	outline-color: rgb(204, 123, 25);
+}
+	
+input[type=checkbox]:not(old):checked + label > span,
+input[type=radio   ]:not(old):checked + label > span{
+  background-image :    -moz-linear-gradient(rgb(224,224,224),rgb(240,240,240));
+  background-image :     -ms-linear-gradient(rgb(224,224,224),rgb(240,240,240));
+  background-image :      -o-linear-gradient(rgb(224,224,224),rgb(240,240,240));
+  background-image : -webkit-linear-gradient(rgb(224,224,224),rgb(240,240,240));
+  background-image :         linear-gradient(rgb(224,224,224),rgb(240,240,240));
+}
+
+input[type=checkbox]:not(old):checked + label > span:before{
+  content     : '✓';
+  display     : block;
+  width       : 1em;
+  color       : rgb(204, 123, 25);
+  font-size   : 0.875em;
+  line-height : 1em;
+  text-align  : center;
+  text-shadow : 0 0 0.0714em rgb(115,153,77);
+  font-weight : bold;
+}
+
+input[type=radio]:not(old):checked + label > span > span{
+  display          : block;
+  width            : 0.5em;
+  height           : 0.5em;
+  margin           : 0.125em;
+  border           : 0.0625em solid rgb(115,153,77);
+  border-radius    : 0.125em;
+  background       : rgb(153,204,102);
+  background-image :    -moz-linear-gradient(rgb(179,217,140),rgb(153,204,102));
+  background-image :     -ms-linear-gradient(rgb(179,217,140),rgb(153,204,102));
+  background-image :      -o-linear-gradient(rgb(179,217,140),rgb(153,204,102));
+  background-image : -webkit-linear-gradient(rgb(179,217,140),rgb(153,204,102));
+  background-image :         linear-gradient(rgb(179,217,140),rgb(153,204,102));
+}

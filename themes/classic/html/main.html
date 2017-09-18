@@ -1,0 +1,145 @@
+<html>
+<head>
+	<meta charset="utf-8">
+	<link href="../css/style.css" rel="stylesheet">
+	<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+	<script type="text/javascript" src="../../../js/jquery-1.12.4.min.js"></script>
+	<script type="text/javascript" src="../js/pes.js"></script>
+	<title>PES</title>
+</head>
+
+<body>
+
+<div id="dialogueLayer"></div>
+<div id="msgBoxLayer"></div>
+<div id="msgBox">
+	<span id="msgBoxTxt"></span><br>
+	<button id="msgBoxOkBtn" type="button">OK</button> <button id="msgBoxCancelBtn" type="button">Cancel</button>
+</div>
+
+<div id="popupMenu">
+	<button type="button" id="settingsBtn">Settings</button>
+	<button type="button" id="poweroffBtn">Power Off</button>
+	<button type="button" id="rebootBtn">Reboot</button>
+	<button type="button" id="exitBtn">Exit</button>
+	<button type="button" id="backBtn">Back</button>
+</div>
+
+<div id="header">
+	<div id="headerContent">
+		<span id="headerTitle">Pi Entertainment System 3.0</span>
+		<div id="systray">
+			<div id="gamepadIcons"></div>
+			<img id="remoteIcon" class="icon" />
+			<img id="networkIcon" class="icon" />
+			<span id="clock"></span>
+		</div>
+	</div>
+</div>
+
+<div id="startUp">
+	<div id="progressContainer">
+		<h1>Loading...</h1>
+		<div id="progressBar">
+			<div id="progressBarComplete"></div>
+		</div>
+		<span id="progressBarTxt">Waiting to start</span>
+	</div>
+</div>
+
+<div id="main">
+	<div id="menu_main" class="menu" tabindex="0"></div>
+	<div id="menu_settings" class="menu" tabindex="1"></div>
+	<div id="container">
+		<div id="content">
+			<div id="screen_main" class="panel preview">
+				<h1>Welcome to Pi Entertainment System 3.0!</h1>
+				<div id="panel_main"></div>
+			</div>
+			
+			<div id="kodi_preview" class="preview">
+				<h1>Kodi</h1>
+				<p>Launch one of the most popular media center applications available.</p>
+			</div>
+			
+			<div id="screen_settings" class="panel">
+				<div id="panel_update_games" class="panel">
+					<h1>Update Games</h1>
+					<p>Select the consoles that you would like to update:</p>
+					<div id="update_console_list"></div>
+					<p><button type="button" id="updateConsolesBtn">Update</button> <button type="button" id="updateSelectAllConsolesBtn">Select All</button> <button type="button" id="updateSelectNoneConsolesBtn">Select None</button></p>
+				</div>
+				
+				<div id="panel_system_settings" class="panel">
+					<h1>System Settings</h1>
+					<p>Press right or left to scroll through the available options for each setting. Press back to exit this screen without saving your changes.</p>
+					<table>
+						<tr>
+							<td>Time zone:</td>
+							<td><div id="timezoneSelect" tabindex="0"></div></td>
+						</tr>
+						<tr>
+							<td>Keyboard layout:</td>
+							<td><div id="keyboardSelect" tabindex="0"></div></td>
+						</tr>
+					</table>
+					<p><button type="button" id="saveSettingsBtn">Save</button></p>
+				</div>
+			</div>
+			
+			<div id="update_games_preview" class="preview">
+				<h1>Update Games</h1>
+				<p>Here you can tell PES to search for new games.</p>
+			</div>
+			
+			<div id="update_badges_preview" class="preview">
+				<h1>Update Badges</h1>
+				<p>Here you can synchronise your RetroAchivements.org badges with PES.</p>
+			</div>
+			
+			<div id="system_settings_preview" class="preview">
+				<h1>System Settings</h1>
+				<p>Update your system settings here, e.g. timezone, keyboard etc.</p>
+			</div>
+			
+			<div id="about" class="preview">
+				<h1>About</h1>
+				<table>
+					<tr>
+						<td>Version:</td>
+						<td>&nbsp;</td>
+					</tr>
+					<tr>
+						<td>Date:</td>
+						<td>&nbsp;</td>
+					</tr>
+					<tr>
+						<td>Author:</td>
+						<td>Neil Munday</td>
+					</tr>
+					<tr>
+						<td>License:</td>
+						<td>Version 3 of the GNU Public License (GPL)</td>
+					</tr>
+					<tr>
+						<td>Documentation:</td>
+						<td>http://pes.mundayweb.com</td>
+					</tr>
+					<tr>
+						<td>E-mail:</td>
+						<td>pes@mundayweb.com</td>
+					</tr>
+					<tr>
+						<td>Facebook:</td>
+						<td>https://www.facebook.com/pientertainmentsystem</td>
+					</tr>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+
+</body>
+</html>
+
+        

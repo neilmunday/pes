@@ -6,7 +6,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2017 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -31,8 +31,8 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 pesInstallDir="$DIR/../"
-sdlInstallDir="/opt/sdl2/default/lib"
 pesUserDir="$HOME/pes"
+libPath="/opt/pes/lib"
 logDir="$pesUserDir/log"
 script="$pesUserDir/commands.sh"
 
@@ -42,20 +42,27 @@ mkdir -p $logDir
 rm -f $script
 
 # prevent console from power saving
-setterm -blank 0
+machine=`uname -m`
+
+if [ $machine == "armv7l" ]; then
+	setterm -blank 0
+	export QT_QPA_PLATFORM=eglfs
+fi
 
 # set-up environment
 
-libcecPath="/opt/libcec/current/lib"
-pythonPath="/opt/libcec/current/lib/python2.7/dist-packages:/opt/libcec/current/lib/python2.7/dist-packages/cec:$pesInstallDir/lib"
+#libcecPath="/opt/libcec/current/lib"
+#pythonPath="/opt/libcec/current/lib/python2.7/dist-packages:/opt/libcec/current/lib/python2.7/dist-packages/cec:$pesInstallDir/lib"
 
-if [ -d $libcecPath ]; then
-	if [ -z $LD_LIBRARY_PATH ]; then
-		export LD_LIBRARY_PATH="$libcecPath"
-	else
-		export LD_LIBRARY_PATH="$libcecPath:$LD_LIBRARY_PATH"
-	fi
-fi
+#if [ -d $libcecPath ]; then
+#	if [ -z $LD_LIBRARY_PATH ]; then
+#		export LD_LIBRARY_PATH="$libcecPath"
+#	else
+#		export LD_LIBRARY_PATH="$libcecPath:$LD_LIBRARY_PATH"
+#	fi
+#fi
+
+pythonPath="$pesInstallDir/python:/opt/pes/python3"
 
 if [ -z $PYTHONPATH ]; then
 	export PYTHONPATH="$pythonPath"
@@ -63,25 +70,25 @@ else
 	export PYTHONPATH="$PYTHONPATH:$pythonPath"
 fi
 
-if [ -d $sdlInstallDir ]; then
+if [ -d $libPath ]; then
 	if [ -z $LD_LIBRARY_PATH ]; then
-		export LD_LIBRARY_PATH=$sdlInstallDir
+		export LD_LIBRARY_PATH=$libPath
 	else
-		export LD_LIBRARY_PATH=$sdlInstallDir:$LD_LIBRARY_PATH
+		export LD_LIBRARY_PATH=$libPath:$LD_LIBRARY_PATH
 	fi
-	export PYSDL2_DLL_PATH=$sdlInstallDir
+	export PYSDL2_DLL_PATH=$libPath
 fi
 
-$pesInstallDir/lib/pes/main.py $@
+$pesInstallDir/python/pes/main.py $@
 
-if [ $? -eq 0 ]; then
-	if [ -e $script ]; then
-		chmod 700 $script
-		exec $script
-	else
-		exit 0
-	fi
-else
-	echo "PES experienced an error!"
-	exit 1
-fi
+#if [ $? -eq 0 ]; then
+#	if [ -e $script ]; then
+#		chmod 700 $script
+#		exec $script
+#	else
+#		exit 0
+#	fi
+#else
+#	echo "PES experienced an error!"
+#	exit 1
+#fi
