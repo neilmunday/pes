@@ -1,6 +1,15 @@
 PES Changelog
 =============
 
+PES 3.0 (Under development)
+---------------------------
+
+Date: 2017-09-18
+
+Brand new version of PES based on PyQT5 and PySDL2 which includes a much improved GUI which can be themed.
+
+Arch Linux packages are provided for software used by PES for easier management and updates.
+
 PES 2.3
 -------
 
