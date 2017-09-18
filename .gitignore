@@ -4,6 +4,9 @@
 # Ignore tar files
 *.tar.xz
 
+# Ignore Python3 cache dirs
+*__pycache__
+
 # Ignore commands.sh as it dynamically created
 bin/commands.sh
 bin/rasum
