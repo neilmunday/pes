@@ -1,6 +1,9 @@
 # Ignore Python byte code
 *.pyc
 
+# Ignore tar files
+*.tar.xz
+
 # Ignore commands.sh as it dynamically created
 bin/commands.sh
 bin/rasum
