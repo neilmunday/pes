@@ -1,0 +1,64 @@
+# Based on: https://archlinuxarm.org/packages/armv7h/qt5-webengine/files/PKGBUILD
+
+buildarch=12
+highmem=1
+
+pkgname=pes-qt5-webengine
+_qtver=5.9.1
+pkgver=${_qtver/-/}
+pkgrel=3
+arch=('armv7h')
+url='http://qt-project.org/'
+license=('LGPL3' 'LGPL2.1' 'BSD')
+pkgdesc='Provides support for web applications using the Chromium browser project'
+depends=('pes-qt5-webchannel' 'libxcomposite' 'libxrandr' 'pciutils' 'libxss' 'libvpx' 
+         'libevent' 'libsrtp' 'snappy' 'nss' 'protobuf' 'libxslt' 'libxdamage' 'minizip')
+makedepends=('python2' 'git' 'gperf' 'jsoncpp' 'ninja')
+groups=('pes')
+_pkgfqn="qtwebengine-opensource-src-${_qtver}"
+source=("http://download.qt.io/official_releases/qt/${pkgver%.*}/${_qtver}/submodules/${_pkgfqn}.tar.xz"
+        '0001-ARM-toolchain-fixes.patch'
+        'surface_factory_qt.cpp.patch')
+sha256sums=('f6a37eeb9188474a16d29ede498fce959396ab80329a0a83eaeb925251686401'
+            '587a452ab5b7912ff5615b5976a28fd0c03f4223c7e6d005133554c3a207fa4d'
+            '1f9016c2c7452a926f7ba421ebb73e46054596f1cf68f00d313103bafd01ce4a')
+
+prepare() {
+  mkdir -p build
+
+  # Hack to force using python2
+  mkdir -p bin
+  ln -s /usr/bin/python2 bin/python
+
+  pushd .
+
+  cd ${_pkgfqn}/src/3rdparty
+  patch -p1 -i ${srcdir}/0001-ARM-toolchain-fixes.patch
+
+  popd
+
+  cd ${_pkgfqn}/src/core
+  patch -i ${srcdir}/surface_factory_qt.cpp.patch
+}
+
+build() {
+  cd build
+
+  export PATH=/opt/pes/bin:$PATH
+  export LD_LIBRARY_PATH=/opt/pes/lib
+
+  export PATH="$srcdir/bin:$PATH"
+  qmake ../${_pkgfqn} -- --embedded=yes
+  make
+}
+
+package() {
+  cd build
+  make INSTALL_ROOT="$pkgdir" install
+
+  # Drop QMAKE_PRL_BUILD_DIR because reference the build dir
+  find "$pkgdir/opt/pes/lib" -type f -name '*.prl' \
+    -exec sed -i -e '/^QMAKE_PRL_BUILD_DIR/d' {} \;
+
+  install -Dm644 "$srcdir"/${_pkgfqn}/src/3rdparty/chromium/LICENSE "$pkgdir"/usr/share/licenses/${pkgname}/LICENSE.chromium
+}

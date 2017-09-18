@@ -1,0 +1,53 @@
+# Based on: https://archlinuxarm.org/packages/armv7h/python-pyqt5/files/PKGBUILD
+
+pkgname=pes-pyqt5
+pkgver=5.9
+pkgrel=1
+arch=('armv7h')
+url='http://riverbankcomputing.co.uk/software/pyqt/intro'
+license=('GPL')
+pkgdesc='Python3 bindings for QT5'
+depends=('pes-qt5-base' 'pes-qt5-declarative' 'pes-qt5-webchannel' 'pes-qt5-webengine' 'pes-qt5-xmlpatterns')
+makedepends=('make' 'python-sip' 'python-dbus')
+groups=('pes')
+#source=("http://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-$pkgver/PyQt5_gpl-$pkgver.tar.gz")
+#sha512sums=('6e925dee751d6b2ab97b3614b0150f305798b89920e11db7a2cbef579e4c21839a38f4ad7eee5828a0c28942999955715a265e043004ee7838d376025d32e4aa')
+source=('https://www.riverbankcomputing.com/static/Downloads/PyQt5/PyQt5_gpl-5.9.1.dev1707250927.tar.gz' 'config' 'QtWebEngineWidgetsmod.sip.patch')
+sha512sums=('e3ffb269516b19cfc750f82e9639bcf49904888cefec1c2c7738d6cdc491868763c8d0f5aa65bbdc1cb67ef2e285e01fb91ab7658c85996f5d4320b6fba69290' 'f71d5872f542c57afc1981a4a0f1187885978558a744e28b33e3201597342a5d5086ef327c57f71864d96c6bb9752e4f1ade0d4b61d5e2c7c9404aa1beac5499' 'eb9bd1890eeaa18be23a1b4672c2189167868bb0485ac520eebe3e00a029dec3166554424f8b7d6efa080eb7775b8ee5e3a8ba1d5cdbe1509fd77b1071beef99')
+
+prepare() {
+  #sed -i '/target_config.dbus_inc_dirs = \[\]/d' PyQt5_gpl-${pkgver}/configure.py
+  sed -i '/target_config.dbus_inc_dirs = \[\]/d' PyQt5_gpl-5.9.1.dev1707250927/configure.py
+  cp "$srcdir"/config "$srcdir"/PyQt5_gpl-5.9.1.dev1707250927/
+  cd "$srcdir"
+  patch -i QtWebEngineWidgetsmod.sip.patch PyQt5_gpl-5.9.1.dev1707250927/sip/QtWebEngineWidgets/QtWebEngineWidgetsmod.sip  
+}
+
+build() {
+  export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
+  export CXXFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
+  export PATH=/opt/pes/bin:$PATH
+  export LD_LIBRARY_PATH=/opt/pes/lib
+
+  cd "$srcdir"/PyQt5_gpl-5.9.1.dev1707250927
+  #cd "$srcdir"/PyQt5_gpl-${pkgver}
+
+  python3 ./configure.py -w \
+	--no-sip-files \
+	--confirm-license \
+	--qsci-api \
+	--destdir /opt/pes/python3 \
+	--bindir /opt/pes/bin \
+	--qmake /opt/pes/bin/qmake \
+	--disable=QtPrintSupport \
+	--configuration=config
+
+  find -name 'Makefile' | xargs sed -i 's|-Wl,-rpath,/usr/lib||g;s|-Wl,-rpath,.* ||g'
+
+  make
+}
+
+package() {
+  cd "$srcdir"/PyQt5_gpl-5.9.1.dev1707250927
+  make DESTDIR="$pkgdir" INSTALL_ROOT="$pkgdir" install
+}

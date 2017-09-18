@@ -1,0 +1,39 @@
+# Based on: https://archlinuxarm.org/packages/armv7h/qt5-webchannel/files/PKGBUILD
+
+pkgname=pes-qt5-webchannel
+_qtver=5.9.1
+pkgver=${_qtver/-/}
+pkgrel=1
+arch=('armv7h')
+url='http://qt-project.org/'
+license=('GPL3' 'LGPL3' 'FDL' 'custom')
+pkgdesc='Provides access to QObject or QML objects from HTML clients for seamless integration of Qt applications with HTML/JavaScript clients'
+depends=('pes-qt5-declarative')
+makedepends=()
+groups=('qt' 'qt5')
+_pkgfqn="qtwebchannel-opensource-src-${_qtver}"
+source=("http://download.qt.io/official_releases/qt/${pkgver%.*}/${_qtver}/submodules/${_pkgfqn}.tar.xz")
+sha256sums=('80425f5a6df8784f5221809ffd664486ed38427f514ab4ec174e20456b027000')
+
+prepare() {
+  mkdir -p build
+}
+
+build() {
+  cd build
+
+  export PATH=/opt/pes/bin:$PATH
+  export LD_LIBRARY_PATH=/opt/pes/lib
+
+  qmake ../${_pkgfqn}
+  make
+}
+
+package() {
+  cd build
+  make INSTALL_ROOT="$pkgdir" install
+
+  # Drop QMAKE_PRL_BUILD_DIR because reference the build dir
+  find "$pkgdir/opt/pes/lib" -type f -name '*.prl' \
+    -exec sed -i -e '/^QMAKE_PRL_BUILD_DIR/d' {} \;
+}

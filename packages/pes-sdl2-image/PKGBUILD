@@ -1,0 +1,32 @@
+pkgname=pes-sdl2-image
+pkgver=2.0.1
+pkgrel=1
+arch=('armv7h')
+url='https://www.libsdl.org'
+license=('zlib')
+pkgdesc='SDL2 Image library'
+depends=('pes-sdl2' 'libpng' 'libtiff' 'libjpeg-turbo' 'libwebp')
+makedepends=('make')
+groups=('pes')
+source=("https://www.libsdl.org/projects/SDL_image/release/SDL2_image-${pkgver}.tar.gz")
+sha256sums=('3a3eafbceea5125c04be585373bfd8b3a18f259bd7eae3efc4e6d8e60e0d7f64')
+
+prepare() {
+  mkdir -p build
+}
+
+build() {
+  cd build
+
+  export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
+  export CXXFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
+
+  ../SDL2_image-${pkgver}/configure --prefix=/opt/pes \
+	--host=arm-raspberry-linux-gnueabihf \
+	--with-sdl-prefix=/opt/pes
+}
+
+package() {
+  cd build
+  make DESTDIR="$pkgdir" install
+}

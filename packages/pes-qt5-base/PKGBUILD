@@ -1,0 +1,106 @@
+pkgbase=pes-qt5-base
+pkgname=(pes-qt5-base)
+_qtver=5.9.1
+pkgver=${_qtver/-/}
+pkgrel=1
+arch=('armv7h')
+url='http://qt-project.org/'
+license=('GPL3' 'LGPL3' 'FDL' 'custom')
+pkgdesc='A cross-platform application and UI framework'
+depends=('libjpeg-turbo' 'fontconfig'
+         'libxrender' 'libxi' 'sqlite' 'xcb-util-image' 'icu' 'pcre2'
+         'tslib' 'libinput' 'libsm' 'libproxy' 'openssl-1.0' 'double-conversion' 'libmariadbclient')
+makedepends=('libmariadbclient' 'sqlite')
+conflicts=('qtchooser')
+groups=('pes')
+_pkgfqn="qtbase-opensource-src-${_qtver}"
+source=("http://download.qt.io/official_releases/qt/${pkgver%.*}/${_qtver}/submodules/${_pkgfqn}.tar.xz")
+sha256sums=('bc9a21e9f6fff9629019fdf9f989f064751d5073c3a28dc596def92f4d4275c6')
+
+CFLAGS=" -march=armv7-a -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -mthumb-interwork -I/opt/vc/include "
+LDFLAGS=" -L/opt/vc/lib -lEGL -lOpenVG -lGLESv2 "
+
+prepare() {
+  cd ${_pkgfqn}
+
+  # Build qmake using Arch {C,LD}FLAGS
+  # This also sets default {C,CXX,LD}FLAGS for projects built using qmake
+  sed -i -e "s|^\(QMAKE_CFLAGS_RELEASE.*\)|\1 ${CFLAGS}|" \
+    mkspecs/common/gcc-base.conf
+  
+  sed -i -r "s|QMAKE_CFLAGS[[:space:]]+\+=(.*?)|QMAKE_CFLAGS += \1 ${CFLAGS}|" \
+    mkspecs/common/gcc-base.conf
+
+  sed -i -e "s|^\(QMAKE_LFLAGS_RELEASE.*\)|\1 ${LDFLAGS}|" \
+    mkspecs/common/g++-unix.conf
+
+  # Use python2 for Python 2.x
+  find . -name '*.py' -exec sed -i \
+    's|#![ ]*/usr/bin/python$|&2|;s|#![ ]*/usr/bin/env python$|&2|' {} +
+
+  # Fix missing private includes https://bugreports.qt.io/browse/QTBUG-37417
+  sed -e '/CMAKE_NO_PRIVATE_INCLUDES\ \=\ true/d' -i mkspecs/features/create_cmake.prf
+}
+
+build() {
+  cd ${_pkgfqn}
+
+  echo "INCLUDEPATH += /usr/include/openssl-1.0" >> src/network/network.pro
+  export OPENSSL_LIBS='-L/usr/lib/openssl-1.0 -lssl -lcrypto'
+
+  PYTHON=/usr/bin/python2 ./configure -v \
+    -confirm-license \
+    -release \
+    -opensource \
+    -prefix /opt/pes \
+    -nomake examples \
+    -no-rpath \
+    -optimized-qmake \
+    -dbus-linked \
+    -make libs \
+    -eglfs \
+    -no-gtk \
+    -opengl es2 \
+    -force-pkg-config \
+    -qt-pcre \
+    -no-use-gold-linker \
+    -no-reduce-relocations \
+    -tslib \
+    -plugin-sql-{mysql,sqlite} \
+    -system-sqlite \
+    -openssl-linked \
+    -no-sse2 \
+    -no-sse3 \
+    -no-ssse3 \
+    -no-sse4.1 \
+    -no-sse4.2 \
+    -no-avx \
+    -no-avx2 \
+    -no-xcb
+
+  make
+}
+
+package() {
+  pkgdesc='A cross-platform application and UI framework'
+
+  cd ${_pkgfqn}
+  make INSTALL_ROOT="${pkgdir}" install
+
+  # Drop QMAKE_PRL_BUILD_DIR because reference the build dir
+  find "${pkgdir}/opt/pes/lib" -type f -name '*.prl' \
+    -exec sed -i -e '/^QMAKE_PRL_BUILD_DIR/d' {} \;
+
+  # Fix wrong qmake path in pri file
+  sed -i "s|${srcdir}/${_pkgfqn}|/opt/pes|" \
+    "${pkgdir}"/opt/pes/mkspecs/modules/qt_lib_bootstrap_private.pri
+
+  # Symlinks for backwards compatibility
+  for b in "${pkgdir}"/opt/pes/bin/*; do
+    ln -s /opt/pes/bin/$(basename $b) "${pkgdir}"/opt/pes/bin/$(basename $b)-qt5
+  done
+
+  # Remove kms device plugin to stop it taking precedent over
+  # broadcom device
+  rm -v "${pkgdir}/opt/pes/plugins/egldeviceintegrations/libqeglfs-kms-integration.so"
+}

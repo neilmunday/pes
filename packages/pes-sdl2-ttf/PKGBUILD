@@ -1,0 +1,32 @@
+pkgname=pes-sdl2-tff
+pkgver=2.0.14
+pkgrel=1
+arch=('armv7h')
+url='https://www.libsdl.org'
+license=('zlib')
+pkgdesc='SDL2 TTF library'
+depends=('pes-sdl2' 'freetype2')
+makedepends=('make')
+groups=('pes')
+source=("https://www.libsdl.org/projects/SDL_ttf/release/SDL2_ttf-${pkgver}.tar.gz")
+sha256sums=('34db5e20bcf64e7071fe9ae25acaa7d72bdc4f11ab3ce59acc768ab62fe39276')
+
+prepare() {
+  mkdir -p build
+}
+
+build() {
+  cd build
+
+  export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
+  export CXXFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
+
+  ../SDL2_ttf-${pkgver}/configure --prefix=/opt/pes \
+	--host=arm-raspberry-linux-gnueabihf \
+	--with-sdl-prefix=/opt/pes
+}
+
+package() {
+  cd build
+  make DESTDIR="$pkgdir" install
+}

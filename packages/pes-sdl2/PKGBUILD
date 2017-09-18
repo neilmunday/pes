@@ -1,0 +1,41 @@
+pkgname=pes-sdl2
+_sdlver=2.0.5
+pkgver=${_sdlver}
+pkgrel=1
+arch=('armv7h')
+url='https://www.libsdl.org'
+license=('zlib')
+pkgdesc='SDL2 library'
+depends=('')
+makedepends=('make' 'alsa-lib')
+groups=('pes')
+source=("https://www.libsdl.org/release/SDL2-${_sdlver}.tar.gz")
+sha256sums=('442038cf55965969f2ff06d976031813de643af9c9edc9e331bd761c242e8785')
+
+prepare() {
+  mkdir -p build
+}
+
+build() {
+  cd build
+
+  export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
+  export CXXFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
+
+  ../SDL2-${_sdlver}/configure --prefix=/opt/pes \
+	--host=arm-raspberry-linux-gnueabihf \
+	--disable-video-opengl \
+	--disable-video-x11 \
+	--disable-pulseaudio \
+	--disable-esd \
+	--enable-video-opengles \
+	--enable-libudev \
+	--enable-alsa
+
+  make
+}
+
+package() {
+  cd build
+  make DESTDIR="$pkgdir" install
+}

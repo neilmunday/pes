@@ -1,0 +1,33 @@
+pkgname=pes-sdl2-gfx
+pkgver=1.0.1
+pkgrel=1
+arch=('armv7h')
+url='http://www.ferzkopp.net/Software/SDL2_gfx/Docs/html/index.html'
+license=('zlib')
+pkgdesc='SDL2 GFX library'
+depends=('pes-sdl2')
+makedepends=('make')
+groups=('pes')
+source=("http://www.ferzkopp.net/Software/SDL2_gfx/SDL2_gfx-${pkgver}.tar.gz")
+sha256sums=('d69bcbceb811b4e5712fbad3ede737166327f44b727f1388c32581dbbe8c599a')
+
+prepare() {
+  mkdir -p build
+}
+
+build() {
+  cd build
+
+  export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
+  export CXXFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
+
+  ../SDL2_gfx-${pkgver}/configure --prefix=/opt/pes \
+	--host=arm-raspberry-linux-gnueabihf \
+	--with-sdl-prefix=/opt/pes \
+	--disable-mmx
+}
+
+package() {
+  cd build
+  make DESTDIR="$pkgdir" install
+}

@@ -1,0 +1,4 @@
+qt_shared = True
+pyqt_disabled_features = PyQt_Desktop_OpenGL PyQt_Printer
+
+[Qt 5.9.1]

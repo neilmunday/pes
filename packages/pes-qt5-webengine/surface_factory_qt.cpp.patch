@@ -1,0 +1,18 @@
+--- surface_factory_qt.cpp	2017-08-11 07:24:41.612257529 +0100
++++ surface_factory_qt.cpp.fix	2017-08-11 07:25:18.523223725 +0100
+@@ -74,13 +74,13 @@
+ bool SurfaceFactoryQt::LoadEGLGLES2Bindings()
+ {
+     base::FilePath libEGLPath = QtWebEngineCore::toFilePath(QT_LIBDIR_EGL);
+-    libEGLPath = libEGLPath.Append("libEGL.so.1");
++    libEGLPath = libEGLPath.Append("libEGL.so");
+     base::NativeLibrary eglLibrary = LoadLibrary(libEGLPath);
+     if (!eglLibrary)
+         return false;
+ 
+     base::FilePath libGLES2Path = QtWebEngineCore::toFilePath(QT_LIBDIR_GLES2);
+-    libGLES2Path = libGLES2Path.Append("libGLESv2.so.2");
++    libGLES2Path = libGLES2Path.Append("libGLESv2.so");
+     base::NativeLibrary gles2Library = LoadLibrary(libGLES2Path);
+     if (!gles2Library)
+         return false;

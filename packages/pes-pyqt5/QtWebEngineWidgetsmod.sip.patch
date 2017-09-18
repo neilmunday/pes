@@ -1,0 +1,11 @@
+--- QtWebEngineWidgetsmod.sip	2017-08-23 21:15:14.301576190 +0100
++++ QtWebEngineWidgetsmod.sip.fix	2017-08-23 21:15:04.801609311 +0100
+@@ -24,7 +24,7 @@
+ 
+ %Import QtCore/QtCoremod.sip
+ %Import QtNetwork/QtNetworkmod.sip
+-%Import QtPrintSupport/QtPrintSupportmod.sip
++//%Import QtPrintSupport/QtPrintSupportmod.sip
+ %Import QtWebChannel/QtWebChannelmod.sip
+ %Import QtWidgets/QtWidgetsmod.sip
+ 
