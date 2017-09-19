@@ -312,11 +312,32 @@ $(document).ready(function(){
 		});
 		
 		channel.objects.loadingThread.progressSignal.connect(function(percent, status){
+			console.log(percent);
 			$("#progressBarComplete").width(percent + "%");
 			$("#progressBarTxt").html("Loading: " + status);
 		});
 		
 		channel.objects.loadingThread.finishedSignal.connect(function(){
+			handler.getConsoles(function(consoleArray){
+				var gamesFound = false;
+				$.each(consoleArray, function(i, c)
+				{
+					if (c.gameTotal > 0){
+						gamesFound = true;
+						menus["main"].insertMenuItem(c.name, i + 1, function(){
+							console.log(c.name);
+						});
+					}
+					consoles.push(c);
+				});
+				
+				menus["main"].draw();
+				menus["main"].setSelected(0);
+				
+				if (!gamesFound){
+					$("#panel_main").html("<p>You have not added any ROMs yet to the PES database.</p><p>To perform a ROM scan, please press Home/Guide to access the Settings menu.</p>")
+				}
+			});
 			$("#startUp").hide();
 			$("#main").show();
 			menus["main"].setSelected(0);
@@ -330,22 +351,6 @@ $(document).ready(function(){
 			}
 		});
 
-		handler.getConsoles(function(consoleArray){
-			$.each(consoleArray, function(i, v)
-			{
-				menus["main"].insertMenuItem(v, i + 1, function(){
-					console.log(v);
-				});
-				consoles.push(v);
-			});
-			
-			menus["main"].draw();
-			menus["main"].setSelected(0);
-			
-			if (consoles.length == 0){
-				$("#panel_main").html("<p>You have not added any ROMs yet to the PES database.</p><p>To perform a ROM scan, please press Home/Guide to access the Settings menu.</p>")
-			}
-		});
 		channelLoaded = true;
 		
 		handler.channelReady();
@@ -380,7 +385,7 @@ $(document).ready(function(){
 		$("#panel_update_games").show();
 		$("#update_console_list").empty();
 		for (var i = 0; i < consoles.length; i++){
-			$("#update_console_list").append("<div><input id=\"update_console_list_" + consoles[i] + "\" checked type=\"checkbox\" value=\"" + consoles[i] + "\"><label for=\"update_console_list_" + consoles[i] + "\"><span><span></span></span>" + consoles[i] + "</label></div>\n");
+			$("#update_console_list").append("<div><input id=\"update_console_list_" + consoles[i].name + "\" checked type=\"checkbox\" value=\"" + consoles[i].name + "\"><label for=\"update_console_list_" + consoles[i].name + "\"><span><span></span></span>" + consoles[i].name + "</label></div>\n");
 		}
 		$("#updateConsolesBtn").focus();
 	}, "update_games_preview");
