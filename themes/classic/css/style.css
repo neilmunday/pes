@@ -119,10 +119,10 @@ select:focus {
 	top: 31px;
 	left: 0;
 	bottom: 0;
-	width: 250px;
-	min-height: 100%;
-	padding-top: 100px;
+	width: 270px;
+	padding-top: 20px;
 	display: block;
+	overflow: auto;
 }
 
 #menu_settings, #screen_settings, .panel, .preview {
@@ -131,7 +131,7 @@ select:focus {
 
 #container {
 	display: block;
-	margin-left: 250px;
+	margin-left: 270px;
 	padding: 0px;
 }
 
@@ -241,6 +241,12 @@ select:focus {
 	display: inline;
 	position: absolute;
 	right: 10px;
+}
+
+#update_console_list {
+	padding-left: 100px;
+	height: 50%;
+	overflow: auto;
 }
 
 .menuItem {
