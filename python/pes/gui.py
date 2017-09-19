@@ -21,6 +21,7 @@
 #
 
 import configparser
+import json
 import logging
 import os
 import subprocess
@@ -128,6 +129,10 @@ class PESWindow(QMainWindow):
 		mainPage = os.path.join(self.__themeDir, "html", "main.html")
 		checkFile(mainPage)
 		
+		self.db = QSqlDatabase.addDatabase("QSQLITE")
+		self.db.setDatabaseName(pes.userDb)
+		self.db.open()
+		
 		self.__loadingThread = LoadingThread(self)
 		
 		self.__page = WebPage()
@@ -157,6 +162,7 @@ class PESWindow(QMainWindow):
 		self.__running = False
 		logging.debug("shutting down SDL2")
 		sdl2.SDL_Quit()
+		self.db.close()
 		logging.debug("closing")
 		super(PESWindow, self).close()
 		
@@ -276,50 +282,15 @@ class LoadingThread(QThread):
 		self.__progress = 0
 	
 	def run(self):
-		# load time zones
-		#process = subprocess.Popen(self.__window.listTimezoneCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-		#stdout, stderr = process.communicate()
-		#if process.returncode != 0:
-			#logging.error("LoadingThread.run: could not get time zones")
-			#logging.error(stderr)
-		#else:
-			#timezones = stdout.decode().split("\n")[:-1]
-			#timezoneTotal = len(timezones)
-			#i = 0
-			#for l in timezones:
-				#i += 1
-				#logging.debug("LoadingThread.run: found time zone %s" % l)
-				#self.__window.timezones.append(l)
-				#self.__progress = (i / timezoneTotal) * 100
-				#self.progressSignal.emit(self.__progress, "Loading timezone: %s" % l)
-		
-		## get current timezone
-		#process = subprocess.Popen(self.__window.getTimezoneCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-		#stdout, stderr = process.communicate()
-		#if process.returncode != 0:
-			#logging.error("LoadingThread.run: could not get current time zone!")
-			#logging.error(stderr)
-		#else:
-			#self.__window.timezone = stdout[:-1].decode()
-			#logging.debug("LoadingThread.run: current timezone is: %s" % self.__window.timezone)
-		
-		#for i in range(0, 11):
-		#	time.sleep(0.1)
-		#	self.__progress = 10 * i
-		#	self.progressSignal.emit(self.__progress, "%d%%" % self.__progress)
-		#	logging.debug("LoadingThread.run: progress -> %d" % self.__progress)
-		
 		logging.debug("LoadingThread.run: opening database using %s" % pes.userDb)
-		db = QSqlDatabase.addDatabase("QSQLITE")
-		db.setDatabaseName(pes.userDb)
-		db.open()
 		
 		query = QSqlQuery()
 		query.exec_("CREATE TABLE IF NOT EXISTS `console` (`console_id` INTEGER PRIMARY KEY, `gamesdb_id` INT, `retroachievement_id` INT, `name` TEXT);")
 		query.exec_("CREATE INDEX IF NOT EXISTS \"console_index\" on consoles (console_id ASC);")
 		query.exec_("CREATE TABLE IF NOT EXISTS `games_catalogue` (`short_name` TEXT, `full_name` TEXT);")
 		query.exec_("CREATE INDEX IF NOT EXISTS \"games_catalogue_index\" on games_catalogue (short_name ASC);")
-		db.commit()
+		query.exec_("CREATE TABLE IF NOT EXISTS `game` (`game_id` INTEGER PRIMARY KEY, `gamesdb_id` INT, `console_id` INT, `name` TEXT, `coverart` TEXT, `path` TEXT, `overview` TEXT, `released` INT, `last_played` INT, `added` INT, `play_count` INT, `size` INT, `rasum` TEXT, `retroachievement_id` INT, `achievement_total` INT, `score_total` INT);")
+		self.__window.db.commit()
 		
 		# populate games catalogue (if needed)
 		query.exec_("SELECT COUNT(*) AS `total` FROM `games_catalogue`")
@@ -341,11 +312,11 @@ class LoadingThread(QThread):
 				else:
 					logging.error("PESLoadingThread.run: games catalogue section \"%s\" has no \"full_name\" option!" % section)
 				i += 1.0
-				self.progress = 50 * (i / sectionTotal)
+				self.__progress = 100 * (i / sectionTotal)
 				self.progressSignal.emit(self.__progress, "Populating games catalogue: %s" % fullName)
 			if len(insertValues) > 0:
 				query.exec_('INSERT INTO `games_catalogue` (`short_name`, `full_name`) VALUES %s;' % ','.join(insertValues))
-				db.commit()
+				self.__window.db.commit()
 				
 		# load consoles
 		consoleParser = configparser.RawConfigParser()
@@ -372,7 +343,7 @@ class LoadingThread(QThread):
 					retroAchievementId = consoleParser.getint(c, "achievement_id")
 				
 				console = Console(
-					db,
+					self.__window.db,
 					c,
 					consoleParser.getint(c, "thegamesdb_id"),
 					retroAchievementId,
@@ -392,8 +363,6 @@ class LoadingThread(QThread):
 				logging.error("LoadingThread.run: error parsing config file %s: %s" % (pes.userConsolesConfigFile, e.message))
 				self.__window.close()
 				return
-		
-		db.close()
 		
 		self.__progress = 100
 		self.finishedSignal.emit()
@@ -419,11 +388,12 @@ class CallHandler(QObject):
 	def channelReady(self):
 		self.__window.channelReady()
 	
+	#@pyqtSlot(result='QVariantMap')
 	@pyqtSlot(result=list)
 	def getConsoles(self):
 		consoles = []
 		for c in self.__window.consoles:
-			consoles.append(c.getName())
+			consoles.append({"gameTotal": c.getGameTotal(), "name": c.getName(), "id": c.getId()})
 		return consoles
 	
 	@pyqtSlot(result=str)
@@ -489,9 +459,14 @@ class CallHandler(QObject):
 	def saveSettings(self, timezone, keyboardLayout):
 		rtn, stdout, stderr = runCommand("%s %s" % (self.__window.setTimezoneCommand, timezone))
 		if rtn != 0:
-			logging.error("Handler.getTimezones: could not set timezones")
+			logging.error("Handler.saveSettings: could not set timezone to %s" % timezone)
 			logging.error(stderr)
-			return [False, stderr]
+			return [False, "Could not set timezone to %s" % timezone]
+		rtn, stdout, stderr = runCommand("%s %s" % (self.__window.setKeyboardLayoutCommand, keyboardLayout))
+		if rtn != 0:
+			logging.error("Handler.saveSettings: could not set keyboard layout to %s" % keyboardLayout)
+			logging.stderr(stderr)
+			return [False, "Could not set keyboard layout to %s" % keyboardLayout]
 		return [True]
 	
 	@pyqtSlot(str, str)
