@@ -41,6 +41,9 @@ class Record(object):
 	
 		if record == None:
 			self.refresh()
+		else:
+			for i in range(0, record.count()):
+				self.__properties[record.fieldName(i)] = record.value(i)
 	
 	def __getWritableFields(self):
 		l = []
@@ -57,18 +60,33 @@ class Record(object):
 			isNumeric = True
 		except ValueError:
 			pass
-
 		if not isNumeric:
 			return '"%s"' % v
 		return str(v)
+	
+	def doQuery(self, q):
+		dbOpen = self.__db.isOpen()
+		if not dbOpen:
+			if not self.__db.open():
+				raise IOError("Record.doQuery: could not open database")
+		query = QSqlQuery()
+		query.exec_(q)
+		if not dbOpen:
+			self.__db.close()
+		return query
+	
+	def getId(self):
+		return self.__properties[self.__keyField]
+	
+	def getProperty(self, field):
+		return self.__properties[field]
 	
 	def isNew(self):
 		return self.__isNew
 			
 	def refresh(self):
 		if self.__properties[self.__keyField] != None:
-			query = QSqlQuery()
-			query.exec_("SELECT %s FROM `%s` WHERE `%s` = %d;" % (','.join("`%s`" % f for f in self.__fields), self.__table, self.__keyField, self.__properties[self.__keyField]))
+			query = self.doQuery("SELECT %s FROM `%s` WHERE `%s` = %d;" % (','.join("`%s`" % f for f in self.__fields), self.__table, self.__keyField, self.__properties[self.__keyField]))
 			if not query.first():
 				self.__isNew = True
 				self.__dirtyFields = self.__getWritableFields()
@@ -114,9 +132,8 @@ class Record(object):
 					q += ','
 				i += 1
 			q += ' WHERE `%s` = %d;' % (self.__keyField, self.__properties[self.__keyField])
-
-		query = QSqlQuery()
-		query.exec_(q)
+			
+		query = self.doQuery(q)
 
 		if self.__isNew:
 			self.__isNew = False
@@ -133,6 +150,14 @@ class ConsoleRecord(Record):
 	def __init__(self, db, keyValue, row=None):
 		super(ConsoleRecord, self).__init__(db, "console", ["console_id", "gamesdb_id", "retroachievement_id", "name"], "console_id", keyValue, True, row)
 		
+	def getName(self):
+		return self.getProperty("name")
+	
+	def getGameTotal(self):
+		query = self.doQuery("SELECT COUNT(*) FROM `game` WHERE `console_id` = %d;" % self.getId())
+		query.first()
+		return query.value(0)
+	
 	def setGamesDbId(self, i):
 		self.setProperty("gamesdb_id", int(i))
 
@@ -168,9 +193,15 @@ class Console(object):
 			self.__consoleRecord.setRetroAchievementId(retroAchievementId)
 			self.__consoleRecord.save()
 			self.__db.commit()
+
+	def getId(self):
+		return self.__consoleRecord.getId()
 			
 	def getName(self):
 		return self.__consoleRecord.getName()
+	
+	def getGameTotal(self):
+		return self.__consoleRecord.getGameTotal()
 		
 
 class Settings(object):
