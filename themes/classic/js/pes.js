@@ -49,6 +49,13 @@ function commandLineExit(){
 	});
 }
 
+function formatTime(s){
+	var hours = Math.floor(s / 3600);
+	var mins = Math.floor((s % 3600) / 60);
+	var secs = s % 60;
+	return hours + ':' + addLeadingZero(mins) + ':' + addLeadingZero(secs);
+}
+
 function setIconVisible(icon, visible){
 	if (visible){
 		$('#' + icon).show();
@@ -205,7 +212,7 @@ function Menu(el){
 		}
 	});
 	this.setSelected = function(i){
-		console.log("selecting: " + i);
+		//console.log("selecting: " + i);
 		if (i > me.items.length - 1){
 			i = 0;
 		}
@@ -312,9 +319,8 @@ $(document).ready(function(){
 		});
 		
 		channel.objects.loadingThread.progressSignal.connect(function(percent, status){
-			console.log(percent);
-			$("#progressBarComplete").width(percent + "%");
-			$("#progressBarTxt").html("Loading: " + status);
+			$("#loadingProgressBarComplete").width(percent + "%");
+			$("#loadingProgressBarTxt").html("Loading: " + status);
 		});
 		
 		channel.objects.loadingThread.finishedSignal.connect(function(){
@@ -341,6 +347,24 @@ $(document).ready(function(){
 			$("#startUp").hide();
 			$("#main").show();
 			menus["main"].setSelected(0);
+		});
+		
+		channel.objects.romScanMonitorThread.progressSignal.connect(function(percent, romsRemaining, timeRemaining){
+			$("#scanProgressBarComplete").width(percent + "%");
+			$("#romsRemainingCell").html(romsRemaining);
+			$("#timeRemainingCell").html(formatTime(timeRemaining));
+		});
+		
+		channel.objects.romScanMonitorThread.romsFoundSignal.connect(function(romTotal){
+			$("#romsFoundCell").html(romTotal);
+		});
+		
+		channel.objects.romScanMonitorThread.finishedSignal.connect(function(added, updated, timeTaken){
+			$("#panel_update_games_process").hide();
+			$("#panel_update_games_finished").show();
+			$("#romsAddedCell").html(added);
+			$("#romsUpdatedCell").html(updated);
+			$("#timeTakenCell").html(formatTime(timeTaken));
 		});
 		
 		channel.objects.handler.joysticksConnectedSignal.connect(function(total){
@@ -436,7 +460,7 @@ $(document).ready(function(){
 	$(".menu").on("keyup", "button", function(event){
 		if (event.type == "keyup"){
 			var menuName = $(this).attr("id").split("_")[1];
-			console.log("key:" + event.key);
+			//console.log("key:" + event.key);
 			switch (event.key){
 				case "ArrowDown": menus[menuName].goDown();; break;
 				case "ArrowUp": menus[menuName].goUp(); break;
@@ -461,6 +485,7 @@ $(document).ready(function(){
 		}
 		else if (event.key == "Enter"){
 			$("#popupMenu, #dialogueLayer").hide();
+			$(".panel").hide();
 			showScreen("settings");
 		}
 	});
@@ -549,7 +574,17 @@ $(document).ready(function(){
 			$("#update_console_list").find("input").last().focus();
 		}
 		else if (event.key == "Enter"){
-			console.log("update consoles");
+			$("#panel_update_games").hide();
+			$("#panel_update_games_process").show();
+			$("#scanProgressBarComplete").width(0);
+			var updateArray = [];
+			var chkboxes = $("#update_console_list").find("input");
+			for (var i = 0; i < chkboxes.length; i++){
+				if ($(chkboxes[i]).prop("checked")){
+					updateArray.push($(chkboxes[i]).val());
+				}
+			}
+			channel.objects.romScanMonitorThread.startThread(updateArray);
 		}
 	});
 	
@@ -558,14 +593,16 @@ $(document).ready(function(){
 			$("#updateSelectNoneConsolesBtn").focus();
 		}
 		else if (event.key == "ArrowLeft"){
-			$("#updateConsolesBtn").focus();
+			if (!$("#updateConsolesBtn").prop("disabled")){
+				$("#updateConsolesBtn").focus();
+			}
 		}
 		else if (event.key == "ArrowUp"){
-			//$("#update_console_list").children(":checkbox").last().focus();
 			$("#update_console_list").find("input").last().focus();
 		}
 		else if (event.key == "Enter"){
-			var chkboxes = $("#update_console_list").find("input").prop("checked", true);
+			$("#update_console_list").find("input").prop("checked", true);
+			$("#updateConsolesBtn").prop("disabled", false);
 		}
 	});
 	
@@ -578,7 +615,8 @@ $(document).ready(function(){
 			$("#update_console_list").find("input").last().focus();
 		}
 		else if (event.key == "Enter"){
-			var chkboxes = $("#update_console_list").find("input").prop("checked", false);
+			$("#update_console_list").find("input").prop("checked", false);
+			$("#updateConsolesBtn").prop("disabled", true);
 		}
 	});
 	
@@ -603,7 +641,12 @@ $(document).ready(function(){
 			}
 			else if (event.key == "ArrowDown"){
 				if (selected + 1 == chkboxes.length){
-					$("#updateConsolesBtn").focus();
+					if ($("#updateConsolesBtn").prop("disabled")){
+						$("#updateSelectAllConsolesBtn").focus();
+					}
+					else{
+						$("#updateConsolesBtn").focus();
+					}
 				}
 				else{
 					chkboxes[selected + 1].focus();
@@ -611,6 +654,19 @@ $(document).ready(function(){
 			}
 			else if (event.key == "Enter"){
 				$(this).prop("checked", !$(this).prop("checked"));
+				if ($(this).prop("checked")){
+					$("#updateConsolesBtn").prop("disabled", false);
+				}
+				else{
+					var foundChecked = false;
+					for (var i = 0; i < chkboxes.length; i++){
+						if ($(chkboxes[i]).prop("checked")){
+							foundChecked = true;
+							break;
+						}
+					}
+					$("#updateConsolesBtn").prop("disabled", !foundChecked);
+				}
 			}
 		}
 		else{

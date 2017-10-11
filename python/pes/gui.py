@@ -21,7 +21,6 @@
 #
 
 import configparser
-import json
 import logging
 import os
 import subprocess
@@ -43,6 +42,7 @@ import sdl2.joystick
 import pes
 from pes.data import Console, ConsoleRecord, Settings
 from pes.common import checkDir, checkFile, getIpAddress, mkdir, pesExit
+from pes.romscan import RomScanThread
 import pes.gamecontroller
 
 # workaround for http://bugs.python.org/issue22273
@@ -83,6 +83,7 @@ class PESWindow(QMainWindow):
 		self.timezones = []
 		self.timezone = ""
 		self.consoles = []
+		self.consoleMap = {}
 		
 		self.setWindowTitle("PES")
 		
@@ -134,6 +135,7 @@ class PESWindow(QMainWindow):
 		self.db.open()
 		
 		self.__loadingThread = LoadingThread(self)
+		self.__romScanMonitorThread = RomScanMonitorThread(self.db)
 		
 		self.__page = WebPage()
 		self.__webview = WebView() 
@@ -143,7 +145,9 @@ class PESWindow(QMainWindow):
 		self.__handler = CallHandler(self)
 		self.__channel.registerObject('handler', self.__handler)
 		self.__channel.registerObject('loadingThread', self.__loadingThread)
+		self.__channel.registerObject('romScanMonitorThread', self.__romScanMonitorThread)
 		self.__handler.exitSignal.connect(self.__handleExit)
+		self.__loadingThread.finishedSignal.connect(self.__loadingFinished)
 		self.setCentralWidget(self.__webview)
 		self.__webview.load(QUrl("file://%s" % mainPage))
 		
@@ -158,10 +162,14 @@ class PESWindow(QMainWindow):
 	
 	def close(self):
 		logging.info("exiting PES")
+		if self.__romScanMonitorThread.isRunning():
+			logging.debug("stopping rom scan thread")
+			self.__romScanMonitorThread.stop()
 		logging.debug("stopping event loop")
 		self.__running = False
 		logging.debug("shutting down SDL2")
 		sdl2.SDL_Quit()
+		logging.debug("closing db")
 		self.db.close()
 		logging.debug("closing")
 		super(PESWindow, self).close()
@@ -259,6 +267,10 @@ class PESWindow(QMainWindow):
 				joystickTick = tick
 			
 			self.__app.processEvents()
+			
+	def __loadingFinished(self):
+		logging.debug("PESWindow.__loadingFinished: setting console map on rom scan monitor thread")
+		self.__romScanMonitorThread.setConsoleMap(self.consoleMap)
 	
 	def updateControlPad(self, jsIndex):
 		if jsIndex == self.__player1ControllerIndex:
@@ -285,7 +297,7 @@ class LoadingThread(QThread):
 		logging.debug("LoadingThread.run: opening database using %s" % pes.userDb)
 		
 		query = QSqlQuery()
-		query.exec_("CREATE TABLE IF NOT EXISTS `console` (`console_id` INTEGER PRIMARY KEY, `gamesdb_id` INT, `retroachievement_id` INT, `name` TEXT);")
+		query.exec_("CREATE TABLE IF NOT EXISTS `console` (`console_id` INTEGER PRIMARY KEY, `gamesdb_id` INT, `gamesdb_name` TEXT, `retroachievement_id` INT, `name` TEXT);")
 		query.exec_("CREATE INDEX IF NOT EXISTS \"console_index\" on consoles (console_id ASC);")
 		query.exec_("CREATE TABLE IF NOT EXISTS `games_catalogue` (`short_name` TEXT, `full_name` TEXT);")
 		query.exec_("CREATE INDEX IF NOT EXISTS \"games_catalogue_index\" on games_catalogue (short_name ASC);")
@@ -312,11 +324,14 @@ class LoadingThread(QThread):
 				else:
 					logging.error("PESLoadingThread.run: games catalogue section \"%s\" has no \"full_name\" option!" % section)
 				i += 1.0
-				self.__progress = 100 * (i / sectionTotal)
+				self.__progress = 50 * (i / sectionTotal)
 				self.progressSignal.emit(self.__progress, "Populating games catalogue: %s" % fullName)
 			if len(insertValues) > 0:
 				query.exec_('INSERT INTO `games_catalogue` (`short_name`, `full_name`) VALUES %s;' % ','.join(insertValues))
 				self.__window.db.commit()
+		else:
+			self.__progress = 50
+			self.progressSignal.emit(self.__progress, "Games catalogue ok")
 				
 		# load consoles
 		consoleParser = configparser.RawConfigParser()
@@ -328,10 +343,12 @@ class LoadingThread(QThread):
 		i = 0
 		for c in consoleNames:
 			try:
-				consolePath = os.path.join(self.__window.settings.get("settings", "romsDir"), c)
-				mkdir(consolePath)
-				#console = Console(db, c)
-				#db, name, gamesDbId, retroAchievementId, image, emulator, extensions, ignoreRoms, command, noCoverArt
+				romDir = os.path.join(self.__window.settings.get("settings", "romsDir"), c)
+				# make ROMs dir for console
+				mkdir(romDir)
+				# make cover art dir for console
+				coverArtDir = os.path.join(self.__window.settings.get("settings", "coverartDir"), c)
+				mkdir(coverArtDir)
 				
 				if consoleParser.has_option(c, "ignore_roms"):
 					ignoreRoms = consoleParser.get(c, "ignore_roms").split(",")
@@ -349,12 +366,18 @@ class LoadingThread(QThread):
 					retroAchievementId,
 					consoleParser.get(c, "image"),
 					consoleParser.get(c, "emulator"),
+					romDir,
 					consoleParser.get(c, "extensions"),
 					ignoreRoms,
 					consoleParser.get(c, "command"),
-					consoleParser.get(c, "nocoverart")
+					consoleParser.get(c, "nocoverart"),
+					coverArtDir
 				)
 				self.__window.consoles.append(console)
+				self.__window.consoleMap[c] = console
+				self.__progress = 50 * (i / consoleTotal)
+				self.progressSignal.emit(self.__progress, "Loaded console: %s" % c)
+				i += 1
 			except configparser.NoOptionError as e:
 				logging.error("LoadingThread.run: error parsing config file %s: %s" % (pes.userConsolesConfigFile, e.message))
 				self.__window.close()
@@ -366,6 +389,61 @@ class LoadingThread(QThread):
 		
 		self.__progress = 100
 		self.finishedSignal.emit()
+
+class RomScanMonitorThread(QThread):
+	
+	finishedSignal = pyqtSignal(int, int, int) # added, updated, time taken
+	progressSignal = pyqtSignal(int, int, int) # progress (%), unprocessed, time remaining
+	romsFoundSignal = pyqtSignal(int) # roms found
+	
+	def __init__(self, db):
+		super(RomScanMonitorThread, self).__init__(None)
+		self.__consoleMap = {}
+		self.__db = db
+		self.__progress = 0
+		self.__scanThread = None
+		self.__running = False
+		
+	def __romsFoundEvent(self, romTotal):
+		self.romsFoundSignal.emit(romTotal)
+		
+	def isRunning(self):
+		return self.__running
+		
+	def run(self):
+		logging.debug("RomScanMonitorThread.run: starting")
+		self.__running = True
+		self.__scanThread.start()
+		
+		while not self.__scanThread.isFinished():
+			progress = self.__scanThread.getProgress()
+			if progress != self.__progress:
+				self.__progress = progress
+				self.progressSignal.emit(self.__progress, self.__scanThread.getUnprocessed(), self.__scanThread.getTimeRemaining())
+			time.sleep(0.1)
+			
+		self.progressSignal.emit(100, 0, 0)
+		
+		logging.debug("RomScanMonitorThread.run: finished")
+		self.finishedSignal.emit(self.__scanThread.getAdded(), self.__scanThread.getUpdated(), self.__scanThread.getTimeTaken())
+		self.__running = False
+		
+	def setConsoleMap(self, consoleMap):
+		self.__consoleMap = consoleMap
+		
+	@pyqtSlot(list)
+	def startThread(self, consoleNames):
+		logging.debug("RomScanThread.startThread: starting thread")
+		if self.__scanThread != None:
+			self.__scanThread.romsFoundSignal.disconnect()
+		self.__scanThread = RomScanThread(self.__db, consoleNames, self.__consoleMap)
+		self.__scanThread.romsFoundSignal.connect(self.__romsFoundEvent)
+		self.start()
+		
+	def stop(self):
+		if self.__scanThread:
+			self.__scanThread.stop()
+		
 
 class CallHandler(QObject):
 	

@@ -59,12 +59,12 @@
 </div>
 
 <div id="startUp">
-	<div id="progressContainer">
+	<div id="loadingProgressContainer">
 		<h1>Loading...</h1>
-		<div id="progressBar">
-			<div id="progressBarComplete"></div>
+		<div id="loadingProgressBar" class="progressBar">
+			<div id="loadingProgressBarComplete" class="progressBarComplete"></div>
 		</div>
-		<span id="progressBarTxt">Waiting to start</span>
+		<span id="loadingProgressBarTxt">Waiting to start</span>
 	</div>
 </div>
 
@@ -89,6 +89,46 @@
 					<p>Select the consoles that you would like to update:</p>
 					<div id="update_console_list"></div>
 					<p><button type="button" id="updateConsolesBtn">Update</button> <button type="button" id="updateSelectAllConsolesBtn">Select All</button> <button type="button" id="updateSelectNoneConsolesBtn">Select None</button></p>
+				</div>
+				
+				<div id="panel_update_games_process" class="panel">
+					<h1>Updating Games...</h1>
+					<table>
+						<tr>
+							<td>ROMs found:</td>
+							<td id="romsFoundCell">?</td>
+						</tr>
+						<tr>
+							<td>ROMs remaining:</td>
+							<td id="romsRemainingCell">?</td>
+						</tr>
+						<tr>
+							<td>Time remaining:</td>
+							<td id="timeRemainingCell">?</td>
+						</tr>
+					</table>
+					<div id="scanProgressBar" class="progressBar">
+						<div id="scanProgressBarComplete" class="progressBarComplete"></div>
+					</div>
+				</div>
+				
+				<div id="panel_update_games_finished" class="panel">
+					<h1>Games Update Complete!</h1>
+					
+					<table>
+						<tr>
+							<td>ROMs added:</td>
+							<td id="romsAddedCell">?</td>
+						</tr>
+						<tr>
+							<td>ROMs updated:</td>
+							<td id="romsUpdatedCell">?</td>
+						</tr>
+						<tr>
+							<td>Time taken:</td>
+							<td id="timeTakenCell">?</td>
+						</tr>
+					</table>
 				</div>
 				
 				<div id="panel_system_settings" class="panel">

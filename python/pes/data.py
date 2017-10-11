@@ -134,6 +134,7 @@ class Record(object):
 			q += ' WHERE `%s` = %d;' % (self.__keyField, self.__properties[self.__keyField])
 			
 		query = self.doQuery(q)
+		self.__db.commit()
 
 		if self.__isNew:
 			self.__isNew = False
@@ -148,18 +149,27 @@ class Record(object):
 class ConsoleRecord(Record):
 	
 	def __init__(self, db, keyValue, row=None):
-		super(ConsoleRecord, self).__init__(db, "console", ["console_id", "gamesdb_id", "retroachievement_id", "name"], "console_id", keyValue, True, row)
-		
-	def getName(self):
-		return self.getProperty("name")
+		super(ConsoleRecord, self).__init__(db, "console", ["console_id", "gamesdb_id", "gamesdb_name", "retroachievement_id", "name"], "console_id", keyValue, True, row)
+	
+	def getGamesDbId(self):
+		return int(self.getProperty("gamesdb_id"))
 	
 	def getGameTotal(self):
 		query = self.doQuery("SELECT COUNT(*) FROM `game` WHERE `console_id` = %d;" % self.getId())
 		query.first()
-		return query.value(0)
+		return int(query.value(0))
+	
+	def getGamesDbName(self):
+		return self.getProperty("gamesdb_name")
+	
+	def getName(self):
+		return self.getProperty("name")
 	
 	def setGamesDbId(self, i):
 		self.setProperty("gamesdb_id", int(i))
+		
+	def setGamesDbName(self, s):
+		self.setProperty("gamesdb_name", s)
 
 	def setName(self, name):
 		self.setProperty("name", name)
@@ -169,18 +179,20 @@ class ConsoleRecord(Record):
 
 class Console(object):
 	
-	def __init__(self, db, name, gamesDbId, retroAchievementId, image, emulator, extensions, ignoreRoms, command, noCoverArt):
+	def __init__(self, db, name, gamesDbId, retroAchievementId, image, emulator, romDir, extensions, ignoreRoms, command, noCoverArt, covertArtDir):
 		self.__image = image
 		self.__emulator = emulator
+		self.__romDir = romDir
 		self.__extensions = extensions
 		self.__ignoreRoms = ignoreRoms
 		self.__command = command
 		self.__noCoverArt = noCoverArt
+		self.__covertArtDir = covertArtDir
 		self.__consoleRecord = None
 		self.__db = db
 		
 		query = QSqlQuery()
-		query.exec_("SELECT `console_id`, `gamesdb_id`, `retroachievement_id`, `name` FROM `console` WHERE `name` = \"%s\";" % name)
+		query.exec_("SELECT `console_id`, `gamesdb_id`, `gamesdb_name`, `retroachievement_id`, `name` FROM `console` WHERE `name` = \"%s\";" % name)
 		if query.first():
 			logging.debug("Console.__init__: loading existing record: %d" % query.value(0))
 			self.__consoleRecord = ConsoleRecord(self.__db, query.value(0), query.record())
@@ -191,8 +203,7 @@ class Console(object):
 			self.__consoleRecord.setName(name)
 			self.__consoleRecord.setGamesDbId(gamesDbId)
 			self.__consoleRecord.setRetroAchievementId(retroAchievementId)
-			self.__consoleRecord.save()
-			self.__db.commit()
+			self.save()
 
 	def getId(self):
 		return self.__consoleRecord.getId()
@@ -200,9 +211,26 @@ class Console(object):
 	def getName(self):
 		return self.__consoleRecord.getName()
 	
+	def getGamesDbId(self):
+		return self.__consoleRecord.getGamesDbId()
+	
+	def getGamesDbName(self):
+		return self.__consoleRecord.getGamesDbName()
+	
 	def getGameTotal(self):
 		return self.__consoleRecord.getGameTotal()
+	
+	def getExtensions(self):
+		return self.__extensions
+	
+	def getRomDir(self):
+		return self.__romDir
+	
+	def save(self):
+		self.__consoleRecord.save()
 		
+	def setGamesDbName(self, s):
+		self.__consoleRecord.setGamesDbName(s)
 
 class Settings(object):
 	

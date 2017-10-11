@@ -146,7 +146,7 @@ select:focus {
 	display: none;
 }
 
-#progressContainer {
+#loadingProgressContainer {
 	position: fixed;
 	width: 90%;
 	top: 50%;
@@ -154,7 +154,7 @@ select:focus {
 	transform: translate(-50%, -50%);
 }
 
-#progressBar {
+.progressBar {
 	width: 100%;
 	height: 50px;
 	background: rgb(19, 19, 19);
@@ -162,7 +162,7 @@ select:focus {
 	padding: 2px;
 }
 
-#progressBarComplete {
+.progressBarComplete {
 	width: 0px;
 	height: 50px;
 	background-color: rgb(204, 123, 25);
@@ -345,6 +345,10 @@ button {
 	padding-right: 15px;
 	margin-right: 5px;
 	margin-left: 5px;
+}
+
+button:disabled, button[disabled] {
+	color: #000000;
 }
 
 button.menuBtn {
