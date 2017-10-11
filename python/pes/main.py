@@ -129,6 +129,11 @@ if __name__ == '__main__':
 		logging.info("loading settings...")
 		checkFile(userPesConfigFile)
 		settings = Settings()
+		covertArtDir = settings.get("settings", "coverartDir")
+		if covertArtDir == None:
+			pesExit("Could not find \"coverartDir\" parameter in \"settings\" section in %s" % pes.userPesConfigFile)
+		logging.debug("cover art dir: %s" % covertArtDir)
+		mkdir(covertArtDir)
 		
 		logging.info("loading GUI...")
 		signal.signal(signal.SIGINT, signalHandler)
