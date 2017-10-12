@@ -205,11 +205,17 @@ class Console(object):
 			self.__consoleRecord.setRetroAchievementId(retroAchievementId)
 			self.save()
 
+	def getCoverArtDir(self):
+		return self.__covertArtDir
+
 	def getId(self):
 		return self.__consoleRecord.getId()
 			
 	def getName(self):
 		return self.__consoleRecord.getName()
+	
+	def getNoCoverArt(self):
+		return self.__noCoverArt
 	
 	def getGamesDbId(self):
 		return self.__consoleRecord.getGamesDbId()
@@ -225,6 +231,9 @@ class Console(object):
 	
 	def getRomDir(self):
 		return self.__romDir
+	
+	def ignoreRom(self, rom):
+		return rom in self.__ignoreRoms
 	
 	def save(self):
 		self.__consoleRecord.save()
