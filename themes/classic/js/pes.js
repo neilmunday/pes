@@ -314,10 +314,6 @@ $(document).ready(function(){
 		window.handler = channel.objects.handler; // make global
 		//handler = channel.objects.handler;
 		
-		handler.test("abc", "123", function(returnValue){
-		
-		});
-		
 		channel.objects.loadingThread.progressSignal.connect(function(percent, status){
 			$("#loadingProgressBarComplete").width(percent + "%");
 			$("#loadingProgressBarTxt").html("Loading: " + status);
@@ -349,19 +345,23 @@ $(document).ready(function(){
 			menus["main"].setSelected(0);
 		});
 		
-		channel.objects.romScanMonitorThread.progressSignal.connect(function(percent, romsRemaining, timeRemaining){
+		channel.objects.romScanMonitorThread.progressSignal.connect(function(percent, romsRemaining, timeRemaining, romName, coverArtPath){
 			$("#scanProgressBarComplete").width(percent + "%");
 			$("#romsRemainingCell").html(romsRemaining);
 			$("#timeRemainingCell").html(formatTime(timeRemaining));
+			if (coverArtPath != "0"){
+				$("#romPreviewImg").attr("src", "file://" + coverArtPath);
+			}
 		});
 		
 		channel.objects.romScanMonitorThread.romsFoundSignal.connect(function(romTotal){
 			$("#romsFoundCell").html(romTotal);
 		});
 		
-		channel.objects.romScanMonitorThread.finishedSignal.connect(function(added, updated, timeTaken){
+		channel.objects.romScanMonitorThread.finishedSignal.connect(function(processed, added, updated, timeTaken){
 			$("#panel_update_games_process").hide();
 			$("#panel_update_games_finished").show();
+			$("#romsProcessedCell").html(processed);
 			$("#romsAddedCell").html(added);
 			$("#romsUpdatedCell").html(updated);
 			$("#timeTakenCell").html(formatTime(timeTaken));
@@ -585,6 +585,8 @@ $(document).ready(function(){
 				}
 			}
 			channel.objects.romScanMonitorThread.startThread(updateArray);
+			$("#stopRomScanBtn").prop("disabled", false);
+			$("#stopRomScanBtn").focus();
 		}
 	});
 	
@@ -671,6 +673,15 @@ $(document).ready(function(){
 		}
 		else{
 			console.error("Could not find checkbox");
+		}
+	});
+	
+	/* Update Games Rom Scan Screen */
+	
+	$("#stopRomScanBtn").keyup(function(event){
+		if (event.key == "Enter"){
+			channel.objects.romScanMonitorThread.stop();
+			$("#stopRomScanBtn").prop("disabled", true);
 		}
 	});
 	

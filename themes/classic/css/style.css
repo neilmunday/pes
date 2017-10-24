@@ -328,6 +328,16 @@ select:focus {
 	display: none;
 }
 
+#romPreviewCell {
+	height: 200px;
+}
+
+#romPreviewImg {
+	width: 200px;
+	height: 200px;
+	object-fit: contain;
+}
+
 label {
 	font-size: 20pt;
 }

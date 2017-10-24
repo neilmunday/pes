@@ -25,7 +25,7 @@ import pes
 from PyQt5.QtSql import QSqlDatabase, QSqlQuery
 
 class Record(object):
-	
+
 	def __init__(self, db, table, fields, keyField, keyValue, autoIncrement=True, record=None):
 		self.__db = db
 		self.__table = table
@@ -38,20 +38,20 @@ class Record(object):
 		self.__isNew = False
 		self.__dirtyFields = []
 		self.__autoIncrement = autoIncrement
-	
+
 		if record == None:
 			self.refresh()
 		else:
 			for i in range(0, record.count()):
 				self.__properties[record.fieldName(i)] = record.value(i)
-	
+
 	def __getWritableFields(self):
 		l = []
 		for f in self.__fields:
 			if f != self.__keyField:
 				l.append(f)
 		return l
-	
+
 	@staticmethod
 	def convertValue(v):
 		isNumeric = False
@@ -61,32 +61,39 @@ class Record(object):
 		except ValueError:
 			pass
 		if not isNumeric:
-			return '"%s"' % v
+			return "'%s'" % v.replace("'", "''")
 		return str(v)
-	
-	def doQuery(self, q):
+
+	def _doQuery(self, q):
+		logging.debug("Record._doQuery: %s" % q)
 		dbOpen = self.__db.isOpen()
-		if not dbOpen:
+		#logging.debug("Record._doQuery: conn name: %s" % self.__db.connectionName())
+		if dbOpen:
+			logging.debug("Record._doQuery: database is open")
+		else:
+			logging.debug("Record._doQuery: database is closed")
 			if not self.__db.open():
-				raise IOError("Record.doQuery: could not open database")
-		query = QSqlQuery()
-		query.exec_(q)
+				raise IOError("Record._doQuery: could not open database")
+		query = QSqlQuery(self.__db)
+		if not query.exec_(q):
+			logging.error("Record._doQuery: Error \"%s\" encountered whilst executing:\n%s" % (query.lastError().text(), q))
 		if not dbOpen:
+			logging.debug("Record._doQuery: closing database")
 			self.__db.close()
 		return query
-	
+
 	def getId(self):
 		return self.__properties[self.__keyField]
-	
-	def getProperty(self, field):
+
+	def _getProperty(self, field):
 		return self.__properties[field]
-	
+
 	def isNew(self):
 		return self.__isNew
-			
+
 	def refresh(self):
 		if self.__properties[self.__keyField] != None:
-			query = self.doQuery("SELECT %s FROM `%s` WHERE `%s` = %d;" % (','.join("`%s`" % f for f in self.__fields), self.__table, self.__keyField, self.__properties[self.__keyField]))
+			query = self._doQuery("SELECT %s FROM `%s` WHERE `%s` = %d;" % (','.join("`%s`" % f for f in self.__fields), self.__table, self.__keyField, self.__properties[self.__keyField]))
 			if not query.first():
 				self.__isNew = True
 				self.__dirtyFields = self.__getWritableFields()
@@ -97,10 +104,11 @@ class Record(object):
 				self.__dirtyFields = []
 		else:
 			self.__isNew = True
-			
+
 	def save(self):
 		q = ''
 		if self.__isNew:
+			logging.debug("Record.save: saving new %s record" % self.__table)
 			i = 0
 			writableFields = None
 			if self.__autoIncrement:
@@ -121,8 +129,8 @@ class Record(object):
 				i += 1
 
 			q += ') VALUES (%s);' % endQuery
-				
 		else:
+			logging.debug("Record.save: updating %s record %d" % (self.__table, self.__properties[self.__keyField]))
 			i = 0
 			total = len(self.__dirtyFields)
 			q = 'UPDATE `%s` SET ' % self.__table
@@ -132,53 +140,128 @@ class Record(object):
 					q += ','
 				i += 1
 			q += ' WHERE `%s` = %d;' % (self.__keyField, self.__properties[self.__keyField])
-			
-		query = self.doQuery(q)
+
+		query = self._doQuery(q)
 		self.__db.commit()
 
 		if self.__isNew:
 			self.__isNew = False
 			self.__properties[self.__keyField] = query.lastInsertId()
 		self.__dirtyFields = []
-			
-	def setProperty(self, field, value):
+
+	def _setProperty(self, field, value):
 		self.__properties[field] = value
 		if not field in self.__dirtyFields:
 			self.__dirtyFields.append(field)
-		
+
 class ConsoleRecord(Record):
-	
+
 	def __init__(self, db, keyValue, row=None):
 		super(ConsoleRecord, self).__init__(db, "console", ["console_id", "gamesdb_id", "gamesdb_name", "retroachievement_id", "name"], "console_id", keyValue, True, row)
-	
+
 	def getGamesDbId(self):
-		return int(self.getProperty("gamesdb_id"))
-	
+		return int(self._getProperty("gamesdb_id"))
+
 	def getGameTotal(self):
-		query = self.doQuery("SELECT COUNT(*) FROM `game` WHERE `console_id` = %d;" % self.getId())
+		query = self._doQuery("SELECT COUNT(*) FROM `game` WHERE `console_id` = %d;" % self.getId())
 		query.first()
 		return int(query.value(0))
-	
+
 	def getGamesDbName(self):
-		return self.getProperty("gamesdb_name")
-	
+		return self._getProperty("gamesdb_name")
+
 	def getName(self):
-		return self.getProperty("name")
-	
+		return self._getProperty("name")
+
 	def setGamesDbId(self, i):
-		self.setProperty("gamesdb_id", int(i))
-		
+		self._setProperty("gamesdb_id", int(i))
+
 	def setGamesDbName(self, s):
-		self.setProperty("gamesdb_name", s)
+		self._setProperty("gamesdb_name", s)
 
 	def setName(self, name):
-		self.setProperty("name", name)
-		
+		self._setProperty("name", name)
+
 	def setRetroAchievementId(self, i):
-		self.setProperty("retroachievement_id", int(i))
+		self._setProperty("retroachievement_id", int(i))
+
+class GameRecord(Record):
+
+	def __init__(self, db, keyValue, row=None):
+		super(GameRecord, self).__init__(
+			db,
+			"game",
+			[
+				"game_id",
+				"console_id",
+				"name",
+				"coverart",
+				"path",
+				"overview",
+				"released",
+				"last_played",
+				"added",
+				"play_count",
+				"size",
+				"rasum",
+				"retroachievement_id",
+				"achievement_total",
+				"score_total",
+				"exists"
+			],
+			"game_id",
+			keyValue,
+			True,
+			row
+		)
+
+	def setAchievementTotal(self, total):
+		self._setProperty("achievement_total", int(total))
+
+	def setAdded(self, timestamp):
+		self._setProperty("added", int(timestamp))
+
+	def setConsoleId(self, consoleId):
+		self._setProperty("console_id", int(consoleId))
+
+	def setCoverArt(self, path):
+		self._setProperty("coverart", path)
+
+	def setExists(self, exists):
+		if exists:
+			self._setProperty("exists", 1)
+		else:
+			self._setProperty("exists", 0)
+
+	def setLastPlayed(self, timestamp):
+		self._setProperty("last_played", int(timestamp))
+
+	def setName(self, name):
+		self._setProperty("name", name)
+
+	def setOverview(self, overview):
+		self._setProperty("overview", overview)
+
+	def setPath(self, path):
+		self._setProperty("path", path)
+
+	def setRasum(self, rasum):
+		self._setProperty("rasum", rasum)
+
+	def setReleased(self, timestamp):
+		self._setProperty("released", int(timestamp))
+
+	def setRetroAchievementId(self, achievementId):
+		self._setProperty("retroachievement_id", achievementId)
+
+	def setScoreTotal(self, score):
+		self._setProperty("score_total", int(score))
+
+	def setSize(self, size):
+		self._setProperty("size", int(size))
 
 class Console(object):
-	
+
 	def __init__(self, db, name, gamesDbId, retroAchievementId, image, emulator, romDir, extensions, ignoreRoms, command, noCoverArt, covertArtDir):
 		self.__image = image
 		self.__emulator = emulator
@@ -190,7 +273,7 @@ class Console(object):
 		self.__covertArtDir = covertArtDir
 		self.__consoleRecord = None
 		self.__db = db
-		
+
 		query = QSqlQuery()
 		query.exec_("SELECT `console_id`, `gamesdb_id`, `gamesdb_name`, `retroachievement_id`, `name` FROM `console` WHERE `name` = \"%s\";" % name)
 		if query.first():
@@ -210,44 +293,44 @@ class Console(object):
 
 	def getId(self):
 		return self.__consoleRecord.getId()
-			
+
 	def getName(self):
 		return self.__consoleRecord.getName()
-	
+
 	def getNoCoverArt(self):
 		return self.__noCoverArt
-	
+
 	def getGamesDbId(self):
 		return self.__consoleRecord.getGamesDbId()
-	
+
 	def getGamesDbName(self):
 		return self.__consoleRecord.getGamesDbName()
-	
+
 	def getGameTotal(self):
 		return self.__consoleRecord.getGameTotal()
-	
+
 	def getExtensions(self):
 		return self.__extensions
-	
+
 	def getRomDir(self):
 		return self.__romDir
-	
+
 	def ignoreRom(self, rom):
 		return rom in self.__ignoreRoms
-	
+
 	def save(self):
 		self.__consoleRecord.save()
-		
+
 	def setGamesDbName(self, s):
 		self.__consoleRecord.setGamesDbName(s)
 
 class Settings(object):
-	
+
 	def __init__(self):
 		# open user's settings
 		self.__configparser = configparser.RawConfigParser()
 		self.__configparser.read(pes.userPesConfigFile)
-		
+
 	def get(self, section, prop, propType="string"):
 		if not self.__configparser.has_section(section):
 			logging.warning("No section \"%s\" in \"%s\"" % (section, pes.userPesConfigFile))
@@ -258,3 +341,6 @@ class Settings(object):
 		if propType == "string":
 			return self.__configparser.get(section, prop).replace("%%USERDIR%%", pes.userDir)
 		logging.error("Settings.getValue: unsupported type \"%s\"" % propType)
+
+	def set(self, section, prop, value):
+		self.__configparser.set(section, prop, str(value))

@@ -93,6 +93,9 @@
 				
 				<div id="panel_update_games_process" class="panel">
 					<h1>Updating Games...</h1>
+					<div id="scanProgressBar" class="progressBar">
+						<div id="scanProgressBarComplete" class="progressBarComplete"></div>
+					</div>
 					<table>
 						<tr>
 							<td>ROMs found:</td>
@@ -106,16 +109,22 @@
 							<td>Time remaining:</td>
 							<td id="timeRemainingCell">?</td>
 						</tr>
+						<tr>
+							<td>Preview:</td>
+							<td id="romPreviewCell"><img id="romPreviewImg" src=""/></td>
+						</tr>
 					</table>
-					<div id="scanProgressBar" class="progressBar">
-						<div id="scanProgressBarComplete" class="progressBarComplete"></div>
-					</div>
+					<p><button type="button" id="stopRomScanBtn">Stop</button></p>
 				</div>
 				
 				<div id="panel_update_games_finished" class="panel">
 					<h1>Games Update Complete!</h1>
 					
 					<table>
+						<tr>
+							<td>ROMs processed:</td>
+							<td id="romsProcessedCell">?</td>
+						</tr>
 						<tr>
 							<td>ROMs added:</td>
 							<td id="romsAddedCell">?</td>

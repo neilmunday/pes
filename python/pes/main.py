@@ -135,6 +135,13 @@ if __name__ == '__main__':
 		logging.debug("cover art dir: %s" % covertArtDir)
 		mkdir(covertArtDir)
 		
+		romScraper = settings.get("settings", "romScraper")
+		if romScraper == None:
+			logging.warning("Could not find \"romScraper\" parameter in \"settings\" section in %s. Will use \"%s\" for this session." % (userPesConfigFile, romScrapers[0]))
+			settings.set("settings", "romScraper", romScrapers[0])
+		elif romScraper not in romScrapers:
+			logging.error("Unknown romScraper value: \"%s\" in \"settings\" section in %s. Will use \"%s\" instead for this session." % (romScraper, userPesConfigFile, romScrapers[0]))
+		
 		logging.info("loading GUI...")
 		signal.signal(signal.SIGINT, signalHandler)
 		signal.signal(signal.SIGHUP, signalHandler)

@@ -68,7 +68,7 @@ def runCommand(command):
 	return (process.returncode, stdout.decode(), stderr.decode())
 
 class PESWindow(QMainWindow):
-	
+
 	def __init__(self, app, settings, fullscreen=False):
 		super(PESWindow, self).__init__()
 		self.__app = app
@@ -84,20 +84,20 @@ class PESWindow(QMainWindow):
 		self.timezone = ""
 		self.consoles = []
 		self.consoleMap = {}
-		
+
 		self.setWindowTitle("PES")
-		
+
 		if sdl2.SDL_Init(sdl2.SDL_INIT_JOYSTICK | sdl2.SDL_INIT_GAMECONTROLLER) != 0:
 			pesExit("failed to initialise SDL2!", True)
 		logging.debug("SDL2 joystick and gamecontroller APIs initialised")
-			
+
 		# load joystick database
 		logging.debug("loading SDL2 control pad mappings from: %s" % pes.userGameControllerFile)
 		mappingsLoaded = sdl2.SDL_GameControllerAddMappingsFromFile(pes.userGameControllerFile.encode())
 		if mappingsLoaded == -1:
 			pesExit("failed to load SDL2 control pad mappings from: %s" % pes.userGameControllerFile)
 		logging.debug("loaded %d control pad mappings" % mappingsLoaded)
-		
+
 		self.listKeyboardLayoutsCommand = settings.get("commands", "listKeyboards")
 		if self.listKeyboardLayoutsCommand == None:
 			pesExit("listKeyboards setting is missing in %s" % pes.userPesConfigFile)
@@ -107,7 +107,7 @@ class PESWindow(QMainWindow):
 		self.setKeyboardLayoutCommand = settings.get("commands", "setKeyboard")
 		if self.setKeyboardLayoutCommand == None:
 			pesExit("setKeyboard setting is missing in %s" % pes.userPesConfigFile)
-		
+
 		self.listTimezoneCommand = settings.get("commands", "listTimezones")
 		if self.listTimezoneCommand == None:
 			pesExit("listTimezones setting missing in %s" % pes.userPesConfigFile)
@@ -115,30 +115,30 @@ class PESWindow(QMainWindow):
 		self.getTimezoneCommand = settings.get("commands", "getTimezone")
 		if self.getTimezoneCommand == None:
 			pesExit("getTimezone setting missing in %s" % pes.userPesConfigFile)
-			
+
 		self.setTimezoneCommand = settings.get("commands", "setTimezone")
 		if self.setTimezoneCommand == None:
 			pesExit("setTimezone setting missing in %s" % pes.userPesConfigFile)
-		
+
 		self.__theme = settings.get("settings", "theme")
 		if self.__theme == None:
 			# use classic
 			self.__theme = "classic"
 		self.__themeDir = os.path.join(pes.themeDir, self.__theme)
 		checkDir(self.__themeDir)
-		
+
 		mainPage = os.path.join(self.__themeDir, "html", "main.html")
 		checkFile(mainPage)
-		
+
 		self.db = QSqlDatabase.addDatabase("QSQLITE")
 		self.db.setDatabaseName(pes.userDb)
 		self.db.open()
-		
+
 		self.__loadingThread = LoadingThread(self)
-		self.__romScanMonitorThread = RomScanMonitorThread(self.db)
-		
+		self.__romScanMonitorThread = RomScanMonitorThread(self.db, self.settings.get("settings", "romScraper"))
+
 		self.__page = WebPage()
-		self.__webview = WebView() 
+		self.__webview = WebView()
 		self.__webview.setPage(self.__page)
 		self.__channel = QWebChannel(self.__page)
 		self.__page.setWebChannel(self.__channel)
@@ -150,16 +150,16 @@ class PESWindow(QMainWindow):
 		self.__loadingThread.finishedSignal.connect(self.__loadingFinished)
 		self.setCentralWidget(self.__webview)
 		self.__webview.load(QUrl("file://%s" % mainPage))
-		
+
 		if fullscreen:
 			self.showFullScreen()
 		else:
 			self.setGeometry(0, 0, 1024, 768)
 			self.show()
-			
+
 	def channelReady(self):
 		self.__loadingThread.start()
-	
+
 	def close(self):
 		logging.info("exiting PES")
 		if self.__romScanMonitorThread.isRunning():
@@ -173,28 +173,28 @@ class PESWindow(QMainWindow):
 		self.db.close()
 		logging.debug("closing")
 		super(PESWindow, self).close()
-		
+
 	def closeEvent(self, event):
 		logging.debug("PESWindow: closeEvent")
 		self.__running = False
 		super(PESWindow, self).closeEvent(event)
-		
+
 	def controllerConnected(self):
 		return self.__player1Controller != None
-	
+
 	def event(self, event):
 		if event.type() == QEvent.KeyRelease:
 			if event.key() == Qt.Key_Escape:
 				logging.debug("QMainWindow.event: escape key pressed")
 				self.__page.runJavaScript("commandLineExit();")
 		return super(PESWindow, self).event(event)
-	
+
 	def __handleExit(self):
 		self.close()
-	
+
 	def run(self):
 		self.__running = True
-		
+
 		# look for any connected joysticks
 		#joystickTotal = sdl2.joystick.SDL_NumJoysticks()
 		#logging.debug("PESWindow.run: found %d joysticks" % joystickTotal)
@@ -208,9 +208,9 @@ class PESWindow(QMainWindow):
 					#logging.debug("PESWindow.run: opened joystick %s at index %d" % (sdl2.SDL_GameControllerNameForIndex(i).decode(), i))
 				#if close:
 					#sdl2.SDL_GameControllerClose(c)
-		
+
 		joystickTick = sdl2.timer.SDL_GetTicks()
-		
+
 		while self.__running:
 			# process SDL events
 			events = sdl2.ext.get_events()
@@ -237,7 +237,7 @@ class PESWindow(QMainWindow):
 					elif event.cbutton.button == sdl2.SDL_CONTROLLER_BUTTON_GUIDE:
 						logging.debug("player 1: Guide")
 						self.__app.postEvent(self.__webview.focusProxy(), QKeyEvent(QEvent.KeyRelease, Qt.Key_Home, Qt.NoModifier))
-			
+
 			if sdl2.timer.SDL_GetTicks() - joystickTick > 1000:
 				tick = sdl2.timer.SDL_GetTicks()
 				joystickTotal = sdl2.joystick.SDL_NumJoysticks()
@@ -265,18 +265,18 @@ class PESWindow(QMainWindow):
 					self.__controlPadTotal = controlPadTotal
 					self.__handler.emitJoysticksConnected(self.__controlPadTotal)
 				joystickTick = tick
-			
+
 			self.__app.processEvents()
-			
+
 	def __loadingFinished(self):
 		logging.debug("PESWindow.__loadingFinished: setting console map on rom scan monitor thread")
 		self.__romScanMonitorThread.setConsoleMap(self.consoleMap)
-	
+
 	def updateControlPad(self, jsIndex):
 		if jsIndex == self.__player1ControllerIndex:
 			# hack for instances where a dpad is an axis
 			bind = sdl2.SDL_GameControllerGetBindForButton(self.__player1Controller, sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP)
-			if bind:			
+			if bind:
 				if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_AXIS:
 					self.__dpadAsAxis = True
 					logging.debug("PESWindow.updateControlPad: enabling dpad as axis hack")
@@ -284,26 +284,72 @@ class PESWindow(QMainWindow):
 					self.__dpadAsAxis = False
 
 class LoadingThread(QThread):
-	
+
 	progressSignal = pyqtSignal(int, str)
 	finishedSignal = pyqtSignal()
-	
+
 	def __init__(self, window):
 		super(LoadingThread, self).__init__(None)
 		self.__window = window
 		self.__progress = 0
-	
+
 	def run(self):
 		logging.debug("LoadingThread.run: opening database using %s" % pes.userDb)
-		
+
 		query = QSqlQuery()
-		query.exec_("CREATE TABLE IF NOT EXISTS `console` (`console_id` INTEGER PRIMARY KEY, `gamesdb_id` INT, `gamesdb_name` TEXT, `retroachievement_id` INT, `name` TEXT);")
-		query.exec_("CREATE INDEX IF NOT EXISTS \"console_index\" on consoles (console_id ASC);")
-		query.exec_("CREATE TABLE IF NOT EXISTS `games_catalogue` (`short_name` TEXT, `full_name` TEXT);")
+		query.exec_("\
+		CREATE TABLE IF NOT EXISTS `console` ( \
+			`console_id` INTEGER PRIMARY KEY, \
+			`gamesdb_id` INTEGER, \
+			`gamesdb_name` TEXT, \
+			`retroachievement_id` INTEGER, \
+			`name` TEXT \
+		);")
+		query.exec_("CREATE INDEX IF NOT EXISTS \"console_index\" on console (console_id ASC);")
+		query.exec_("\
+		CREATE TABLE IF NOT EXISTS `games_catalogue` ( \
+			`short_name` TEXT, \
+			`full_name` TEXT \
+		);")
 		query.exec_("CREATE INDEX IF NOT EXISTS \"games_catalogue_index\" on games_catalogue (short_name ASC);")
-		query.exec_("CREATE TABLE IF NOT EXISTS `game` (`game_id` INTEGER PRIMARY KEY, `gamesdb_id` INT, `console_id` INT, `name` TEXT, `coverart` TEXT, `path` TEXT, `overview` TEXT, `released` INT, `last_played` INT, `added` INT, `play_count` INT, `size` INT, `rasum` TEXT, `retroachievement_id` INT, `achievement_total` INT, `score_total` INT);")
+		query.exec_("\
+		CREATE TABLE IF NOT EXISTS `game_title` ( \
+			`game_tile_index` INTEGER PRIMARY KEY, \
+			`gamesdb_id` INT, \
+			`console_id` INT, \
+			`title` TEXT \
+		);")
+		query.exec_("CREATE INDEX IF NOT EXISTS \"game_title_index\" on game_title (game_id ASC);")
+		query.exec_("\
+		CREATE TABLE IF NOT EXISTS `game` ( \
+					`game_id` INTEGER PRIMARY KEY, \
+					`console_id` INTEGER, \
+					`name` TEXT, \
+					`coverart` TEXT, \
+					`path` TEXT, \
+					`overview` TEXT, \
+					`released` INTEGER, \
+					`last_played` INTEGER, \
+					`added` INTEGER, \
+					`play_count` INTEGER, \
+					`size` INTEGER, \
+					`rasum` TEXT, \
+					`retroachievement_id` INTEGER, \
+					`achievement_total` INTEGER, \
+					`score_total` INTEGER, \
+					`exists` INTEGER \
+		);")
+		query.exec_("CREATE INDEX IF NOT EXISTS \"game_index\" on game (game_id ASC);")
+		query.exec_("\
+		CREATE TABLE IF NOT EXISTS `game_matches` ( \
+			`game_match_id` INTEGER PRIMARY KEY, \
+			`gamesdb_id` INTEGER, \
+			`game_id` INTEGER \
+			`matched` INTEGER \
+		);")
+		query.exec_("CREATE INDEX IF NOT EXISTS \"game_matches_index\" on game_matches (game_match_id ASC);")
 		self.__window.db.commit()
-		
+
 		# populate games catalogue (if needed)
 		query.exec_("SELECT COUNT(*) AS `total` FROM `games_catalogue`")
 		query.first()
@@ -314,7 +360,7 @@ class LoadingThread(QThread):
 			catalogueConfigParser.read(pes.userGamesCatalogueFile, encoding="latin-1")
 			sections = catalogueConfigParser.sections()
 			sectionTotal = float(len(sections))
-			
+
 			i = 0.0
 			insertValues = []
 			for section in sections:
@@ -332,14 +378,14 @@ class LoadingThread(QThread):
 		else:
 			self.__progress = 50
 			self.progressSignal.emit(self.__progress, "Games catalogue ok")
-				
+
 		# load consoles
 		consoleParser = configparser.RawConfigParser()
 		consoleParser.read(pes.userConsolesConfigFile)
 		consoleNames = consoleParser.sections()
 		consoleTotal = len(consoleNames)
 		consoleNames.sort()
-		
+
 		i = 0
 		for c in consoleNames:
 			try:
@@ -349,16 +395,16 @@ class LoadingThread(QThread):
 				# make cover art dir for console
 				coverArtDir = os.path.join(self.__window.settings.get("settings", "coverartDir"), c)
 				mkdir(coverArtDir)
-				
+
 				if consoleParser.has_option(c, "ignore_roms"):
 					ignoreRoms = consoleParser.get(c, "ignore_roms").split(",")
 				else:
 					ignoreRoms = []
-					
+
 				retroAchievementId = 0
 				if consoleParser.has_option(c, "achievement_id"):
 					retroAchievementId = consoleParser.getint(c, "achievement_id")
-				
+
 				console = Console(
 					self.__window.db,
 					c,
@@ -367,7 +413,7 @@ class LoadingThread(QThread):
 					consoleParser.get(c, "image"),
 					consoleParser.get(c, "emulator"),
 					romDir,
-					consoleParser.get(c, "extensions"),
+					consoleParser.get(c, "extensions").split(),
 					ignoreRoms,
 					consoleParser.get(c, "command"),
 					consoleParser.get(c, "nocoverart"),
@@ -386,70 +432,86 @@ class LoadingThread(QThread):
 				logging.error("LoadingThread.run: error parsing config file %s: %s" % (pes.userConsolesConfigFile, e.message))
 				self.__window.close()
 				return
-		
+
 		self.__progress = 100
 		self.finishedSignal.emit()
 
 class RomScanMonitorThread(QThread):
-	
-	finishedSignal = pyqtSignal(int, int, int) # added, updated, time taken
-	progressSignal = pyqtSignal(int, int, int) # progress (%), unprocessed, time remaining
+
+	finishedSignal = pyqtSignal(int, int, int, int) # scanned, added, updated, time taken
+	progressSignal = pyqtSignal(int, int, int, str, str) # progress (%), unprocessed, time remaining
 	romsFoundSignal = pyqtSignal(int) # roms found
-	
-	def __init__(self, db):
+
+	def __init__(self, db, romScraper):
 		super(RomScanMonitorThread, self).__init__(None)
+		self.__romScraper = romScraper
 		self.__consoleMap = {}
 		self.__db = db
-		self.__progress = 0
 		self.__scanThread = None
 		self.__running = False
-		
+
 	def __romsFoundEvent(self, romTotal):
 		self.romsFoundSignal.emit(romTotal)
-		
+
+	def __scanFinishedEvent(self):
+		self.__running = False
+
 	def isRunning(self):
 		return self.__running
-		
+
 	def run(self):
 		logging.debug("RomScanMonitorThread.run: starting")
 		self.__running = True
 		self.__scanThread.start()
-		
-		while not self.__scanThread.isFinished():
-			progress = self.__scanThread.getProgress()
-			if progress != self.__progress:
-				self.__progress = progress
-				self.progressSignal.emit(self.__progress, self.__scanThread.getUnprocessed(), self.__scanThread.getTimeRemaining())
+
+		romName = ""
+		coverArtPath = "0"
+
+		#while not self.__scanThread.isFinished():
+		while self.__running:
+			lastRom = self.__scanThread.getLastRom()
+			if lastRom:
+				romName = lastRom[0]
+				coverArtPath = lastRom[1]
+			self.progressSignal.emit(self.__scanThread.getProgress(), self.__scanThread.getUnprocessed(), self.__scanThread.getTimeRemaining(), romName, coverArtPath)
 			time.sleep(0.1)
-			
-		self.progressSignal.emit(100, 0, 0)
-		
+
+		self.progressSignal.emit(100, 0, 0, "", "0")
+
 		logging.debug("RomScanMonitorThread.run: finished")
-		self.finishedSignal.emit(self.__scanThread.getAdded(), self.__scanThread.getUpdated(), self.__scanThread.getTimeTaken())
-		self.__running = False
-		
+		self.finishedSignal.emit(self.__scanThread.getRomTotal(), self.__scanThread.getAdded(), self.__scanThread.getUpdated(), self.__scanThread.getTimeTaken())
+		#self.__running = False
+
 	def setConsoleMap(self, consoleMap):
 		self.__consoleMap = consoleMap
-		
+
 	@pyqtSlot(list)
 	def startThread(self, consoleNames):
 		logging.debug("RomScanThread.startThread: starting thread")
 		if self.__scanThread != None:
 			self.__scanThread.romsFoundSignal.disconnect()
-		self.__scanThread = RomScanThread(self.__db, consoleNames, self.__consoleMap)
+			self.__scanThread.finishedSignal.disconnect()
+		self.__scanThread = RomScanThread(self.__db, consoleNames, self.__consoleMap, self.__romScraper)
 		self.__scanThread.romsFoundSignal.connect(self.__romsFoundEvent)
+		self.__scanThread.finishedSignal.connect(self.__scanFinishedEvent)
 		self.start()
-		
+
+	def setScraper(self, scraper):
+		if scraper not in pes.romScrapers:
+			raise Exception("Unknown ROM scraper: \"%s\"" % scraper)
+		self.__romScraper = scraper
+
+	@pyqtSlot()
 	def stop(self):
 		if self.__scanThread:
 			self.__scanThread.stop()
-		
+
 
 class CallHandler(QObject):
-	
+
 	exitSignal = pyqtSignal()
 	joysticksConnectedSignal = pyqtSignal(int)
-	
+
 	def __init__(self, window):
 		super(CallHandler, self).__init__()
 		self.__window = window
@@ -457,15 +519,15 @@ class CallHandler(QObject):
 		self.__keyboardLayouts = None
 		self.__timezones = None
 		self.__timezone = None
-	
+
 	@pyqtSlot(result=bool)
 	def controllerConnected(self):
 		return self.__window.controllerConnected()
-	
+
 	@pyqtSlot()
 	def channelReady(self):
 		self.__window.channelReady()
-	
+
 	#@pyqtSlot(result='QVariantMap')
 	@pyqtSlot(result=list)
 	def getConsoles(self):
@@ -473,7 +535,7 @@ class CallHandler(QObject):
 		for c in self.__window.consoles:
 			consoles.append({"gameTotal": c.getGameTotal(), "name": c.getName(), "id": c.getId()})
 		return consoles
-	
+
 	@pyqtSlot(result=str)
 	def getKeyboardLayout(self):
 		rtn, stdout, stderr = runCommand(self.__window.getKeyboardLayoutCommand)
@@ -484,7 +546,7 @@ class CallHandler(QObject):
 			self.__keyboardLayout = stdout[:-1].strip()
 			logging.debug("Handler.getKeyboardLayout: current keyboard layout is: %s" % self.__keyboardLayout)
 		return self.__keyboardLayout
-	
+
 	@pyqtSlot(result=list)
 	def getKeyboardLayouts(self):
 		if self.__keyboardLayouts == None:
@@ -496,7 +558,7 @@ class CallHandler(QObject):
 				self.__keyboardLayouts = stdout.split("\n")[:-1]
 				logging.debug("Handler.getKeyboardLayouts: found %d keyboard layouts" % len(self.__keyboardLayouts))
 		return self.__keyboardLayouts
-	
+
 	@pyqtSlot(result=str)
 	def getTimezone(self):
 		if self.__timezone == None:
@@ -508,7 +570,7 @@ class CallHandler(QObject):
 				self.__timezone = stdout[:-1]
 				logging.debug("Handler.getTimezone: current timezone is: %s" % self.__timezone)
 		return self.__timezone
-	
+
 	@pyqtSlot(result=list)
 	def getTimezones(self):
 		if self.__timezones == None:
@@ -520,19 +582,19 @@ class CallHandler(QObject):
 				self.__timezones = stdout.split("\n")[:-1]
 				logging.debug("Handler.getTimezones: found %d timezones" % len(self.__timezones))
 		return self.__timezones
-	
+
 	@pyqtSlot()
 	def exit(self):
 		logging.debug("CallHandler: exit")
 		self.exitSignal.emit()
-		
+
 	@pyqtSlot(str)
 	def getIpAddress(self):
 		return getIpAddress()
-	
+
 	def emitJoysticksConnected(self, n):
 		self.joysticksConnectedSignal.emit(n)
-		
+
 	@pyqtSlot(str, str, result=list)
 	def saveSettings(self, timezone, keyboardLayout):
 		rtn, stdout, stderr = runCommand("%s %s" % (self.__window.setTimezoneCommand, timezone))
@@ -546,13 +608,9 @@ class CallHandler(QObject):
 			logging.stderr(stderr)
 			return [False, "Could not set keyboard layout to %s" % keyboardLayout]
 		return [True]
-	
-	@pyqtSlot(str, str)
-	def test(self, a, b):
-		print("call received: %s, %s" % (a, b))
 
 class WebPage(QWebEnginePage):
-	
+
 	def javaScriptConsoleMessage(self, level, msg, linenumber, source_id):
 		if level == 0:
 			logging.debug("JS console: %s %d: %s" % (source_id, linenumber, msg))
@@ -560,21 +618,21 @@ class WebPage(QWebEnginePage):
 			logging.Warning("JS console: %s %d: %s" % (source_id, linenumber, msg))
 		else:
 			logging.error("JS console: %s %d: %s" % (source_id, linenumber, msg))
-		
+
 	def loadFinished(self, ok):
 		if ok:
 			logging.debug("WebPage.loadFinished: loaded")
-			
+
 class WebView(QWebEngineView):
-	
+
 	def __init__(self):
 		super(WebView, self).__init__()
 		self.loadFinished.connect(self.__loadFinished)
 		self.setFocusPolicy(Qt.StrongFocus)
-		
+
 	def __loadFinished(self, result):
 		logging.debug("WebView: finished loading: %s" % self.__page.url().toString())
-	
+
 	def setPage(self, page):
 		self.__page = page
 		super(WebView, self).setPage(page)
