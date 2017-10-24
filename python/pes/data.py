@@ -68,10 +68,8 @@ class Record(object):
 		logging.debug("Record._doQuery: %s" % q)
 		dbOpen = self.__db.isOpen()
 		#logging.debug("Record._doQuery: conn name: %s" % self.__db.connectionName())
-		if dbOpen:
-			logging.debug("Record._doQuery: database is open")
-		else:
-			logging.debug("Record._doQuery: database is closed")
+		if not dbOpen:
+			logging.debug("Record._doQuery: database is closed, opening...")
 			if not self.__db.open():
 				raise IOError("Record._doQuery: could not open database")
 		query = QSqlQuery(self.__db)
