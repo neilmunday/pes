@@ -26,6 +26,8 @@ VERSION_NUMBER = '3.0 (ALPHA)'
 VERSION_DATE = '2017-08-10'
 VERSION_AUTHOR = 'Neil Munday'
 
+romScrapers = ['theGamesDb.net'] # list of ROM scrapers, default scraper is assumed to be at index 0
+
 baseDir = os.path.abspath('%s%s../../' % (os.path.dirname(os.path.realpath(__file__)), os.sep))
 rasumExe = os.path.join("%s/bin/rasum" % baseDir)
 confDir = os.path.join(baseDir, 'conf.d')
