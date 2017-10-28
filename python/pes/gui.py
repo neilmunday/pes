@@ -314,9 +314,9 @@ class LoadingThread(QThread):
 		query.exec_("CREATE INDEX IF NOT EXISTS \"games_catalogue_index\" on games_catalogue (short_name ASC);")
 		query.exec_("\
 		CREATE TABLE IF NOT EXISTS `game_title` ( \
-			`game_tile_index` INTEGER PRIMARY KEY, \
-			`gamesdb_id` INT, \
-			`console_id` INT, \
+			`game_title_id` INTEGER PRIMARY KEY, \
+			`gamesdb_id` INTEGER, \
+			`console_id` INTEGER, \
 			`title` TEXT \
 		);")
 		query.exec_("CREATE INDEX IF NOT EXISTS \"game_title_index\" on game_title (game_id ASC);")
@@ -324,6 +324,7 @@ class LoadingThread(QThread):
 		CREATE TABLE IF NOT EXISTS `game` ( \
 					`game_id` INTEGER PRIMARY KEY, \
 					`console_id` INTEGER, \
+					`game_match_id` INTEGER, \
 					`name` TEXT, \
 					`coverart` TEXT, \
 					`path` TEXT, \
@@ -341,13 +342,12 @@ class LoadingThread(QThread):
 		);")
 		query.exec_("CREATE INDEX IF NOT EXISTS \"game_index\" on game (game_id ASC);")
 		query.exec_("\
-		CREATE TABLE IF NOT EXISTS `game_matches` ( \
+		CREATE TABLE IF NOT EXISTS `game_match` ( \
 			`game_match_id` INTEGER PRIMARY KEY, \
-			`gamesdb_id` INTEGER, \
+			`game_title_id` INTEGER, \
 			`game_id` INTEGER \
-			`matched` INTEGER \
 		);")
-		query.exec_("CREATE INDEX IF NOT EXISTS \"game_matches_index\" on game_matches (game_match_id ASC);")
+		query.exec_("CREATE INDEX IF NOT EXISTS \"game_match_index\" on game_matches (game_match_id ASC);")
 		self.__window.db.commit()
 
 		# populate games catalogue (if needed)

@@ -192,6 +192,7 @@ class GameRecord(Record):
 			[
 				"game_id",
 				"console_id",
+				"game_match_id",
 				"name",
 				"coverart",
 				"path",
@@ -234,6 +235,9 @@ class GameRecord(Record):
 	def setLastPlayed(self, timestamp):
 		self._setProperty("last_played", int(timestamp))
 
+	def setMatchId(self, matchId):
+		self._setProperty("game_match_id", int(matchId))
+
 	def setName(self, name):
 		self._setProperty("name", name)
 
@@ -257,6 +261,46 @@ class GameRecord(Record):
 
 	def setSize(self, size):
 		self._setProperty("size", int(size))
+
+class GameMatchRecord(Record):
+
+	def __init__(self, db, keyValue, row=None):
+		super(GameMatchRecord, self).__init__(db, "game_match", ["game_match_id", "game_id", "game_title_id"], "game_match_id", keyValue, True, row)
+
+	def getGameId(self):
+		return self._getProperty("game_id")
+
+	def getTitleId(self):
+		return self._getProperty("game_title_id")
+
+	def setGameId(self, gameId):
+		self._setProperty("game_id", int(gameId))
+
+	def setTitleId(self, titleId):
+		self._setProperty("game_title_id", int(titleId))
+
+class GameTitleRecord(Record):
+
+	def __init__(self, db, keyValue, row=None):
+		super(GameTitleRecord, self).__init__(db, "game_title", ["game_title_id", "gamesdb_id", "console_id", "title"], "game_title_id", keyValue, True, row)
+
+	def getConsoleId(self):
+		return self._getProperty("console_id")
+
+	def getGamesDbId(self):
+		return self._getProperty("gamesdb_id")
+
+	def getTitle(self):
+		return self._getProperty("title")
+
+	def setConsoleId(self, consoleId):
+		self._setProperty("console_id", int(consoleId))
+
+	def setGamesDbId(self, gamesDbId):
+		self._setProperty("gamesdb_id", int(gamesDbId))
+
+	def setTitle(self, title):
+		self._setProperty("title", title)
 
 class Console(object):
 

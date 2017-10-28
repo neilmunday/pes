@@ -5,12 +5,13 @@ import os
 import sys
 import time
 import urllib
+import shutil
 
 from datetime import datetime
 
 import pes
 from pes.common import StringMatcher
-from pes.data import GameRecord
+from pes.data import GameRecord, GameMatchRecord, GameTitleRecord
 
 from PIL import Image
 
@@ -43,7 +44,7 @@ class RomTask(object):
 			db = self._openDb()
 			query = QSqlQuery(db)
 			if not query.exec_(q):
-				logging.error("RomTask._doQuery: Error \"%s\" encountered whilst executing:\n%s" % (query.lastError().text(), q))
+				raise Exception("RomTask._doQuery: Error \"%s\" encountered whilst executing:\n%s" % (query.lastError().text(), q))
 			db.commit()
 			db.close()
 			del db
@@ -59,6 +60,25 @@ class RomTask(object):
 
 	def setLock(self, lock):
 		self._lock = lock
+
+	@staticmethod
+	def _scaleImage(path):
+		try:
+			img = Image.open(path)
+			width, height = img.size
+			scaleWidth = RomTask.SCALE_WIDTH
+			ratio = min(float(scaleWidth / width), float(scaleWidth / height))
+			newWidth = width * ratio
+			newHeight = height * ratio
+			if width > newWidth or height > newHeight:
+				# scale image
+				img.thumbnail((newWidth, newHeight), Image.ANTIALIAS)
+				img.save(path)
+			img.close()
+		except IOError as e:
+			logging.error("RomTask._scaleImage: Failed to scale: %s" % path)
+			return False
+		return True
 
 class GamesDbRomTask(RomTask):
 
@@ -92,15 +112,17 @@ class GamesDbRomTask(RomTask):
 
 			nameNoSlashes = name.replace("/", "_")
 
-			query = self._doQuery("SELECT `game_id`, `coverart`, `path`, `gamesdb_id` FROM `game` WHERE `path` = \"%s\";")
+			query = self._doQuery("SELECT `game_id`, `coverart`, `path` FROM `game` WHERE `path` = \"%s\";" % self._rom)
 			found = query.first()
 			if not found:
 				# new game
 				gameApiId = None
 				bestName = name
-				gamesDbMatches = []
+				bestGameTitleId = 0
+				gameTitleId = 0
+				gameMatches = []
 
-				# do we already have cover art?
+				# new game, but do we already have cover art for it?
 				for e in RomTask.IMG_EXTENSIONS:
 					path = os.path.join(cacheDir, "%s.%s" % (name, e))
 					if os.path.exists(path):
@@ -152,22 +174,36 @@ class GamesDbRomTask(RomTask):
 								xname = x.find("GameTitle").text.encode('ascii', 'ignore').decode()
 								xid = int(x.find("id").text)
 
-								query = self._doQuery("SELECT `title` FROM `game_title` WHERE `gamesdb_id` = %d;" % xid)
-								if not query.first():
-									self._doQuery("INSERT INTO `game_title` (`console_id`, `gamesdb_id`, `title`) VALUES(%d, %d, \"%s\")" % (consoleId, xid, xname))
-									gamesDbMatches.append(xid)
+								query = self._doQuery("SELECT `game_title_id`, `gamesdb_id`, `game_title_id`, `title` FROM `game_title` WHERE `console_id` = %d AND `title` = \"%s\";" % (consoleId, xname))
+								with self._lock:
+									if query.first():
+										gameTitleId = query.value(0)
+										gameTitleRecord = GameTitleRecord(self._openDb(), gameTitleId, query.record())
+										gameTitleRecord.setGamesDbId(xid)
+									else:
+										gameTitleRecord = GameTitleRecord(self._openDb(), None)
+										gameTitleRecord.setConsoleId(consoleId)
+										gameTitleRecord.setGamesDbId(xid)
+										gameTitleRecord.setTitle(xname)
+										gameTitleRecord.save()
+										gameTitleId = gameTitleRecord.getId()
+									del gameTitleRecord
+									QSqlDatabase.removeDatabase(self._connName)
+								gameMatches.append(gameTitleId)
 
 								if xname.lower() == nameLower:
 									gameApiId = xid
 									bestResultDistance = 0
 									bestName = xname
+									bestGameTitleId = gameTitleId
 
-								stringMatcher = StringMatcher(str(nameLower), xname.lower())
+								stringMatcher = StringMatcher(str(nameLower.replace(" ", "")), xname.lower().replace(" ", ""))
 								distance = stringMatcher.distance()
 
 								if bestResultDistance == -1 or distance < bestResultDistance:
 									bestResultDistance = distance
 									bestName = xname
+									bestGameTitleId = gameTitleId
 									gameApiId = xid
 
 								count += 1
@@ -215,11 +251,37 @@ class GamesDbRomTask(RomTask):
 									# thrown if date is not valid
 									released = -1
 
+							if thumbPath == "0":
+								# no cover art, let's download some
+								boxartElement = xmlData.find("Game/Images/boxart[@side='front']")
+								if boxartElement != None:
+									imageSaved = False
+									try:
+										imgUrl = "http://thegamesdb.net/banners/%s" % boxartElement.text
+										extension = imgUrl[imgUrl.rfind('.'):]
+										thumbPath = os.path.join(self._console.getCoverArtDir(), "%s%s" % (name.replace('/', '_'), extension))
+										request = urllib.request.Request(
+											imgUrl,
+											headers=RomScanThread.HEADERS
+										)
+										response = urllib.request.urlopen(request, timeout=URL_TIMEOUT)
+										with open(thumbPath, "wb") as f:
+											shutil.copyfileobj(response, f)
+										# resize the image (if required)
+										if not self._scaleImage(thumbPath):
+											thumbPath = "0"
+									except Exception as e:
+										logging.error("GamesDbRomTask: failed to get covert art for %d" % gameApiId)
+										logging.error(e)
+
 							with self._lock:
-								game = GameRecord(self._openDb(), None)
+								logging.debug("GamesDbRomTask: creating new GameRecord object")
+								db = self._openDb()
+								game = GameRecord(db, None)
 								game.setExists(True)
 								game.setAdded(time.time())
 								game.setConsoleId(consoleId)
+								game.setCoverArt(thumbPath)
 								game.setLastPlayed(0)
 								game.setName(bestName)
 								game.setOverview(overview)
@@ -227,8 +289,24 @@ class GamesDbRomTask(RomTask):
 								game.setReleased(released)
 								game.setSize(os.path.getsize(self._rom))
 								game.save()
+								gameId = game.getId()
+
+								# now save matches
+								for titleId in gameMatches:
+									gameMatch = GameMatchRecord(db, None)
+									gameMatch.setGameId(gameId)
+									gameMatch.setTitleId(titleId)
+									gameMatch.save()
+									if titleId == bestGameTitleId:
+										game.setMatchId(gameMatch.getId())
+										game.save()
+									del gameMatch
+
 								del game
+								del db
 								QSqlDatabase.removeDatabase(self._connName)
+
+							added += 1
 
 		return (added, updated, name, thumbPath)
 
