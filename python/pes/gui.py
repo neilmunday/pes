@@ -84,6 +84,7 @@ class PESWindow(QMainWindow):
 		self.timezone = ""
 		self.consoles = []
 		self.consoleMap = {}
+		self.consoleIdMap = {}
 
 		self.setWindowTitle("PES")
 
@@ -410,7 +411,7 @@ class LoadingThread(QThread):
 					c,
 					consoleParser.getint(c, "thegamesdb_id"),
 					retroAchievementId,
-					consoleParser.get(c, "image"),
+					consoleParser.get(c, "image").replace("%%BASE%%", pes.baseDir),
 					consoleParser.get(c, "emulator"),
 					romDir,
 					consoleParser.get(c, "extensions").split(),
@@ -421,6 +422,7 @@ class LoadingThread(QThread):
 				)
 				self.__window.consoles.append(console)
 				self.__window.consoleMap[c] = console
+				self.__window.consoleIdMap[console.getId()] = console
 				self.__progress = 50 * (i / consoleTotal)
 				self.progressSignal.emit(self.__progress, "Loaded console: %s" % c)
 				i += 1
@@ -528,12 +530,11 @@ class CallHandler(QObject):
 	def channelReady(self):
 		self.__window.channelReady()
 
-	#@pyqtSlot(result='QVariantMap')
 	@pyqtSlot(result=list)
 	def getConsoles(self):
 		consoles = []
 		for c in self.__window.consoles:
-			consoles.append({"gameTotal": c.getGameTotal(), "name": c.getName(), "id": c.getId()})
+			consoles.append({"gameTotal": c.getGameTotal(), "name": c.getName(), "id": c.getId(), "image": c.getImage()})
 		return consoles
 
 	@pyqtSlot(result=str)
@@ -558,6 +559,24 @@ class CallHandler(QObject):
 				self.__keyboardLayouts = stdout.split("\n")[:-1]
 				logging.debug("Handler.getKeyboardLayouts: found %d keyboard layouts" % len(self.__keyboardLayouts))
 		return self.__keyboardLayouts
+
+	@pyqtSlot(int, int, result=list)
+	def getLatestAdditions(self, limit=10, consoleId=None):
+		query = QSqlQuery()
+		if consoleId:
+			q = "SELECT `name`, `coverart`, `console_id` FROM `game` WHERE `console_id` = %d ORDER BY `added` DESC LIMIT %d;" % (consoleId, limit)
+		else:
+			q = "SELECT `name`, `coverart`, `console_id` FROM `game` ORDER BY `added` DESC LIMIT %d;" % limit
+		if not query.exec_(q):
+			logging.error("Handler.getLatestAdditions: query %s failed with error %s" % (q, query.lastError().text()))
+			return []
+		games = []
+		while query.next():
+			coverart = query.value(1)
+			if coverart == "0":
+				coverart = self.__window.consoleIdMap[query.value(2)].getNoCoverArt()
+			games.append({"name": query.value(0), "coverart": coverart})
+		return games
 
 	@pyqtSlot(result=str)
 	def getTimezone(self):

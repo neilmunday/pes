@@ -42,7 +42,7 @@ body {
 	color: rgb(233, 233, 233);
 	font-family: 'robotoregular';
 	margin: 0px;
-    min-height: 100%;
+	min-height: 100%;
 	min-width: 100%;
 }
 
@@ -54,20 +54,11 @@ body {
       background-color: rgb(90, 90, 90);
 	  border-radius: 10px;
 }
- 
+
 ::-webkit-scrollbar-thumb {
-      background-color: rgb(204, 123, 25); 
+      background-color: rgb(204, 123, 25);
 	  border-radius: 10px;
 }
- 
-/*::-webkit-scrollbar-button {
-      background-color: rgb(204, 123, 25);
-	  border-radius: 1px;
-}
- */
-/*::-webkit-scrollbar-corner {
-      background-color: white;
-}*/
 
 h1 {
 	letter-spacing: 2px;
@@ -97,6 +88,9 @@ select:focus {
 }
 
 #header {
+	position: absolute;
+	top: 0;
+	left: 0;
 	background: rgb(19, 19, 19);
 	font-weight: bold;
 	font-size: 14pt;
@@ -105,6 +99,7 @@ select:focus {
 	padding: 0px;
 	height: 30px;
 	margin-top: 0px;
+	width: 100%;
 }
 
 #headerContent {
@@ -132,6 +127,7 @@ select:focus {
 #container {
 	display: block;
 	margin-left: 270px;
+	margin-top: 0px;
 	padding: 0px;
 }
 
@@ -139,11 +135,12 @@ select:focus {
 	display: block;
 	margin: 0px;
 	padding: 30px;
-/* 	background: red; */
 }
 
 #main {
 	display: none;
+	min-height: 100%;
+	overflow: hidden;
 }
 
 #loadingProgressContainer {
@@ -172,7 +169,7 @@ select:focus {
 	position: absolute;
 	top: 0;
 	left: 0;
-	z-index: 1;
+	z-index: 2;
 	background-color: rgb(19, 19, 19);
 	opacity: 0.8;
 	width: 100%;
@@ -184,7 +181,7 @@ select:focus {
 	position: absolute;
 	top: 0;
 	left: 0;
-	z-index: 3;
+	z-index: 4;
 	background-color: rgb(19, 19, 19);
 	opacity: 0.8;
 	width: 100%;
@@ -198,7 +195,7 @@ select:focus {
 	left: 50%;
 	background-color: rgb(30, 30, 30);
 	width: 400px;
-	z-index: 2;
+	z-index: 3;
 	transform: translateX(-50%) translateY(-50%);
 	border-color: rgb(204, 123, 25);
 	border-width: 1px;
@@ -216,7 +213,7 @@ select:focus {
 	left: 50%;
 	background-color: rgb(30, 30, 30);
 	width: 60%;
-	z-index: 4;
+	z-index: 5;
 	transform: translateX(-50%) translateY(-50%);
 	border-color: rgb(204, 123, 25);
 	border-width: 1px;
@@ -338,6 +335,46 @@ select:focus {
 	object-fit: contain;
 }
 
+.row {
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+img.thumbnailSmallImg {
+	margin: 4px;
+	width: 200px;
+	height: 200px;
+	object-fit: contain;
+}
+
+.gameAdditions {
+	max-height: 400px;
+	overflow: hidden;
+}
+
+#console_preview_content {
+	position: relative;
+	z-index: 1;
+}
+
+#console_bg_container {
+	position: absolute;
+	top: 30px;
+	bottom: 0;
+	left: 270px;
+	right: 0;
+	overflow: hidden;
+	z-index: 0;
+}
+
+#console_bg {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	object-fit: fill;
+	opacity: 0.2;
+}
+
 label {
 	font-size: 20pt;
 }
@@ -425,7 +462,7 @@ input[type=radio   ]:not(old):focus + label {
 	outline-style: solid;
 	outline-color: rgb(204, 123, 25);
 }
-	
+
 input[type=checkbox]:not(old):checked + label > span,
 input[type=radio   ]:not(old):checked + label > span{
   background-image :    -moz-linear-gradient(rgb(224,224,224),rgb(240,240,240));

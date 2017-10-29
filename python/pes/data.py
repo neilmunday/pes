@@ -336,6 +336,9 @@ class Console(object):
 	def getId(self):
 		return self.__consoleRecord.getId()
 
+	def getImage(self):
+		return self.__image
+
 	def getName(self):
 		return self.__consoleRecord.getName()
 

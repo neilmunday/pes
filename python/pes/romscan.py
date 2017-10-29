@@ -121,6 +121,7 @@ class GamesDbRomTask(RomTask):
 				bestGameTitleId = 0
 				gameTitleId = 0
 				gameMatches = []
+				released = -1
 
 				# new game, but do we already have cover art for it?
 				for e in RomTask.IMG_EXTENSIONS:
@@ -456,9 +457,12 @@ class RomScanThread(QThread):
 		logging.debug("RomScanThread.run: using %d ROM processes" % self.__romProcessTotal)
 		romProcesses = [RomProcess(i, self.__tasks, results, self.__exitEvent, lock, self.__romList) for i in range(self.__romProcessTotal)]
 
+		consoles = []
+
 		for c in self.__consoleNames:
 			urlLoaded = False
 			console = self.__consoleMap[c]
+			consoles.append(console)
 			consoleName = console.getName()
 			consoleId = console.getId()
 			logging.debug("RomScanThread.run: pre-processing %s" % consoleName)
@@ -532,6 +536,12 @@ class RomScanThread(QThread):
 			logging.debug("RomScanThread.run: result queue processed")
 
 			self.__db.open()
+
+		# delete missing games
+		for c in consoles:
+			logging.debug("RomScanThread.run: deleting missing ROMs")
+			query.exec_("DELETE FROM `game` WHERE `exists` = 0 AND `console_id` = %d;" % console.getId())
+		self.__db.commit()
 
 		self.__endTime = time.time()
 		self.__done = True

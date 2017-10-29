@@ -19,13 +19,14 @@
     You should have received a copy of the GNU General Public License
     along with PES.  If not, see <http://www.gnu.org/licenses/>.
 */
-    
+
 /* Global variables */
 
 var channelLoaded = false;
 var menus = {};
 var screenStack = [];
 var consoles = [];
+var consoleMap = {};
 var keyboardSelect;
 var timezoneSelect;
 
@@ -80,14 +81,14 @@ function showMsgBox(msg, fn){
 	$("#msgBoxCancelBtn").show();
 	$("#msgBoxLayer, #msgBox").show();
 	$("#msgBoxTxt").text(msg);
-	
+
 	$("#msgBox").keyup(function(event){
 		if (event.key == "Backspace"){
 			$("#msgBoxLayer, #msgBox").hide();
 			obj.focus(); // return focus
 		}
 	});
-	
+
 	$("#msgBoxOkBtn").on("keyup", function(event){
 		if (event.key == "ArrowRight" || event.key == "ArrowLeft"){
 			$("#msgBoxCancelBtn").focus();
@@ -96,7 +97,7 @@ function showMsgBox(msg, fn){
 			fn();
 		}
 	});
-	
+
 	$("#msgBoxCancelBtn").on("keyup", function(event){
 		if (event.key == "ArrowRight" || event.key == "ArrowLeft"){
 			$("#msgBoxOkBtn").focus();
@@ -115,21 +116,21 @@ function showWarningMsgBox(msg){
 	$("#msgBoxLayer, #msgBox").show();
 	$("#msgBoxTxt").text(msg);
 	$("#msgBox").focus();
-	
+
 	$("#msgBox").keyup(function(event){
 		if (event.key == "Backspace"){
 			$("#msgBoxLayer, #msgBox").hide();
 			obj.focus(); // return focus
 		}
 	});
-	
+
 	$("#msgBoxOkBtn").on("keyup", function(event){
 		if (event.key == "Enter"){
 			$("#msgBoxLayer, #msgBox").hide();
 			obj.focus(); // return focus
 		}
 	});
-	
+
 	$("#msgBoxOkBtn").focus();
 }
 
@@ -178,8 +179,8 @@ function Menu(el){
 	this.el = el;
 	this.selected = 0;
 	this.items = [];
-	this.addMenuItem = function(text, fn, previewEl){
-		var m = new MenuItem(text, fn, previewEl);
+	this.addMenuItem = function(text, fn, previewEl, previewFn){
+		var m = new MenuItem(text, fn, previewEl, previewFn);
 		me.items.push(m);
 	};
 	this.draw = function(){
@@ -194,9 +195,9 @@ function Menu(el){
 	this.goUp = function(){
 		me.setSelected(me.selected - 1);
 	};
-	this.insertMenuItem = function(text, pos, fn, previewEl){
+	this.insertMenuItem = function(text, pos, fn, previewEl, previewFn){
 		if (pos >= me.items.length){
-				me.addMenuItem(text, fn, previewEl);
+				me.addMenuItem(text, fn, previewEl, previewFn);
 		}
 		else{
 			var m = new MenuItem(text, fn);
@@ -224,15 +225,18 @@ function Menu(el){
 		$(".preview").hide();
 		if (me.items[me.selected].previewEl){
 			$("#" + me.items[me.selected].previewEl).show();
+			if (me.items[me.selected].previewFn){
+				me.items[me.selected].previewFn();
+			}
 		}
 	}
 }
 
-function MenuItem(text, fn, previewEl){
+function MenuItem(text, fn, previewEl, previewFn){
 	this.text = text;
 	this.fn = fn;
 	this.previewEl = previewEl;
-	console.log(this.previewEl);
+	this.previewFn = previewFn;
 }
 
 function HorizontalSelect(el, options, selected){
@@ -309,16 +313,16 @@ function HorizontalSelect(el, options, selected){
 /* Document Ready */
 
 $(document).ready(function(){
-	
+
 	var channel = new QWebChannel(qt.webChannelTransport, function(channel){
 		window.handler = channel.objects.handler; // make global
 		//handler = channel.objects.handler;
-		
+
 		channel.objects.loadingThread.progressSignal.connect(function(percent, status){
 			$("#loadingProgressBarComplete").width(percent + "%");
 			$("#loadingProgressBarTxt").html("Loading: " + status);
 		});
-		
+
 		channel.objects.loadingThread.finishedSignal.connect(function(){
 			handler.getConsoles(function(consoleArray){
 				var gamesFound = false;
@@ -326,25 +330,47 @@ $(document).ready(function(){
 				{
 					if (c.gameTotal > 0){
 						gamesFound = true;
-						menus["main"].insertMenuItem(c.name, i + 1, function(){
-							console.log(c.name);
-						});
+						menus["main"].insertMenuItem(
+							c.name, i + 1,
+							function(){
+
+							},
+							"console_preview",
+							function(){
+								$("#console_preview_header").html(c.name);
+								$("#console_bg").attr("src", c.image);
+								handler.getLatestAdditions(20, c.id, function(gamesArray){
+									$("#console_preview_additions").empty();
+									$.each(gamesArray, function(i, g){
+										$("#console_preview_additions").append('<img class="thumbnailSmallImg" src="' + g.coverart + '" />');
+									});
+								});
+							}
+						);
 					}
 					consoles.push(c);
+					consoleMap[c.name] = c;
 				});
-				
+
 				menus["main"].draw();
 				menus["main"].setSelected(0);
-				
+
 				if (!gamesFound){
 					$("#panel_main").html("<p>You have not added any ROMs yet to the PES database.</p><p>To perform a ROM scan, please press Home/Guide to access the Settings menu.</p>")
+				}
+				else{
+					handler.getLatestAdditions(20, 0, function(gamesArray){
+						$.each(gamesArray, function(i, g){
+							$("#panel_main_additions").append('<img class="thumbnailSmallImg" src="' + g.coverart + '" />');
+						});
+					});
 				}
 			});
 			$("#startUp").hide();
 			$("#main").show();
 			menus["main"].setSelected(0);
 		});
-		
+
 		channel.objects.romScanMonitorThread.progressSignal.connect(function(percent, romsRemaining, timeRemaining, romName, coverArtPath){
 			$("#scanProgressBarComplete").width(percent + "%");
 			$("#romsRemainingCell").html(romsRemaining);
@@ -353,11 +379,11 @@ $(document).ready(function(){
 				$("#romPreviewImg").attr("src", "file://" + coverArtPath);
 			}
 		});
-		
+
 		channel.objects.romScanMonitorThread.romsFoundSignal.connect(function(romTotal){
 			$("#romsFoundCell").html(romTotal);
 		});
-		
+
 		channel.objects.romScanMonitorThread.finishedSignal.connect(function(processed, added, updated, timeTaken){
 			$("#panel_update_games_process").hide();
 			$("#panel_update_games_finished").show();
@@ -366,7 +392,7 @@ $(document).ready(function(){
 			$("#romsUpdatedCell").html(updated);
 			$("#timeTakenCell").html(formatTime(timeTaken));
 		});
-		
+
 		channel.objects.handler.joysticksConnectedSignal.connect(function(total){
 			$("#gamepadIcons").empty();
 			for (var i = 0; i < total; i++){
@@ -376,33 +402,33 @@ $(document).ready(function(){
 		});
 
 		channelLoaded = true;
-		
+
 		handler.channelReady();
-		
+
 		/*window.handler.controllerConnected(function(result){
 			setIconVisible('gamepadIcon', result);
 		});*/
-		
+
 		console.log("QWebChannel ready");
 	});
-	
+
 	updateClock();
 	updateIcons();
 	setInterval(updateClock, 1000);
 	setInterval(updateIcons, 2000);
-	
+
 	/* Define menus */
-	
+
 	menus["main"] = new Menu('menu_main');
 	menus["main"].addMenuItem('Home', function(){
 		console.log("Home");
 	}, "screen_main");
-	
+
 	menus["main"].addMenuItem('Kodi', function(){
 		console.log('Kodi');
 	}, "kodi_preview");
 	menus["main"].setSelected(0);
-	
+
 	menus["settings"] = new Menu('menu_settings');
 	menus["settings"].addMenuItem('Update Games', function(){
 		$("#update_games_preview").hide();
@@ -414,12 +440,12 @@ $(document).ready(function(){
 		$("#updateConsolesBtn").focus();
 	}, "update_games_preview");
 	menus["settings"].addMenuItem("Update Badges", function(){
-		
+
 	}, "update_badges_preview");
 	menus["settings"].addMenuItem("Control Pad", function(){
-		
+
 	});
-	
+
 	menus["settings"].addMenuItem("System", function(){
 		$("#system_settings_preview").hide();
 		handler.getTimezones(function(timezones){
@@ -445,18 +471,18 @@ $(document).ready(function(){
 
 	}, "about");
 	menus["settings"].draw();
-	
+
 	$(document).on("keyup", function(event){
 		if (event.key == "Home"){
 			showPopupMenu();
 		}
 	});
-	
+
 	/* Menu functions */
-	
+
 	$("#menu_main").focus();
 	screenStack.push("main");
-	
+
 	$(".menu").on("keyup", "button", function(event){
 		if (event.type == "keyup"){
 			var menuName = $(this).attr("id").split("_")[1];
@@ -473,9 +499,9 @@ $(document).ready(function(){
 			}
 		}
 	});
-	
+
 	/* popup events */
-	
+
 	$("#settingsBtn").keyup(function(event){
 		if (event.key == "ArrowUp"){
 			$("#backBtn").focus();
@@ -489,7 +515,7 @@ $(document).ready(function(){
 			showScreen("settings");
 		}
 	});
-	
+
 	$("#poweroffBtn").keyup(function(event){
 		if (event.key == "ArrowUp"){
 			$("#settingsBtn").focus();
@@ -501,7 +527,7 @@ $(document).ready(function(){
 			console.log("power off");
 		}
 	});
-	
+
 	$("#rebootBtn").keyup(function(event){
 		if (event.key == "ArrowUp"){
 			$("#poweroffBtn").focus();
@@ -513,7 +539,7 @@ $(document).ready(function(){
 			console.log("reboot");
 		}
 	});
-	
+
 	$("#exitBtn").keyup(function(event){
 		if (event.key == "ArrowUp"){
 			$("#rebootBtn").focus();
@@ -528,7 +554,7 @@ $(document).ready(function(){
 	});
 
 	/* System settings screen */
-	
+
 	$("#panel_system_settings").keyup(function(event){
 		if (event.key == "Backspace"){
 			$("#panel_system_settings").hide();
@@ -536,7 +562,7 @@ $(document).ready(function(){
 			menus["settings"].focus();
 		}
 	});
-	
+
 	$("#saveSettingsBtn").keyup(function(event){
 		if (event.key == "ArrowUp"){
 			$("#keyboardSelect").focus();
@@ -554,9 +580,9 @@ $(document).ready(function(){
 			});
 		}
 	});
-	
+
 	/* Update Games Screen */
-	
+
 	$("#panel_update_games").keyup(function(event){
 		if (event.key == "Backspace"){
 			$("#panel_update_games").hide();
@@ -564,7 +590,7 @@ $(document).ready(function(){
 			menus["settings"].focus();
 		}
 	});
-	
+
 	$("#updateConsolesBtn").keyup(function(event){
 		if (event.key == "ArrowRight"){
 			$("#updateSelectAllConsolesBtn").focus();
@@ -589,7 +615,7 @@ $(document).ready(function(){
 			$("#stopRomScanBtn").focus();
 		}
 	});
-	
+
 	$("#updateSelectAllConsolesBtn").keyup(function(event){
 		if (event.key == "ArrowRight"){
 			$("#updateSelectNoneConsolesBtn").focus();
@@ -607,7 +633,7 @@ $(document).ready(function(){
 			$("#updateConsolesBtn").prop("disabled", false);
 		}
 	});
-	
+
 	$("#updateSelectNoneConsolesBtn").keyup(function(event){
 		if (event.key == "ArrowLeft"){
 			$("#updateSelectAllConsolesBtn").focus();
@@ -621,7 +647,7 @@ $(document).ready(function(){
 			$("#updateConsolesBtn").prop("disabled", true);
 		}
 	});
-	
+
 	$("#panel_update_games").on("keyup", "input", function(event){
 		var chkboxes = $("#update_console_list").find("input");
 		var selected = -1;
@@ -675,30 +701,30 @@ $(document).ready(function(){
 			console.error("Could not find checkbox");
 		}
 	});
-	
+
 	/* Update Games Rom Scan Screen */
-	
+
 	$("#stopRomScanBtn").keyup(function(event){
 		if (event.key == "Enter"){
 			channel.objects.romScanMonitorThread.stop();
 			$("#stopRomScanBtn").prop("disabled", true);
 		}
 	});
-	
+
 	/* MsgBox functions */
-	
+
 	$("#msgBoxOkBtn").on("keyup", function(event){
 		if (event.key == "ArrowRight" || event.key == "ArrowLeft"){
 			$("#msgBoxCancelBtn").focus();
 		}
 	});
-	
+
 	$("#msgBoxCancelBtn").on("keyup", function(event){
 		if (event.key == "ArrowRight" || event.key == "ArrowLeft"){
 			$("#msgBoxOkBtn").focus();
 		}
 	});
-	
+
 	/*$("button, input[type='button']").on("keyup", function(event){
 		if (event.key == "Enter"){
 			console.log("button key up handler");
@@ -706,7 +732,7 @@ $(document).ready(function(){
 			$(this).trigger("click");
 		}
 	});*/
-	
+
 	/*$("#startUp").hide();
 	$("#main").show();
 	menus["main"].draw();
