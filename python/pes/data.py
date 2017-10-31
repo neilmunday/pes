@@ -357,6 +357,9 @@ class Console(object):
 	def getExtensions(self):
 		return self.__extensions
 
+	def getIgnoreRomList(self):
+		return self.__ignoreRoms
+
 	def getRomDir(self):
 		return self.__romDir
 

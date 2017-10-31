@@ -30,13 +30,16 @@ class RomTask(object):
 	SCALE_WIDTH = 200.0
 	IMG_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif']
 
-	def __init__(self, rom, console):
+	def __init__(self, rom, consoleId, romExtensions, ignoreRoms, coverArtDir):
 		"""
 			@param	rom		path to ROM
 			@param	console	console object
 		"""
 		self._rom = rom
-		self._console = console
+		self._consoleId = consoleId
+		self._romExtensions = romExtensions
+		self._ignoreRoms = ignoreRoms
+		self._covertArtDir = coverArtDir
 
 	def _doQuery(self, q):
 		with self._lock:
@@ -82,8 +85,9 @@ class RomTask(object):
 
 class GamesDbRomTask(RomTask):
 
-	def __init__(self, rom, console):
-		super(GamesDbRomTask, self).__init__(rom, console)
+	def __init__(self, rom, consoleId, consoleApiName, romExtensions, ignoreRoms, coverArtDir):
+		super(GamesDbRomTask, self).__init__(rom, consoleId, romExtensions, ignoreRoms, coverArtDir)
+		self._consoleApiName = consoleApiName
 
 	def run(self, processNumber):
 		self._connName = "romTask_%d" % processNumber
@@ -93,19 +97,14 @@ class GamesDbRomTask(RomTask):
 		added = 0
 		updated = 0
 		thumbPath = "0"
-
-		consoleId = self._console.getId()
-		cacheDir = self._console.getCoverArtDir()
-		consoleApiName = self._console.getGamesDbName()
-
 		name = filename
 
-		for e in self._console.getExtensions():
+		for e in self._romExtensions:
 			if name.endswith(e):
 				name = name.replace(e, '')
 				break
 
-		if not self._console.ignoreRom(name):
+		if name not in self._ignoreRoms:
 			query = self._doQuery("SELECT `full_name` FROM `games_catalogue` WHERE `short_name` = \"%s\"" % name)
 			if query.first():
 				name = query.value(0)
@@ -125,11 +124,11 @@ class GamesDbRomTask(RomTask):
 
 				# new game, but do we already have cover art for it?
 				for e in RomTask.IMG_EXTENSIONS:
-					path = os.path.join(cacheDir, "%s.%s" % (name, e))
+					path = os.path.join(self._covertArtDir, "%s.%s" % (name, e))
 					if os.path.exists(path):
 						thumbPath = path
 						break
-					path2 = os.path.join(cacheDir, "%s.%s" % (nameNoSlashes, e))
+					path2 = os.path.join(self._covertArtDir, "%s.%s" % (nameNoSlashes, e))
 					if path != path2:
 						if os.path.exists(path2):
 							thumbPath = path2
@@ -147,16 +146,16 @@ class GamesDbRomTask(RomTask):
 						os.remove(thumbPath)
 						thumbPath = "0"
 
-				if consoleApiName != "NULL":
+				if self._consoleApiName != "NULL":
 					# search for ROM in theGamesDb
 					urlLoaded = False
 					nameLower = name.lower()
 					try:
-						request = urllib.request.Request("%sGetGamesList.php" % RomScanThread.GAMES_DB_URL, urllib.parse.urlencode({ "name": "%s" % name, "platform": consoleApiName }).encode("utf-8"), headers=RomScanThread.HEADERS)
+						request = urllib.request.Request("%sGetGamesList.php" % RomScanThread.GAMES_DB_URL, urllib.parse.urlencode({ "name": "%s" % name, "platform": self._consoleApiName }).encode("utf-8"), headers=RomScanThread.HEADERS)
 						response = urllib.request.urlopen(request, timeout=URL_TIMEOUT)
 						urlLoaded = True
 					except Exception as e:
-						logging.error("GamesDbRomTask: Could not perform search for \"%s\" in \"%s\"" % (name, consoleApiName))
+						logging.error("GamesDbRomTask: Could not perform search for \"%s\" in \"%s\"" % (name, self._consoleApiName))
 						logging.error(e)
 
 					if urlLoaded:
@@ -166,7 +165,7 @@ class GamesDbRomTask(RomTask):
 							xmlData = ElementTree.parse(response)
 							dataOk = True
 						except Exception as e:
-							logging.error("GamesDbRomTask: Failed to parse response for \"%s\" in \"%s\"" % (name, consoleApiName))
+							logging.error("GamesDbRomTask: Failed to parse response for \"%s\" in \"%s\"" % (name, self._consoleApiName))
 							logging.error(e)
 
 						if dataOk:
@@ -175,7 +174,7 @@ class GamesDbRomTask(RomTask):
 								xname = x.find("GameTitle").text.encode('ascii', 'ignore').decode()
 								xid = int(x.find("id").text)
 
-								query = self._doQuery("SELECT `game_title_id`, `gamesdb_id`, `game_title_id`, `title` FROM `game_title` WHERE `console_id` = %d AND `title` = \"%s\";" % (consoleId, xname))
+								query = self._doQuery("SELECT `game_title_id`, `gamesdb_id`, `game_title_id`, `title` FROM `game_title` WHERE `console_id` = %d AND `title` = \"%s\";" % (self._consoleId, xname))
 								with self._lock:
 									if query.first():
 										gameTitleId = query.value(0)
@@ -183,7 +182,7 @@ class GamesDbRomTask(RomTask):
 										gameTitleRecord.setGamesDbId(xid)
 									else:
 										gameTitleRecord = GameTitleRecord(self._openDb(), None)
-										gameTitleRecord.setConsoleId(consoleId)
+										gameTitleRecord.setConsoleId(self._consoleId)
 										gameTitleRecord.setGamesDbId(xid)
 										gameTitleRecord.setTitle(xname)
 										gameTitleRecord.save()
@@ -212,7 +211,7 @@ class GamesDbRomTask(RomTask):
 									break
 
 				if gameApiId != None:
-					logging.debug("GamesDbRomTask: \"%s\" (%s) theGamesDb ID: %d" % (name, consoleApiName, gameApiId))
+					logging.debug("GamesDbRomTask: \"%s\" (%s) theGamesDb ID: %d" % (name, self._consoleApiName, gameApiId))
 					# now get ROM meta data
 					urlLoaded = False
 					try:
@@ -260,7 +259,7 @@ class GamesDbRomTask(RomTask):
 									try:
 										imgUrl = "http://thegamesdb.net/banners/%s" % boxartElement.text
 										extension = imgUrl[imgUrl.rfind('.'):]
-										thumbPath = os.path.join(self._console.getCoverArtDir(), "%s%s" % (name.replace('/', '_'), extension))
+										thumbPath = os.path.join(self._covertArtDir, "%s%s" % (name.replace('/', '_'), extension))
 										request = urllib.request.Request(
 											imgUrl,
 											headers=RomScanThread.HEADERS
@@ -281,7 +280,7 @@ class GamesDbRomTask(RomTask):
 								game = GameRecord(db, None)
 								game.setExists(True)
 								game.setAdded(time.time())
-								game.setConsoleId(consoleId)
+								game.setConsoleId(self._consoleId)
 								game.setCoverArt(thumbPath)
 								game.setLastPlayed(0)
 								game.setName(bestName)
@@ -465,6 +464,9 @@ class RomScanThread(QThread):
 			consoles.append(console)
 			consoleName = console.getName()
 			consoleId = console.getId()
+			romExtensions = console.getExtensions()
+			ignoreRoms = console.getIgnoreRomList()
+			coverArtDir = console.getCoverArtDir()
 			logging.debug("RomScanThread.run: pre-processing %s" % consoleName)
 
 			query.exec_("UPDATE `game` SET `exists` = 0 WHERE `console_id` = %d;" % consoleId)
@@ -503,11 +505,11 @@ class RomScanThread(QThread):
 							console.save()
 						else:
 							logging.warning("RomScanThread.run: could not get console API name for: %s" % consoleName)
-
-					consoleApiName = console.getGamesDbName()
+					else:
+						consoleApiName = console.getGamesDbName()
 
 					for f in romFiles:
-						self.__tasks.put(GamesDbRomTask(f, console))
+						self.__tasks.put(GamesDbRomTask(f, consoleId, consoleApiName, romExtensions, ignoreRoms, coverArtDir))
 
 		self.romsFoundSignal.emit(self.__romTotal)
 		logging.debug("RomScanThread.run: added %d ROMs to the process queue" % self.__romTotal)
