@@ -40,7 +40,7 @@ from pes.gui import PESWindow
 
 def exitHandler():
 	global profile, profileObj
-	
+
 	if profile and profileObj != None:
 		profileObj.disable()
 		# dump stats
@@ -52,7 +52,7 @@ def exitHandler():
 
 def signalHandler(sig, frame):
 	global window, profile, profileObj
-	
+
 	if sig == signal.SIGINT:
 		logging.debug("signalHandler: SIGINT")
 		window.close()
@@ -76,7 +76,7 @@ def signalHandler(sig, frame):
 				profileObj = cProfile.Profile()
 			profileObj.enable()
 			profile = True
-	
+
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Launch the Pi Entertainment System (PES)', add_help=True)
@@ -85,15 +85,15 @@ if __name__ == '__main__':
 	parser.add_argument('-l', '--log', help='File to log messages to', type=str, dest='logfile')
 	parser.add_argument('-p', '--profile', help='Turn on profiling', dest='profile', action='store_true')
 	args = parser.parse_args()
-	
+
 	profile = args.profile
-	
+
 	profileObj = None
-	
+
 	if profile:
 		profileObj = cProfile.Profile()
 		profileObj.enable()
-	
+
 	logLevel = logging.INFO
 	if args.verbose:
 		logLevel = logging.DEBUG
@@ -102,9 +102,9 @@ if __name__ == '__main__':
 		logging.basicConfig(format='%(asctime)s:%(levelname)s: %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logLevel, filename=args.logfile)
 	else:
 		logging.basicConfig(format='%(asctime)s:%(levelname)s: %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logLevel)
-	
+
 	logging.debug("PES %s, date: %s, author: %s" % (VERSION_NUMBER, VERSION_DATE, VERSION_AUTHOR))
-	
+
 	try:
 		logging.debug("base dir: %s" % baseDir)
 		checkDir(baseDir)
@@ -119,13 +119,13 @@ if __name__ == '__main__':
 		mkdir(userRetroArchJoysticksConfDir)
 		mkdir(userViceConfDir)
 		initConfig()
-		
+
 		checkFile(userPesConfigFile)
 		checkFile(userGamesCatalogueFile)
 		checkFile(userConsolesConfigFile)
 		checkFile(userGameControllerFile)
 		#checkFile(rasumExe)
-		
+
 		logging.info("loading settings...")
 		checkFile(userPesConfigFile)
 		settings = Settings()
@@ -134,25 +134,23 @@ if __name__ == '__main__':
 			pesExit("Could not find \"coverartDir\" parameter in \"settings\" section in %s" % pes.userPesConfigFile)
 		logging.debug("cover art dir: %s" % covertArtDir)
 		mkdir(covertArtDir)
-		
+
 		romScraper = settings.get("settings", "romScraper")
 		if romScraper == None:
 			logging.warning("Could not find \"romScraper\" parameter in \"settings\" section in %s. Will use \"%s\" for this session." % (userPesConfigFile, romScrapers[0]))
 			settings.set("settings", "romScraper", romScrapers[0])
 		elif romScraper not in romScrapers:
 			logging.error("Unknown romScraper value: \"%s\" in \"settings\" section in %s. Will use \"%s\" instead for this session." % (romScraper, userPesConfigFile, romScrapers[0]))
-		
+
 		logging.info("loading GUI...")
 		signal.signal(signal.SIGINT, signalHandler)
 		signal.signal(signal.SIGHUP, signalHandler)
 		atexit.register(exitHandler)
-		
+
 		app = QApplication(sys.argv)
 		window = PESWindow(app, settings, not args.window)
 		window.run()
 		#sys.exit(app.exec_())
-		
-		
 	except Exception as e:
 		logging.exception(e)
 		sys.exit(1)
