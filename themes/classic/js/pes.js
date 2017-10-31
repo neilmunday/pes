@@ -29,6 +29,7 @@ var consoles = [];
 var consoleMap = {};
 var keyboardSelect;
 var timezoneSelect;
+var mainPanelAdditionsPanel;
 
 jQuery.extend(jQuery.expr[':'], {
 	focus: "a == document.activeElement"
@@ -310,6 +311,55 @@ function HorizontalSelect(el, options, selected){
 		}
 }
 
+function RomPanel(el, roms, emptyText, callback){
+	var me = this;
+	me.el = el;
+	me.roms = roms;
+	me.emptyText = emptyText;
+	me.selected = 0;
+	me.callback = callback;
+	$("#" + me.el).addClass("romPanel");
+	this.draw = function(){
+		$("#" + me.el).empty();
+		if (roms.length == 0){
+			$("#" + me.el).html("<p>" + me.emptyText + "</p>");
+		}
+		else {
+			for (var i = 0; i < roms.length; i++){
+				$("#" + me.el).append("<button id=\"" + me.el + "_" + i + "_btn\" class=\"romPanel\" type=\"button\" style=\"background-image: url(" + encodeURI(roms[i].coverart) + ");\"></button>");
+			}
+		}
+	};
+	this.focus = function(){
+		$("#" + me.el + "_" + me.selected + "_btn").focus();
+	};
+	$("#" + this.el).on("keyup", "button", function(event){
+		if (event.key == "Enter"){
+			me.callback(me.roms[me.selected]);
+		}
+		else if (event.key == "ArrowRight"){
+			if (++me.selected == me.roms.length){
+				me.selected = 0;
+			}
+			me.focus();
+		}
+		else if (event.key == "ArrowLeft"){
+			if (--me.selected == -1){
+				me.selected = me.roms.length - 1;
+			}
+			me.focus();
+		}
+	});
+	this.scroll = function(x){
+		$("#" + me.el).scrollLeft(x);
+	};
+	this.setSelected = function(i){
+		if (i >= 0 && i < me.roms.length){
+			me.selected = i;
+		}
+	};
+}
+
 /* Document Ready */
 
 $(document).ready(function(){
@@ -339,7 +389,7 @@ $(document).ready(function(){
 							function(){
 								$("#console_preview_header").html(c.name);
 								$("#console_bg").attr("src", c.image);
-								handler.getLatestAdditions(20, c.id, function(gamesArray){
+								handler.getLatestAdditions(10, c.id, function(gamesArray){
 									$("#console_preview_additions").empty();
 									$.each(gamesArray, function(i, g){
 										$("#console_preview_additions").append('<img class="thumbnailSmallImg" src="' + g.coverart + '" />');
@@ -359,10 +409,15 @@ $(document).ready(function(){
 					$("#panel_main").html("<p>You have not added any ROMs yet to the PES database.</p><p>To perform a ROM scan, please press Home/Guide to access the Settings menu.</p>")
 				}
 				else{
-					handler.getLatestAdditions(20, 0, function(gamesArray){
+					handler.getLatestAdditions(10, 0, function(gamesArray){
+						var roms = [];
 						$.each(gamesArray, function(i, g){
-							$("#panel_main_additions").append('<img class="thumbnailSmallImg" src="' + g.coverart + '" />');
+							roms.push(g);
 						});
+						mainPanelAdditionsPanel = new RomPanel("panel_main_additions", roms, "No ROMs found", function(rom){
+							console.log(rom.name);
+						});
+						mainPanelAdditionsPanel.draw();
 					});
 				}
 			});
@@ -391,6 +446,7 @@ $(document).ready(function(){
 			$("#romsAddedCell").html(added);
 			$("#romsUpdatedCell").html(updated);
 			$("#timeTakenCell").html(formatTime(timeTaken));
+			$("#updateGamesFinishedDoneBtn").focus();
 		});
 
 		channel.objects.handler.joysticksConnectedSignal.connect(function(total){
@@ -421,7 +477,8 @@ $(document).ready(function(){
 
 	menus["main"] = new Menu('menu_main');
 	menus["main"].addMenuItem('Home', function(){
-		console.log("Home");
+		mainPanelAdditionsPanel.setSelected(0);
+		mainPanelAdditionsPanel.focus();
 	}, "screen_main");
 
 	menus["main"].addMenuItem('Kodi', function(){
@@ -548,8 +605,17 @@ $(document).ready(function(){
 			$("#backBtn").focus();
 		}
 		else if (event.key == "Enter"){
-			//$("#popupMenu").hide();
 			commandLineExit();
+		}
+	});
+
+	/* Home (Main) Screen */
+
+	$("#panel_main").keyup(function(event){
+		if (event.key == "Backspace"){
+			mainPanelAdditionsPanel.setSelected(0);
+			mainPanelAdditionsPanel.scroll(0);
+			menus["main"].focus();
 		}
 	});
 
@@ -708,6 +774,14 @@ $(document).ready(function(){
 		if (event.key == "Enter"){
 			channel.objects.romScanMonitorThread.stop();
 			$("#stopRomScanBtn").prop("disabled", true);
+		}
+	});
+
+	/* Update Games Scan Finished Screen */
+
+	$("#updateGamesFinishedDoneBtn").keyup(function(event){
+		if (event.key == "Enter"){
+			showScreen("main");
 		}
 	});
 

@@ -335,16 +335,24 @@ select:focus {
 	object-fit: contain;
 }
 
-.row {
+.romPanel {
 	overflow: hidden;
 	white-space: nowrap;
 }
 
-img.thumbnailSmallImg {
+img.romPanel {
 	margin: 4px;
 	width: 200px;
 	height: 200px;
 	object-fit: contain;
+}
+
+button.romPanel {
+	width: 200px;
+	height: 200px;
+	background-position: center;
+	background-repeat: no-repeat;
+	background-size: 190px 190px;
 }
 
 .gameAdditions {
