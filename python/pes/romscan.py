@@ -121,6 +121,7 @@ class GamesDbRomTask(RomTask):
 				gameTitleId = 0
 				gameMatches = []
 				released = -1
+				overview = ""
 
 				# new game, but do we already have cover art for it?
 				for e in RomTask.IMG_EXTENSIONS:
