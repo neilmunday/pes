@@ -150,6 +150,7 @@ if __name__ == '__main__':
 		app = QApplication(sys.argv)
 		window = PESWindow(app, settings, not args.window)
 		window.run()
+		app.exit()
 		#sys.exit(app.exec_())
 	except Exception as e:
 		logging.exception(e)
