@@ -2,9 +2,9 @@ import glob
 import logging
 import multiprocessing
 import os
+import requests
 import sys
 import time
-import urllib
 import shlex
 import shutil
 import subprocess
@@ -27,10 +27,25 @@ from xml.etree.ElementTree import Element, ParseError, SubElement
 URL_TIMEOUT = 30
 MATCH_LIMIT = 5
 logging.getLogger("PIL").setLevel(logging.WARNING)
+logging.getLogger("requests").setLevel(logging.WARNING)
+
+def doXmlRequest(url, parameters):
+	logging.debug("doXmlRequest: loading %s with %s" % (url, parameters))
+	response = requests.get(
+		url,
+		params=parameters,
+		headers=RomScanThread.HEADERS,
+		timeout=URL_TIMEOUT,
+		stream=True
+	)
+	if response.status_code == requests.codes.ok:
+		response.raw.decode_content = True
+		return ElementTree.parse(response.raw)
+	logging.error("doXmlRequest: failed to load %s with %s" % (url, parameters))
 
 class RomTask(object):
 
-	SCALE_WIDTH = 200.0
+	SCALE_WIDTH = 400.0
 	IMG_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif']
 
 	def __init__(self, rom, consoleId, consoleName, retroAchievementId, romExtensions, ignoreRoms, coverArtDir):
@@ -153,194 +168,174 @@ class GamesDbRomTask(RomTask):
 						thumbPath = "0"
 
 				if self._consoleApiName != "NULL":
-					# search for ROM in theGamesDb
-					urlLoaded = False
 					nameLower = name.lower()
+					# search for ROM in theGamesDb
+					dataOk = False
+					bestResultDistance = -1
 					try:
-						request = urllib.request.Request("%sGetGamesList.php" % RomScanThread.GAMES_DB_URL, urllib.parse.urlencode({ "name": "%s" % name, "platform": self._consoleApiName }).encode("utf-8"), headers=RomScanThread.HEADERS)
-						response = urllib.request.urlopen(request, timeout=URL_TIMEOUT)
-						urlLoaded = True
+						xmlData = doXmlRequest("%sGetGamesList.php" % RomScanThread.GAMES_DB_URL, {"name": name, "platform": self._consoleApiName})
+						dataOk = True
 					except Exception as e:
 						logging.error("GamesDbRomTask: Could not perform search for \"%s\" in \"%s\"" % (name, self._consoleApiName))
 						logging.error(e)
 
-					if urlLoaded:
-						dataOk = False
-						bestResultDistance = -1
-						try:
-							xmlData = ElementTree.parse(response)
-							dataOk = True
-						except Exception as e:
-							logging.error("GamesDbRomTask: Failed to parse response for \"%s\" in \"%s\"" % (name, self._consoleApiName))
-							logging.error(e)
+					if dataOk:
+						count = 0
+						for x in xmlData.findall("Game"):
+							xname = x.find("GameTitle").text.encode('ascii', 'ignore').decode()
+							xid = int(x.find("id").text)
 
-						if dataOk:
-							count = 0
-							for x in xmlData.findall("Game"):
-								xname = x.find("GameTitle").text.encode('ascii', 'ignore').decode()
-								xid = int(x.find("id").text)
+							query = self._doQuery("SELECT `game_title_id`, `gamesdb_id`, `game_title_id`, `title` FROM `game_title` WHERE `console_id` = %d AND `title` = \"%s\";" % (self._consoleId, xname))
+							with self._lock:
+								if query.first():
+									gameTitleId = query.value(0)
+									gameTitleRecord = GameTitleRecord(self._openDb(), gameTitleId, query.record())
+									gameTitleRecord.setGamesDbId(xid)
+								else:
+									gameTitleRecord = GameTitleRecord(self._openDb(), None)
+									gameTitleRecord.setConsoleId(self._consoleId)
+									gameTitleRecord.setGamesDbId(xid)
+									gameTitleRecord.setTitle(xname)
+									gameTitleRecord.save()
+									gameTitleId = gameTitleRecord.getId()
+								del gameTitleRecord
+								QSqlDatabase.removeDatabase(self._connName)
+							gameMatches.append(gameTitleId)
 
-								query = self._doQuery("SELECT `game_title_id`, `gamesdb_id`, `game_title_id`, `title` FROM `game_title` WHERE `console_id` = %d AND `title` = \"%s\";" % (self._consoleId, xname))
-								with self._lock:
-									if query.first():
-										gameTitleId = query.value(0)
-										gameTitleRecord = GameTitleRecord(self._openDb(), gameTitleId, query.record())
-										gameTitleRecord.setGamesDbId(xid)
-									else:
-										gameTitleRecord = GameTitleRecord(self._openDb(), None)
-										gameTitleRecord.setConsoleId(self._consoleId)
-										gameTitleRecord.setGamesDbId(xid)
-										gameTitleRecord.setTitle(xname)
-										gameTitleRecord.save()
-										gameTitleId = gameTitleRecord.getId()
-									del gameTitleRecord
-									QSqlDatabase.removeDatabase(self._connName)
-								gameMatches.append(gameTitleId)
+							if xname.lower() == nameLower:
+								gameApiId = xid
+								bestResultDistance = 0
+								bestName = xname
+								bestGameTitleId = gameTitleId
 
-								if xname.lower() == nameLower:
-									gameApiId = xid
-									bestResultDistance = 0
-									bestName = xname
-									bestGameTitleId = gameTitleId
+							stringMatcher = StringMatcher(str(nameLower.replace(" ", "")), xname.lower().replace(" ", ""))
+							distance = stringMatcher.distance()
 
-								stringMatcher = StringMatcher(str(nameLower.replace(" ", "")), xname.lower().replace(" ", ""))
-								distance = stringMatcher.distance()
+							if bestResultDistance == -1 or distance < bestResultDistance:
+								bestResultDistance = distance
+								bestName = xname
+								bestGameTitleId = gameTitleId
+								gameApiId = xid
 
-								if bestResultDistance == -1 or distance < bestResultDistance:
-									bestResultDistance = distance
-									bestName = xname
-									bestGameTitleId = gameTitleId
-									gameApiId = xid
-
-								count += 1
-								if count == MATCH_LIMIT:
-									break
+							count += 1
+							if count == MATCH_LIMIT:
+								break
 
 				if gameApiId != None:
 					logging.debug("GamesDbRomTask: \"%s\" (%s) theGamesDb ID: %d" % (name, self._consoleApiName, gameApiId))
 					# now get ROM meta data
-					urlLoaded = False
+					dataOk = False
 					try:
-						request = urllib.request.Request(
-							"%sGetGame.php" % RomScanThread.GAMES_DB_URL,
-							urllib.parse.urlencode({
-								"id": "%d" % gameApiId,
-							}).encode("utf-8"),
-							headers=RomScanThread.HEADERS
-						)
-						response = urllib.request.urlopen(request, timeout=URL_TIMEOUT)
-						urlLoaded = True
+						xmlData = doXmlRequest("%sGetGame.php" % RomScanThread.GAMES_DB_URL, {"id": "%d" % gameApiId})
+						dataOk = True
 					except Exception as e:
-						logging.error("GamesDbRomTask: Could not load URL for %d" % gameApiId)
+						logging.error("GamesDbRomTask: Failed to parse response for %d" % gameApiId)
 						logging.error(e)
 
-					if urlLoaded:
-						dataOk = False
-						try:
-							xmlData = ElementTree.parse(response)
-							dataOk = True
-						except Exception as e:
-							logging.error("GamesDbRomTask: Failed to parse response for %d" % gameApiId)
-							logging.error(e)
+					if dataOk:
+						overviewElement = xmlData.find("Game/Overview")
+						if overviewElement != None:
+							overview = overviewElement.text.encode('ascii', 'ignore').decode()
+						releasedElement = xmlData.find("Game/ReleaseDate")
+						if releasedElement != None:
+							released = releasedElement.text.encode('ascii', 'ignore').decode()
+							# convert to Unix time stamp
+							try:
+								released = int(time.mktime(datetime.strptime(released, "%m/%d/%Y").timetuple()))
+							except ValueError as e:
+								# thrown if date is not valid
+								released = -1
 
-						if dataOk:
-							overviewElement = xmlData.find("Game/Overview")
-							if overviewElement != None:
-								overview = overviewElement.text.encode('ascii', 'ignore').decode()
-							releasedElement = xmlData.find("Game/ReleaseDate")
-							if releasedElement != None:
-								released = releasedElement.text.encode('ascii', 'ignore').decode()
-								# convert to Unix time stamp
+						if thumbPath == "0":
+							# no cover art, let's download some
+							logging.debug("GamesDbRomTask: downloading cover art for %s" % name)
+							boxartElement = xmlData.find("Game/Images/boxart[@side='front']")
+							if boxartElement != None:
+								imageSaved = False
 								try:
-									released = int(time.mktime(datetime.strptime(released, "%m/%d/%Y").timetuple()))
-								except ValueError as e:
-									# thrown if date is not valid
-									released = -1
-
-							if thumbPath == "0":
-								# no cover art, let's download some
-								boxartElement = xmlData.find("Game/Images/boxart[@side='front']")
-								if boxartElement != None:
-									imageSaved = False
-									try:
-										imgUrl = "http://thegamesdb.net/banners/%s" % boxartElement.text
-										extension = imgUrl[imgUrl.rfind('.'):]
-										thumbPath = os.path.join(self._covertArtDir, "%s%s" % (name.replace('/', '_'), extension))
-										request = urllib.request.Request(
-											imgUrl,
-											headers=RomScanThread.HEADERS
-										)
-										response = urllib.request.urlopen(request, timeout=URL_TIMEOUT)
-										with open(thumbPath, "wb") as f:
-											shutil.copyfileobj(response, f)
+									imgUrl = "http://thegamesdb.net/banners/%s" % boxartElement.text
+									extension = imgUrl[imgUrl.rfind('.'):]
+									thumbPath = os.path.join(self._covertArtDir, "%s%s" % (name.replace('/', '_'), extension))
+									response = requests.get(
+										imgUrl,
+										headers=RomScanThread.HEADERS,
+										timeout=URL_TIMEOUT,
+										stream=True
+									)
+									if response.status_code == requests.codes.ok:
+										with open(thumbPath, 'wb') as f:
+											for chunk in response.iter_content(chunk_size=128):
+												f.write(chunk)
 										# resize the image (if required)
 										if not self._scaleImage(thumbPath):
 											thumbPath = "0"
-									except Exception as e:
-										logging.error("GamesDbRomTask: failed to get covert art for %d" % gameApiId)
-										logging.error(e)
+									else:
+										logging.error("GamesDbRomTask: failed to get covert art for %d, status code: %s" % (gameApiId, response.status_code))
+								except Exception as e:
+									logging.error("GamesDbRomTask: failed to get covert art for %d" % gameApiId)
+									logging.error(e)
 
-							# get rasum
-							rasum = 0
-							retroAchievementGameId = 0
-							if self._retroAchievementId > 0:
-								command = pes.rasumExe
-								if self._consoleName == "MegaDrive" or self._consoleName == "Genesis":
-									command += " -t genesis "
-								elif self._consoleName == "NES":
-									command += " -t nes "
-								elif self._consoleName == "SNES":
-									command += " -t snes "
-								command += "\"%s\"" % self._rom
+						# get rasum
+						rasum = 0
+						retroAchievementGameId = 0
+						if self._retroAchievementId > 0:
+							command = pes.rasumExe
+							if self._consoleName == "MegaDrive" or self._consoleName == "Genesis":
+								command += " -t genesis "
+							elif self._consoleName == "NES":
+								command += " -t nes "
+							elif self._consoleName == "SNES":
+								command += " -t snes "
+							command += "\"%s\"" % self._rom
 
-								process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-								stdout, stderr = process.communicate()
-								if process.returncode != 0:
-									logging.error("GamesDbRomTask: failed to get rasum for %s\nstdout: %s\nstderr: %s" % (self._rom, stdout.decode(), stderr.decode()))
-								else:
-									rasum = stdout.decode().strip()
-									logging.debug("GamesDbRomTask: rasum for %s is %s" % (self._rom, rasum))
-									# get retroAchievement game Id
-									retroAchievementGameId = RetroAchievementUser.getRetroAchievementId(rasum)
-									if retroAchievementGameId == None:
-										retroAchievementGameId = 0
+							process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+							stdout, stderr = process.communicate()
+							if process.returncode != 0:
+								logging.error("GamesDbRomTask: failed to get rasum for %s\nstdout: %s\nstderr: %s" % (self._rom, stdout.decode(), stderr.decode()))
+							else:
+								rasum = stdout.decode().strip()
+								logging.debug("GamesDbRomTask: rasum for %s is %s" % (self._rom, rasum))
+								# get retroAchievement game Id
+								retroAchievementGameId = RetroAchievementUser.getRetroAchievementId(rasum)
+								if retroAchievementGameId == None:
+									retroAchievementGameId = 0
 
-							with self._lock:
-								logging.debug("GamesDbRomTask: creating new GameRecord object")
-								db = self._openDb()
-								game = GameRecord(db, None)
-								game.setExists(True)
-								game.setAdded(time.time())
-								game.setConsoleId(self._consoleId)
-								game.setCoverArt(thumbPath)
-								game.setLastPlayed(0)
-								game.setName(bestName)
-								game.setOverview(overview)
-								game.setPath(self._rom)
-								game.setPlayCount(0)
-								game.setRasum(rasum)
-								game.setReleased(released)
-								game.setRetroAchievementId(retroAchievementGameId)
-								game.setSize(os.path.getsize(self._rom))
-								game.save()
-								gameId = game.getId()
+						with self._lock:
+							logging.debug("GamesDbRomTask: creating new GameRecord object")
+							db = self._openDb()
+							game = GameRecord(db, None)
+							game.setExists(True)
+							game.setAdded(time.time())
+							game.setConsoleId(self._consoleId)
+							game.setCoverArt(thumbPath)
+							game.setLastPlayed(0)
+							game.setName(bestName)
+							game.setOverview(overview)
+							game.setPath(self._rom)
+							game.setPlayCount(0)
+							game.setRasum(rasum)
+							game.setReleased(released)
+							game.setRetroAchievementId(retroAchievementGameId)
+							game.setSize(os.path.getsize(self._rom))
+							game.save()
+							gameId = game.getId()
 
-								# now save matches
-								for titleId in gameMatches:
-									gameMatch = GameMatchRecord(db, None)
-									gameMatch.setGameId(gameId)
-									gameMatch.setTitleId(titleId)
-									gameMatch.save()
-									if titleId == bestGameTitleId:
-										game.setMatchId(gameMatch.getId())
-										game.save()
-									del gameMatch
+							# now save matches
+							for titleId in gameMatches:
+								gameMatch = GameMatchRecord(db, None)
+								gameMatch.setGameId(gameId)
+								gameMatch.setTitleId(titleId)
+								gameMatch.save()
+								if titleId == bestGameTitleId:
+									game.setMatchId(gameMatch.getId())
+									game.save()
+								del gameMatch
 
-								del game
-								del db
-								QSqlDatabase.removeDatabase(self._connName)
+							del game
+							del db
+							QSqlDatabase.removeDatabase(self._connName)
 
-							added += 1
+						added += 1
 
 		return (added, updated, name, thumbPath)
 
@@ -493,7 +488,6 @@ class RomScanThread(QThread):
 		consoles = []
 
 		for c in self.__consoleNames:
-			urlLoaded = False
 			console = self.__consoleMap[c]
 			consoles.append(console)
 			consoleName = console.getName()
@@ -520,31 +514,24 @@ class RomScanThread(QThread):
 			if consoleRomTotal > 0:
 				self.__romTotal += consoleRomTotal
 				if self.__romScraper == "theGamesDb.net":
+					consoleApiName = None
 					# do we need to get the console's name in theGamesDb?
 					if console.getGamesDbName() == "NULL":
 						try:
-							# get API name for this console
-							logging.debug("RomScanThread.run: searching for %s's GamesDb API name..." % consoleName)
-							request = urllib.request.Request("%sGetPlatform.php" % self.GAMES_DB_URL, urllib.parse.urlencode({ 'id':  console.getGamesDbId() }).encode("utf-8"), headers=self.HEADERS)
-							response = urllib.request.urlopen(request, timeout=URL_TIMEOUT)
-							xmlData = ElementTree.parse(response)
+							xmlData = doXmlRequest("%sGetPlatform.php" % self.GAMES_DB_URL, {"id": console.getGamesDbId()})
 							consoleApiName = xmlData.find('Platform/Platform').text
-							logging.debug("RomScanThread.run: %s API name is: %s" % (consoleName, consoleApiName))
-							urlLoaded = True
-						except Exception as e:
-							logging.error(e)
-							logging.error("RomScanThread.run: could not get console API name for: %s" % consoleName)
-
-						if urlLoaded:
 							console.setGamesDbName(consoleApiName)
 							console.save()
-						else:
-							logging.warning("RomScanThread.run: could not get console API name for: %s" % consoleName)
+							logging.debug("RomScanThread.run: %s API name is: %s" % (consoleName, consoleApiName))
+						except Exception as e:
+							logging.error("RomScanThread.run: could not get console API name for: %s" % consoleName)
+							logging.error(e)
 					else:
 						consoleApiName = console.getGamesDbName()
 
-					for f in romFiles:
-						self.__tasks.put(GamesDbRomTask(f, consoleId, consoleName, consoleApiName, retroAchievementId, romExtensions, ignoreRoms, coverArtDir))
+					if consoleApiName != None:
+						for f in romFiles:
+							self.__tasks.put(GamesDbRomTask(f, consoleId, consoleName, consoleApiName, retroAchievementId, romExtensions, ignoreRoms, coverArtDir))
 
 		self.romsFoundSignal.emit(self.__romTotal)
 		logging.debug("RomScanThread.run: added %d ROMs to the process queue" % self.__romTotal)
