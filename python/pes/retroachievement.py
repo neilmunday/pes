@@ -31,7 +31,7 @@ class RetroAchievementUser(QObject):
 
 	def login(self):
 		try:
-			response = requests.get(RETRO_URL, params={ "r": "login", "u": self.__username, "p": self.__password })
+			response = requests.get(RETRO_URL, params={ "r": "login", "u": self.__username, "p": self.__password }, timeout=URL_TIMEOUT)
 			if response.status_code == requests.codes.ok:
 				data = response.json()
 				if "Success" in data:
@@ -44,34 +44,34 @@ class RetroAchievementUser(QObject):
 							self.loggedInSignal.emit()
 							return True
 						else:
-							logging.error("RetroAchievementUser.login: Could not log in - token not in response")
+							logging.error("RetroAchievementUser.login: could not log in - token not in response")
 					elif "Error" in data:
-						logging.error("RetroAchievementUser.login: Could not log in - %s" % data["Error"])
+						logging.error("RetroAchievementUser.login: could not log in - %s" % data["Error"])
 					else:
-						logging.error("RetroAchievementUser.login: Could not log in")
+						logging.error("RetroAchievementUser.login: could not log in")
 						print(data)
 			else:
-				logging.error("RetroAchievementUser.login: Could not log in, response code - %s" % response.status_code)
+				logging.error("RetroAchievementUser.login: could not log in, response code - %s" % response.status_code)
 		except Exception as e:
-			logging.error("RetroAchievementUser.login: Could not log in")
+			logging.error("RetroAchievementUser.login: could not log in")
 			logging.error(e)
 		return False
 
 	@staticmethod
 	def getRetroAchievementId(rasum):
 		try:
-			response = requests.get(RETRO_URL, params={"r": "gameid", "m": rasum})
+			response = requests.get(RETRO_URL, params={"r": "gameid", "m": rasum}, timeout=URL_TIMEOUT)
 			if response.status_code != requests.codes.ok:
 				return None
 			data = response.json()
 			if "Success" not in data:
-				logging.error("RetroAchievementUser.getRetroAchievementId: Could not find \"Success\" in JSON")
+				logging.error("RetroAchievementUser.getRetroAchievementId: could not find \"Success\" in JSON")
 				return None
 			if not data["Success"]:
-				logging.error("RetroAchievementUser.getRetroAchievementId: Could not get ID for hash \"%s\"" % rasum)
+				logging.error("RetroAchievementUser.getRetroAchievementId: could not get ID for hash \"%s\"" % rasum)
 				return None
 			return data["GameID"]
 		except Exception as e:
-			logging.error("RetroAchievementUser.getRetroAchievementId: Could not get ID for hash \"%s\"" % rasum)
+			logging.error("RetroAchievementUser.getRetroAchievementId: could not get ID for hash \"%s\"" % rasum)
 			logging.error(e)
 		return None
