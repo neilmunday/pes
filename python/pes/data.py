@@ -171,6 +171,9 @@ class ConsoleRecord(Record):
 	def getName(self):
 		return self._getProperty("name")
 
+	def getRetroAchievementId(self):
+		return self._getProperty("retroachievement_id")
+
 	def setGamesDbId(self, i):
 		self._setProperty("gamesdb_id", int(i))
 
@@ -246,6 +249,9 @@ class GameRecord(Record):
 
 	def setPath(self, path):
 		self._setProperty("path", path)
+
+	def setPlayCount(self, count):
+		self._setProperty("play_count", int(count))
 
 	def setRasum(self, rasum):
 		self._setProperty("rasum", rasum)
@@ -359,6 +365,9 @@ class Console(object):
 
 	def getIgnoreRomList(self):
 		return self.__ignoreRoms
+
+	def getRetroAchievementId(self):
+		return self.__consoleRecord.getRetroAchievementId()
 
 	def getRomDir(self):
 		return self.__romDir

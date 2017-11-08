@@ -69,11 +69,12 @@ def runCommand(command):
 
 class PESWindow(QMainWindow):
 
-	def __init__(self, app, settings, fullscreen=False):
+	def __init__(self, app, settings, fullscreen=False, retroUser=None):
 		super(PESWindow, self).__init__()
 		self.__app = app
 		self.__running = False
 		self.settings = settings
+		self.retroUser = retroUser
 		self.__player1Controller = None
 		self.__player1ControllerIndex = None
 		self.__controlPadTotal = 0
@@ -306,13 +307,13 @@ class LoadingThread(QThread):
 			`retroachievement_id` INTEGER, \
 			`name` TEXT \
 		);")
-		query.exec_("CREATE INDEX IF NOT EXISTS \"console_index\" on console (console_id ASC);")
+		query.exec_("CREATE INDEX IF NOT EXISTS \"console_index\" on `console` (`console_id` ASC);")
 		query.exec_("\
 		CREATE TABLE IF NOT EXISTS `games_catalogue` ( \
 			`short_name` TEXT, \
 			`full_name` TEXT \
 		);")
-		query.exec_("CREATE INDEX IF NOT EXISTS \"games_catalogue_index\" on games_catalogue (short_name ASC);")
+		query.exec_("CREATE INDEX IF NOT EXISTS \"games_catalogue_index\" on `games_catalogue` (`short_name` ASC);")
 		query.exec_("\
 		CREATE TABLE IF NOT EXISTS `game_title` ( \
 			`game_title_id` INTEGER PRIMARY KEY, \
@@ -320,35 +321,42 @@ class LoadingThread(QThread):
 			`console_id` INTEGER, \
 			`title` TEXT \
 		);")
-		query.exec_("CREATE INDEX IF NOT EXISTS \"game_title_index\" on game_title (game_id ASC);")
+		query.exec_("CREATE INDEX IF NOT EXISTS \"game_title_index\" on `game_title` (`game_id` ASC);")
 		query.exec_("\
 		CREATE TABLE IF NOT EXISTS `game` ( \
-					`game_id` INTEGER PRIMARY KEY, \
-					`console_id` INTEGER, \
-					`game_match_id` INTEGER, \
-					`name` TEXT, \
-					`coverart` TEXT, \
-					`path` TEXT, \
-					`overview` TEXT, \
-					`released` INTEGER, \
-					`last_played` INTEGER, \
-					`added` INTEGER, \
-					`play_count` INTEGER, \
-					`size` INTEGER, \
-					`rasum` TEXT, \
-					`retroachievement_id` INTEGER, \
-					`achievement_total` INTEGER, \
-					`score_total` INTEGER, \
-					`exists` INTEGER \
+			`game_id` INTEGER PRIMARY KEY, \
+			`console_id` INTEGER, \
+			`game_match_id` INTEGER, \
+			`name` TEXT, \
+			`coverart` TEXT, \
+			`path` TEXT, \
+			`overview` TEXT, \
+			`released` INTEGER, \
+			`last_played` INTEGER, \
+			`added` INTEGER, \
+			`play_count` INTEGER, \
+			`size` INTEGER, \
+			`rasum` TEXT, \
+			`retroachievement_id` INTEGER, \
+			`achievement_total` INTEGER, \
+			`score_total` INTEGER, \
+			`exists` INTEGER \
 		);")
-		query.exec_("CREATE INDEX IF NOT EXISTS \"game_index\" on game (game_id ASC);")
+		query.exec_("CREATE INDEX IF NOT EXISTS \"game_index\" on `game` (`game_id` ASC);")
 		query.exec_("\
 		CREATE TABLE IF NOT EXISTS `game_match` ( \
 			`game_match_id` INTEGER PRIMARY KEY, \
 			`game_title_id` INTEGER, \
 			`game_id` INTEGER \
 		);")
-		query.exec_("CREATE INDEX IF NOT EXISTS \"game_match_index\" on game_matches (game_match_id ASC);")
+		query.exec_("CREATE INDEX IF NOT EXISTS \"game_match_index\" on `game_matches` (`game_match_id` ASC);")
+		query.exec_("\
+		CREATE TABLE IF NOT EXISTS `retroachievement_user` (\
+			`username` TEXT, \
+			`score` INTEGER, \
+			`rank` INTEGER \
+		);")
+		query.exec_("CREATE INDEX IF NOT EXISTS \"retroachievement_user_index\" on `retroachievement_user` (`username` ASC);")
 		self.__window.db.commit()
 
 		# populate games catalogue (if needed)
@@ -435,6 +443,8 @@ class LoadingThread(QThread):
 				self.__window.close()
 				return
 
+		self.__window.retroUser.login()
+
 		self.__progress = 100
 		self.finishedSignal.emit()
 
@@ -513,6 +523,7 @@ class CallHandler(QObject):
 
 	exitSignal = pyqtSignal()
 	joysticksConnectedSignal = pyqtSignal(int)
+	retroAchievementsLoggedInSignal = pyqtSignal()
 
 	def __init__(self, window):
 		super(CallHandler, self).__init__()
@@ -521,6 +532,7 @@ class CallHandler(QObject):
 		self.__keyboardLayouts = None
 		self.__timezones = None
 		self.__timezone = None
+		self.__window.retroUser.loggedInSignal.connect(self.__retroUserLoggedIn)
 
 	@pyqtSlot(result=bool)
 	def controllerConnected(self):
@@ -613,6 +625,9 @@ class CallHandler(QObject):
 
 	def emitJoysticksConnected(self, n):
 		self.joysticksConnectedSignal.emit(n)
+
+	def __retroUserLoggedIn(self):
+		self.retroAchievementsLoggedInSignal.emit()
 
 	@pyqtSlot(str, str, result=list)
 	def saveSettings(self, timezone, keyboardLayout):

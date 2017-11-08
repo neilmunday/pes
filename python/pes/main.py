@@ -37,6 +37,7 @@ from pes import *
 from pes.common import checkDir, checkFile, initConfig, mkdir
 from pes.data import Settings
 from pes.gui import PESWindow
+from pes.retroachievement import RetroAchievementUser
 
 def exitHandler():
 	global profile, profileObj
@@ -124,7 +125,7 @@ if __name__ == '__main__':
 		checkFile(userGamesCatalogueFile)
 		checkFile(userConsolesConfigFile)
 		checkFile(userGameControllerFile)
-		#checkFile(rasumExe)
+		checkFile(rasumExe)
 
 		logging.info("loading settings...")
 		checkFile(userPesConfigFile)
@@ -142,13 +143,21 @@ if __name__ == '__main__':
 		elif romScraper not in romScrapers:
 			logging.error("Unknown romScraper value: \"%s\" in \"settings\" section in %s. Will use \"%s\" instead for this session." % (romScraper, userPesConfigFile, romScrapers[0]))
 
+		retroUsername = settings.get("RetroAchievements", "username")
+		retroPassword = settings.get("RetroAchievements", "password")
+		retroApiKey = settings.get("RetroAchievements", "apikey")
+
+		retroUser = None
+		if retroUsername != None and retroPassword != None:
+			retroUser = RetroAchievementUser(retroUsername, retroPassword, retroApiKey)
+
 		logging.info("loading GUI...")
 		signal.signal(signal.SIGINT, signalHandler)
 		signal.signal(signal.SIGHUP, signalHandler)
 		atexit.register(exitHandler)
 
 		app = QApplication(sys.argv)
-		window = PESWindow(app, settings, not args.window)
+		window = PESWindow(app, settings, not args.window, retroUser)
 		window.run()
 		app.exit()
 		#sys.exit(app.exec_())

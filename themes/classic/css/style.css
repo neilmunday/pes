@@ -260,7 +260,7 @@ select:focus {
 }
 
 .icon {
-	width: 27px;
+	width: 20px;
 	vertical-align: middle;
 }
 
@@ -313,6 +313,12 @@ select:focus {
 	vertical-align: top;
 }
 
+#trophyIcon {
+	content: url('../img/trophy.png');
+	display: none;
+	vertical-align: top;
+}
+
 #remoteIcon {
 	content: url('../img/remote.png');
 	display: none;
@@ -323,6 +329,7 @@ select:focus {
 	content: url('../img/network.png');
 	vertical-align: top;
 	display: none;
+	width: 27px !important;
 }
 
 #romPreviewCell {

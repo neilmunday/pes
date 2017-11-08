@@ -457,6 +457,10 @@ $(document).ready(function(){
 			}
 		});
 
+		channel.objects.handler.retroAchievementsLoggedInSignal.connect(function(){
+			setIconVisible("trophyIcon", true)
+		})
+
 		channelLoaded = true;
 
 		handler.channelReady();
