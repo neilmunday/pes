@@ -144,13 +144,13 @@ function showPopupMenu(){
 		}
 	});
 	$("#dialogueLayer, #popupMenu").show();
-	$("#settingsBtn").focus();
+	$("#homeBtn").focus();
 	$("#backBtn").keyup(function(event){
 		if (event.key == "ArrowUp"){
 			$("#exitBtn").focus();
 		}
 		else if (event.key == "ArrowDown"){
-			$("#settingsBtn").focus();
+			$("#homeBtn").focus();
 		}
 		else if (event.key == "Enter"){
 			$("#popupMenu, #dialogueLayer").hide();
@@ -563,9 +563,23 @@ $(document).ready(function(){
 
 	/* popup events */
 
-	$("#settingsBtn").keyup(function(event){
+	$("#homeBtn").keyup(function(event){
 		if (event.key == "ArrowUp"){
 			$("#backBtn").focus();
+		}
+		else if (event.key == "ArrowDown"){
+			$("#settingsBtn").focus();
+		}
+		else if (event.key == "Enter"){
+			$("#popupMenu, #dialogueLayer").hide();
+			$(".panel").hide();
+			showScreen("main");
+		}
+	});
+
+	$("#settingsBtn").keyup(function(event){
+		if (event.key == "ArrowUp"){
+			$("#homeBtn").focus();
 		}
 		else if (event.key == "ArrowDown"){
 			$("#poweroffBtn").focus();
