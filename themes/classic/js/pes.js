@@ -30,6 +30,7 @@ var consoleMap = {};
 var keyboardSelect;
 var timezoneSelect;
 var mainPanelAdditionsPanel;
+var consoleAdditionsPanels = {};
 
 jQuery.extend(jQuery.expr[':'], {
 	focus: "a == document.activeElement"
@@ -68,6 +69,8 @@ function setIconVisible(icon, visible){
 }
 
 function showScreen(s){
+	//$("#gameInfo").hide();
+	$("#main").show();
 	$("div[id^='screen_'], div[id^='menu_']").hide();
 	$("#screen_" + s).show();
 	$("#menu_" + s).show();
@@ -368,6 +371,11 @@ $(document).ready(function(){
 		window.handler = channel.objects.handler; // make global
 		//handler = channel.objects.handler;
 
+		handler.getVersionInfo(function(info){
+			$("#versionNumberCell").html(info.number);
+			$("#versionDateCell").html(info.date);
+		});
+
 		channel.objects.loadingThread.progressSignal.connect(function(percent, status){
 			$("#loadingProgressBarComplete").width(percent + "%");
 			$("#loadingProgressBarTxt").html("Loading: " + status);
@@ -383,17 +391,31 @@ $(document).ready(function(){
 						menus["main"].insertMenuItem(
 							c.name, i + 1,
 							function(){
-
+								consoleAdditionsPanels[c.name].setSelected(0);
+								consoleAdditionsPanels[c.name].focus();
 							},
 							"console_preview",
 							function(){
 								$("#console_preview_header").html(c.name);
 								$("#console_bg").attr("src", c.image);
+
 								handler.getLatestAdditions(10, c.id, function(gamesArray){
-									$("#console_preview_additions").empty();
-									$.each(gamesArray, function(i, g){
-										$("#console_preview_additions").append('<img class="thumbnailSmallImg" src="' + g.coverart + '" />');
-									});
+									//$("#console_preview_additions").empty();
+									//$.each(gamesArray, function(i, g){
+										//$("#console_preview_additions").append('<img class="thumbnailSmallImg" src="' + g.coverart + '" />');
+									//});
+									$("#panel_console_additions").empty();
+									if (!consoleAdditionsPanels.hasOwnProperty(c.name)){
+										consoleAdditionsPanels[c.name] = new RomPanel("panel_console_additions", gamesArray, "No ROMs found", function(rom){
+											/*$("#main").hide();
+											$("#gameInfo").show();
+											$("#gameInfoTitle").html(rom.name);
+											$("#gameInfoCoverArt").attr("src", rom.coverart);
+											$("#gameInfoOverview").html(rom.overview);*/
+											showScreen("game");
+										});
+									}
+									consoleAdditionsPanels[c.name].draw();
 								});
 							}
 						);
@@ -415,7 +437,15 @@ $(document).ready(function(){
 							roms.push(g);
 						});
 						mainPanelAdditionsPanel = new RomPanel("panel_main_additions", roms, "No ROMs found", function(rom){
-							console.log(rom.name);
+							/*$("#main").hide();
+							$("#gameInfo").show();
+							$("#gameInfoTitle").html(rom.name);
+							$("#gameInfoCoverArt").attr("src", rom.coverart);
+							$("#gameInfoOverview").html(rom.overview);*/
+							$("#gameInfoTitle").html(rom.name);
+							$("#gameInfoCoverArt").attr("src", rom.coverart);
+							$("#gameInfoOverview").html(rom.overview);
+							showScreen("game");
 						});
 						mainPanelAdditionsPanel.draw();
 					});
@@ -506,7 +536,6 @@ $(document).ready(function(){
 	menus["settings"].addMenuItem("Control Pad", function(){
 
 	});
-
 	menus["settings"].addMenuItem("System", function(){
 		$("#system_settings_preview").hide();
 		handler.getTimezones(function(timezones){
@@ -532,6 +561,15 @@ $(document).ready(function(){
 
 	}, "about");
 	menus["settings"].draw();
+
+	menus["game"] = new Menu("menu_game");
+	menus["game"].addMenuItem("Play", function(){
+		console.log("play me");
+	}, "panel_game_info");
+	menus["game"].addMenuItem("Badges");
+	//menus["game"].addMenuItem("Edit");
+	//menus["game"].addMenuItem("Delete");
+	menus["game"].draw();
 
 	$(document).on("keyup", function(event){
 		if (event.key == "Home"){
@@ -653,13 +691,13 @@ $(document).ready(function(){
 		}
 		else if (event.key == "Enter"){
 			handler.saveSettings($("#timezoneSelect").html(), $("#keyboardSelect").html(), function(result){
-				if (result[0]){
+				if (result.success){
 					$("#panel_system_settings").hide();
 					$("#system_settings_preview").show();
 					menus["settings"].focus();
 				}
 				else {
-					showWarningMsgBox("Unable to save settings: " + result[1]);
+					showWarningMsgBox("Unable to save settings: " + result.msg);
 				}
 			});
 		}

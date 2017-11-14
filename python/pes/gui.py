@@ -29,7 +29,7 @@ import sys
 from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from PyQt5.QtWidgets import QApplication, QMainWindow
-from PyQt5.QtCore import Qt, QUrl, pyqtSignal, pyqtSlot, QFile, QIODevice, QObject, QEvent, QThread
+from PyQt5.QtCore import Qt, QUrl, pyqtSignal, pyqtSlot, QFile, QIODevice, QObject, QEvent, QThread, QVariant
 from PyQt5.QtSql import QSqlDatabase, QSqlQuery
 from PyQt5.QtWebChannel import QWebChannel
 
@@ -40,7 +40,7 @@ import sdl2.ext
 import sdl2.joystick
 
 import pes
-from pes.data import Console, ConsoleRecord, Settings
+from pes.data import doQuery, Console, ConsoleRecord, Settings
 from pes.common import checkDir, checkFile, getIpAddress, mkdir, pesExit
 from pes.romscan import RomScanThread
 import pes.gamecontroller
@@ -298,8 +298,8 @@ class LoadingThread(QThread):
 	def run(self):
 		logging.debug("LoadingThread.run: opening database using %s" % pes.userDb)
 
-		query = QSqlQuery()
-		query.exec_("\
+		#query = QSqlQuery()
+		doQuery(self.__window.db, "\
 		CREATE TABLE IF NOT EXISTS `console` ( \
 			`console_id` INTEGER PRIMARY KEY, \
 			`gamesdb_id` INTEGER, \
@@ -307,22 +307,22 @@ class LoadingThread(QThread):
 			`retroachievement_id` INTEGER, \
 			`name` TEXT \
 		);")
-		query.exec_("CREATE INDEX IF NOT EXISTS \"console_index\" on `console` (`console_id` ASC);")
-		query.exec_("\
+		doQuery(self.__window.db, "CREATE INDEX IF NOT EXISTS \"console_index\" on `console` (`console_id` ASC);")
+		doQuery(self.__window.db, "\
 		CREATE TABLE IF NOT EXISTS `games_catalogue` ( \
 			`short_name` TEXT, \
 			`full_name` TEXT \
 		);")
-		query.exec_("CREATE INDEX IF NOT EXISTS \"games_catalogue_index\" on `games_catalogue` (`short_name` ASC);")
-		query.exec_("\
+		doQuery(self.__window.db, "CREATE INDEX IF NOT EXISTS \"games_catalogue_index\" on `games_catalogue` (`short_name` ASC);")
+		doQuery(self.__window.db, "\
 		CREATE TABLE IF NOT EXISTS `game_title` ( \
 			`game_title_id` INTEGER PRIMARY KEY, \
 			`gamesdb_id` INTEGER, \
 			`console_id` INTEGER, \
 			`title` TEXT \
 		);")
-		query.exec_("CREATE INDEX IF NOT EXISTS \"game_title_index\" on `game_title` (`game_id` ASC);")
-		query.exec_("\
+		doQuery(self.__window.db, "CREATE INDEX IF NOT EXISTS \"game_title_index\" on `game_title` (`game_title_id` ASC);")
+		doQuery(self.__window.db, "\
 		CREATE TABLE IF NOT EXISTS `game` ( \
 			`game_id` INTEGER PRIMARY KEY, \
 			`console_id` INTEGER, \
@@ -342,25 +342,25 @@ class LoadingThread(QThread):
 			`score_total` INTEGER, \
 			`exists` INTEGER \
 		);")
-		query.exec_("CREATE INDEX IF NOT EXISTS \"game_index\" on `game` (`game_id` ASC);")
-		query.exec_("\
+		doQuery(self.__window.db, "CREATE INDEX IF NOT EXISTS \"game_index\" on `game` (`game_id` ASC);")
+		doQuery(self.__window.db, "\
 		CREATE TABLE IF NOT EXISTS `game_match` ( \
 			`game_match_id` INTEGER PRIMARY KEY, \
 			`game_title_id` INTEGER, \
 			`game_id` INTEGER \
 		);")
-		query.exec_("CREATE INDEX IF NOT EXISTS \"game_match_index\" on `game_matches` (`game_match_id` ASC);")
-		query.exec_("\
+		doQuery(self.__window.db, "CREATE INDEX IF NOT EXISTS \"game_match_index\" on `game_match` (`game_match_id` ASC);")
+		doQuery(self.__window.db, "\
 		CREATE TABLE IF NOT EXISTS `retroachievement_user` (\
 			`username` TEXT, \
 			`score` INTEGER, \
 			`rank` INTEGER \
 		);")
-		query.exec_("CREATE INDEX IF NOT EXISTS \"retroachievement_user_index\" on `retroachievement_user` (`username` ASC);")
+		doQuery(self.__window.db, "CREATE INDEX IF NOT EXISTS \"retroachievement_user_index\" on `retroachievement_user` (`username` ASC);")
 		self.__window.db.commit()
 
 		# populate games catalogue (if needed)
-		query.exec_("SELECT COUNT(*) AS `total` FROM `games_catalogue`")
+		query = doQuery(self.__window.db, "SELECT COUNT(*) AS `total` FROM `games_catalogue`")
 		query.first()
 		if query.value(0) == 0:
 			logging.debug("LoadingThread.run: populating games catalogue...")
@@ -382,7 +382,7 @@ class LoadingThread(QThread):
 				self.__progress = 50 * (i / sectionTotal)
 				self.progressSignal.emit(self.__progress, "Populating games catalogue: %s" % fullName)
 			if len(insertValues) > 0:
-				query.exec_('INSERT INTO `games_catalogue` (`short_name`, `full_name`) VALUES %s;' % ','.join(insertValues))
+				doQuery(self.__window.db, 'INSERT INTO `games_catalogue` (`short_name`, `full_name`) VALUES %s;' % ','.join(insertValues))
 				self.__window.db.commit()
 		else:
 			self.__progress = 50
@@ -576,9 +576,9 @@ class CallHandler(QObject):
 	def getLatestAdditions(self, limit=10, consoleId=None):
 		query = QSqlQuery()
 		if consoleId:
-			q = "SELECT `name`, `coverart`, `console_id` FROM `game` WHERE `console_id` = %d ORDER BY `added` DESC LIMIT %d;" % (consoleId, limit)
+			q = "SELECT `name`, `coverart`, `console_id`, `overview` FROM `game` WHERE `console_id` = %d ORDER BY `added` DESC LIMIT %d;" % (consoleId, limit)
 		else:
-			q = "SELECT `name`, `coverart`, `console_id` FROM `game` ORDER BY `added` DESC LIMIT %d;" % limit
+			q = "SELECT `name`, `coverart`, `console_id`, `overview` FROM `game` ORDER BY `added` DESC LIMIT %d;" % limit
 		if not query.exec_(q):
 			logging.error("Handler.getLatestAdditions: query %s failed with error %s" % (q, query.lastError().text()))
 			return []
@@ -587,8 +587,12 @@ class CallHandler(QObject):
 			coverart = query.value(1)
 			if coverart == "0":
 				coverart = self.__window.consoleIdMap[query.value(2)].getNoCoverArt()
-			games.append({"name": query.value(0), "coverart": coverart})
+			games.append({"name": query.value(0), "coverart": coverart, "overview": query.value(3)})
 		return games
+
+	@pyqtSlot(result=QVariant)
+	def getVersionInfo(self):
+		return {"number": pes.VERSION_NUMBER, "date": pes.VERSION_DATE}
 
 	@pyqtSlot(result=str)
 	def getTimezone(self):
@@ -629,19 +633,19 @@ class CallHandler(QObject):
 	def __retroUserLoggedIn(self):
 		self.retroAchievementsLoggedInSignal.emit()
 
-	@pyqtSlot(str, str, result=list)
+	@pyqtSlot(str, str, result=QVariant)
 	def saveSettings(self, timezone, keyboardLayout):
 		rtn, stdout, stderr = runCommand("%s %s" % (self.__window.setTimezoneCommand, timezone))
 		if rtn != 0:
 			logging.error("Handler.saveSettings: could not set timezone to %s" % timezone)
 			logging.error(stderr)
-			return [False, "Could not set timezone to %s" % timezone]
+			return {"success": False, "msg": "Could not set timezone to %s" % timezone}
 		rtn, stdout, stderr = runCommand("%s %s" % (self.__window.setKeyboardLayoutCommand, keyboardLayout))
 		if rtn != 0:
 			logging.error("Handler.saveSettings: could not set keyboard layout to %s" % keyboardLayout)
 			logging.stderr(stderr)
-			return [False, "Could not set keyboard layout to %s" % keyboardLayout]
-		return [True]
+			return {"success": False, "msg": "Could not set keyboard layout to %s" % keyboardLayout}
+		return {"success": True}
 
 class WebPage(QWebEnginePage):
 

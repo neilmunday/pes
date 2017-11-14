@@ -73,6 +73,7 @@
 <div id="main">
 	<div id="menu_main" class="menu" tabindex="0"></div>
 	<div id="menu_settings" class="menu" tabindex="1"></div>
+	<div id="menu_game" class="menu" tabindex="1"></div>
 	<div id="container">
 		<div id="content">
 			<div id="screen_main" class="panel preview">
@@ -94,13 +95,50 @@
 			<div id="console_preview" class="preview">
 				<div id="console_preview_content">
 					<h1 id="console_preview_header"></h1>
-					<h2>Recently Played</h2>
-					<h2>Recently Added</h2>
-					<div id="console_preview_additions" class="gameAdditions"></div>
-					<h2>Achievements</h2>
+					<h2>Last Played</h2>
+					<h2>Additions</h2>
+					<div id="panel_console_additions"></div>
 				</div>
 				<div id="console_bg_container">
 					<img id="console_bg" src="" />
+				</div>
+			</div>
+
+			<div id="screen_game" class="panel">
+				<div id="panel_game_info" class="panel">
+					<h1 id="gameInfoTitle"></h1>
+					<table>
+						<tr>
+							<td width="400"><img id="gameInfoCoverArt"/></td>
+							<td>
+								<table>
+									<tr>
+										<td>Released:</td>
+										<td id="gameInfoReleased">&nbsp;</td>
+									</tr>
+									<tr>
+										<td>Play Count:</td>
+										<td id="gameInfoPlayCount">&nbsp;</td>
+									</tr>
+									<tr>
+										<td>Last Played:</td>
+										<td id="gameInfoLastPlayed">&nbsp;</td>
+									</tr>
+									<tr>
+										<td>Size:</td>
+										<td id="gameInfoSize">&nbsp;</td>
+									</tr>
+									<tr>
+										<td>File name:</td>
+										<td id="gameInfoFilename">&nbsp;</td>
+									</tr>
+								</table>
+							</td>
+						</tr>
+						<tr>
+							<td colspan="2" id="gameInfoOverview">&nbsp;<td>
+						</tr>
+					</table>
 				</div>
 			</div>
 
@@ -199,11 +237,11 @@
 				<table>
 					<tr>
 						<td>Version:</td>
-						<td>&nbsp;</td>
+						<td id="versionNumberCell">&nbsp;</td>
 					</tr>
 					<tr>
 						<td>Date:</td>
-						<td>&nbsp;</td>
+						<td id="versionDateCell">&nbsp;</td>
 					</tr>
 					<tr>
 						<td>Author:</td>
@@ -224,6 +262,10 @@
 					<tr>
 						<td>Facebook:</td>
 						<td>https://www.facebook.com/pientertainmentsystem</td>
+					</tr>
+					<tr>
+						<td>Donations (Bitcoin):</td>
+						<td><img src="../img/bitcoin_qrcode.png" /><br>15i2FE5LT3ATqSGXf2akeVFbupNaPQ2DKP</td>
 					</tr>
 				</table>
 			</div>
