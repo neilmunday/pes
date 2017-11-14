@@ -61,13 +61,21 @@ class RomTask(object):
 		self._covertArtDir = coverArtDir
 		self._retroAchievementId = retroAchievementId
 
-	def _doQuery(self, q):
+	def _doQuery(self, q, bindings=None):
 		with self._lock:
 			logging.debug("RomTask._doQuery: %s" % q)
 			db = self._openDb()
 			query = QSqlQuery(db)
-			if not query.exec_(q):
-				raise Exception("RomTask._doQuery: Error \"%s\" encountered whilst executing:\n%s" % (query.lastError().text(), q))
+			if bindings != None:
+				if not query.prepare(q):
+					raise Exception("RomTask._doQuery: failed to prepare query:\n%s" % q)
+				for field, value in bindings.items():
+					query.bindValue(":%s" % field, value)
+				if not query.exec_():
+					raise Exception("RomTask._doQuery: Error \"%s\" encountered whilst executing:\n%s" % (query.lastError().text(), q))
+			else:
+				if not query.exec_(q):
+					raise Exception("RomTask._doQuery: Error \"%s\" encountered whilst executing:\n%s" % (query.lastError().text(), q))
 			db.commit()
 			db.close()
 			del db
@@ -131,9 +139,12 @@ class GamesDbRomTask(RomTask):
 
 			nameNoSlashes = name.replace("/", "_")
 
-			query = self._doQuery("SELECT `game_id`, `coverart`, `path` FROM `game` WHERE `path` = \"%s\";" % self._rom)
+			query = self._doQuery("SELECT `game_id`, `coverart`, `path` FROM `game` WHERE `path` = :path;", {"path": self._rom})
 			found = query.first()
-			if not found:
+			if found:
+				# game already exists
+				self._doQuery("UPDATE `game` SET `exists` = 1 WHERE `game_id` = %d;" % query.value(0))
+			else:
 				# new game
 				gameApiId = None
 				bestName = name
@@ -185,7 +196,8 @@ class GamesDbRomTask(RomTask):
 							xname = x.find("GameTitle").text.encode('ascii', 'ignore').decode()
 							xid = int(x.find("id").text)
 
-							query = self._doQuery("SELECT `game_title_id`, `gamesdb_id`, `game_title_id`, `title` FROM `game_title` WHERE `console_id` = %d AND `title` = \"%s\";" % (self._consoleId, xname))
+							#query = self._doQuery("SELECT `game_title_id`, `gamesdb_id`, `game_title_id`, `title` FROM `game_title` WHERE `console_id` = %d AND `title` = \"%s\";" % (self._consoleId, xname))
+							query = self._doQuery("SELECT `game_title_id`, `gamesdb_id`, `game_title_id`, `title` FROM `game_title` WHERE `console_id` = :console_id AND title = :title ", { "title": xname, "console_id": self._consoleId})
 							with self._lock:
 								if query.first():
 									gameTitleId = query.value(0)
