@@ -13,7 +13,7 @@ from datetime import datetime
 
 import pes
 from pes.common import StringMatcher
-from pes.data import GameRecord, GameMatchRecord, GameTitleRecord
+from pes.data import doQuery, GameRecord, GameMatchRecord, GameTitleRecord
 from pes.retroachievement import RetroAchievementUser
 
 from PIL import Image
@@ -65,22 +65,12 @@ class RomTask(object):
 		with self._lock:
 			logging.debug("RomTask._doQuery: %s" % q)
 			db = self._openDb()
-			query = QSqlQuery(db)
-			if bindings != None:
-				if not query.prepare(q):
-					raise Exception("RomTask._doQuery: failed to prepare query:\n%s" % q)
-				for field, value in bindings.items():
-					query.bindValue(":%s" % field, value)
-				if not query.exec_():
-					raise Exception("RomTask._doQuery: Error \"%s\" encountered whilst executing:\n%s" % (query.lastError().text(), q))
-			else:
-				if not query.exec_(q):
-					raise Exception("RomTask._doQuery: Error \"%s\" encountered whilst executing:\n%s" % (query.lastError().text(), q))
+			query = doQuery(db, q, bindings)
 			db.commit()
 			db.close()
 			del db
 			QSqlDatabase.removeDatabase(self._connName)
-		return query
+			return query
 
 	def _openDb(self):
 		logging.debug("RomTask._openDb")

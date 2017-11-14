@@ -24,6 +24,29 @@ import pes
 
 from PyQt5.QtSql import QSqlDatabase, QSqlQuery
 
+def doQuery(db, q, bindings=None):
+	logging.debug("doQuery: %s" % q)
+	dbOpen = db.isOpen()
+	#logging.debug("Record._doQuery: conn name: %s" % self.__db.connectionName())
+	if not dbOpen:
+		logging.debug("doQuery: database is closed, opening...")
+		if not db.open():
+			raise IOError("doQuery: could not open database")
+	query = QSqlQuery(db)
+	if bindings != None:
+		query.prepare(q)
+		for field, value in bindings.items():
+			query.bindValue(":%s" % field, value)
+		if not query.exec_():
+			raise Exception("doQuery: Error \"%s\" encountered whilst executing:\n%s" % (query.lastError().text(), q))
+	else:
+		if not query.exec_(q):
+			raise Exception("doQuery: Error \"%s\" encountered whilst executing:\n%s" % (query.lastError().text(), q))
+	if not dbOpen:
+		logging.debug("doQuery: closing database")
+		db.close()
+	return query
+
 class Record(object):
 
 	def __init__(self, db, table, fields, keyField, keyValue, autoIncrement=True, record=None):
@@ -53,27 +76,7 @@ class Record(object):
 		return l
 
 	def _doQuery(self, q, bindings=None):
-		logging.debug("Record._doQuery: %s" % q)
-		dbOpen = self.__db.isOpen()
-		#logging.debug("Record._doQuery: conn name: %s" % self.__db.connectionName())
-		if not dbOpen:
-			logging.debug("Record._doQuery: database is closed, opening...")
-			if not self.__db.open():
-				raise IOError("Record._doQuery: could not open database")
-		query = QSqlQuery(self.__db)
-		if bindings != None:
-			query.prepare(q)
-			for field, value in bindings.items():
-				query.bindValue(":%s" % field, value)
-			if not query.exec_():
-				logging.error("Record._doQuery: Error \"%s\" encountered whilst executing:\n%s" % (query.lastError().text(), q))
-		else:
-			if not query.exec_(q):
-				logging.error("Record._doQuery: Error \"%s\" encountered whilst executing:\n%s" % (query.lastError().text(), q))
-		if not dbOpen:
-			logging.debug("Record._doQuery: closing database")
-			self.__db.close()
-		return query
+		return doQuery(self.__db, q, bindings)
 
 	def getId(self):
 		return self.__properties[self.__keyField]
