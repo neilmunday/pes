@@ -52,18 +52,6 @@ class Record(object):
 				l.append(f)
 		return l
 
-	@staticmethod
-	def convertValue(v):
-		isNumeric = False
-		try:
-			float(v)
-			isNumeric = True
-		except ValueError:
-			pass
-		if not isNumeric:
-			return "'%s'" % v.replace("'", "''")
-		return str(v)
-
 	def _doQuery(self, q, bindings=None):
 		logging.debug("Record._doQuery: %s" % q)
 		dbOpen = self.__db.isOpen()
@@ -127,7 +115,7 @@ class Record(object):
 				if not f in self.__properties:
 					self.__properties[f] = "NULL"
 				q += '`%s`' % f
-				endQuery += self.convertValue(self.__properties[f])
+				endQuery += ':%s' % f
 				if i < total - 1:
 					q += ','
 					endQuery += ','
@@ -140,13 +128,13 @@ class Record(object):
 			total = len(self.__dirtyFields)
 			q = 'UPDATE `%s` SET ' % self.__table
 			for f in self.__dirtyFields:
-				q += '`%s` = %s' % (f, self.convertValue(self.__properties[f]))
+				q += '`%s` = :%s' % (f, f)
 				if i < total - 1:
 					q += ','
 				i += 1
 			q += ' WHERE `%s` = %d;' % (self.__keyField, self.__properties[self.__keyField])
 
-		query = self._doQuery(q)
+		query = self._doQuery(q, self.__properties)
 		self.__db.commit()
 
 		if self.__isNew:
