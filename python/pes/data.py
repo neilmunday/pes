@@ -64,7 +64,7 @@ class Record(object):
 			return "'%s'" % v.replace("'", "''")
 		return str(v)
 
-	def _doQuery(self, q):
+	def _doQuery(self, q, bindings=None):
 		logging.debug("Record._doQuery: %s" % q)
 		dbOpen = self.__db.isOpen()
 		#logging.debug("Record._doQuery: conn name: %s" % self.__db.connectionName())
@@ -73,8 +73,15 @@ class Record(object):
 			if not self.__db.open():
 				raise IOError("Record._doQuery: could not open database")
 		query = QSqlQuery(self.__db)
-		if not query.exec_(q):
-			logging.error("Record._doQuery: Error \"%s\" encountered whilst executing:\n%s" % (query.lastError().text(), q))
+		if bindings != None:
+			query.prepare(q)
+			for field, value in bindings.items():
+				query.bindValue(":%s" % field, value)
+			if not query.exec_():
+				logging.error("Record._doQuery: Error \"%s\" encountered whilst executing:\n%s" % (query.lastError().text(), q))
+		else:
+			if not query.exec_(q):
+				logging.error("Record._doQuery: Error \"%s\" encountered whilst executing:\n%s" % (query.lastError().text(), q))
 		if not dbOpen:
 			logging.debug("Record._doQuery: closing database")
 			self.__db.close()
