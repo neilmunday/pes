@@ -78,6 +78,9 @@ class Record(object):
 	def _doQuery(self, q, bindings=None):
 		return doQuery(self.__db, q, bindings)
 
+	def _getDb(self):
+		return self.__db
+
 	def getId(self):
 		return self.__properties[self.__keyField]
 
@@ -150,6 +153,9 @@ class Record(object):
 		if not field in self.__dirtyFields:
 			self.__dirtyFields.append(field)
 
+	def toDic(self):
+		return self.__properties.copy()
+
 class ConsoleRecord(Record):
 
 	def __init__(self, db, keyValue, row=None):
@@ -165,6 +171,15 @@ class ConsoleRecord(Record):
 
 	def getGamesDbName(self):
 		return self._getProperty("gamesdb_name")
+
+	def getLatestAdditions(self, limit=10):
+		query = self._doQuery("SELECT * FROM `game` WHERE `console_id` = %d ORDER BY `added` DESC LIMIT %d" % (self.getId(), limit))
+		games = []
+		db = self._getDb()
+		while query.next():
+			record = query.record()
+			games.append(GameRecord(db, record.value("game_id"), record))
+		return games
 
 	def getName(self):
 		return self._getProperty("name")
@@ -363,6 +378,9 @@ class Console(object):
 
 	def getIgnoreRomList(self):
 		return self.__ignoreRoms
+
+	def getLatestAdditions(self, limit=10):
+		return self.__consoleRecord.getLatestAdditions(limit)
 
 	def getRetroAchievementId(self):
 		return self.__consoleRecord.getRetroAchievementId()

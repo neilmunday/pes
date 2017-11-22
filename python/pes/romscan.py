@@ -43,12 +43,34 @@ def doXmlRequest(url, parameters):
 		return ElementTree.parse(response.raw)
 	logging.error("doXmlRequest: failed to load %s with %s" % (url, parameters))
 
+def getRasum(consoleName, rom):
+	rasum = 0
+	command = pes.rasumExe
+	if consoleName == "MegaDrive" or consoleName == "Genesis":
+		command += " -t genesis "
+	elif consoleName == "NES":
+		command += " -t nes "
+	elif consoleName == "SNES":
+		command += " -t snes "
+	command += " \"%s\"" % rom
+
+	logging.debug("getRasum: running command: %s" % command)
+
+	process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	stdout, stderr = process.communicate()
+	if process.returncode != 0:
+		logging.error("getRasum: failed to get rasum for %s\nstdout: %s\nstderr: %s" % (rom, stdout.decode(), stderr.decode()))
+	else:
+		rasum = stdout.decode().strip()
+		logging.debug("getRasum: rasum for %s is %s" % (rom, rasum))
+	return rasum
+
 class RomTask(object):
 
 	SCALE_WIDTH = 400.0
 	IMG_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif']
 
-	def __init__(self, rom, consoleId, consoleName, retroAchievementId, romExtensions, ignoreRoms, coverArtDir):
+	def __init__(self, rom, consoleId, consoleName, retroAchievementId, romExtensions, ignoreRoms, coverArtDir, noCoverArt):
 		"""
 			@param	rom		path to ROM
 			@param	console	console object
@@ -59,6 +81,7 @@ class RomTask(object):
 		self._romExtensions = romExtensions
 		self._ignoreRoms = ignoreRoms
 		self._covertArtDir = coverArtDir
+		self._noCoverArt = noCoverArt
 		self._retroAchievementId = retroAchievementId
 
 	def _doQuery(self, q, bindings=None):
@@ -103,8 +126,8 @@ class RomTask(object):
 
 class GamesDbRomTask(RomTask):
 
-	def __init__(self, rom, consoleId, consoleName, consoleApiName, retroAchievementId, romExtensions, ignoreRoms, coverArtDir):
-		super(GamesDbRomTask, self).__init__(rom, consoleId, consoleName, retroAchievementId, romExtensions, ignoreRoms, coverArtDir)
+	def __init__(self, rom, consoleId, consoleName, consoleApiName, retroAchievementId, romExtensions, ignoreRoms, coverArtDir, noCoverArt):
+		super(GamesDbRomTask, self).__init__(rom, consoleId, consoleName, retroAchievementId, romExtensions, ignoreRoms, coverArtDir, noCoverArt)
 		self._consoleApiName = consoleApiName
 
 	def run(self, processNumber):
@@ -114,7 +137,7 @@ class GamesDbRomTask(RomTask):
 
 		added = 0
 		updated = 0
-		thumbPath = "0"
+		thumbPath = None
 		name = filename
 
 		for e in self._romExtensions:
@@ -133,6 +156,7 @@ class GamesDbRomTask(RomTask):
 			found = query.first()
 			if found:
 				# game already exists
+				thumbPath = query.value(1)
 				self._doQuery("UPDATE `game` SET `exists` = 1 WHERE `game_id` = %d;" % query.value(0))
 			else:
 				# new game
@@ -156,7 +180,7 @@ class GamesDbRomTask(RomTask):
 							thumbPath = path2
 							break
 
-				if thumbPath != "0":
+				if thumbPath != None:
 					# can we open the image?
 					imgOk = False
 					try:
@@ -166,7 +190,7 @@ class GamesDbRomTask(RomTask):
 					except IOError as e:
 						logging.warning("GamesDbRomTask: %s is not a valid image, it will be deleted")
 						os.remove(thumbPath)
-						thumbPath = "0"
+						thumbPath = None
 
 				if self._consoleApiName != "NULL":
 					nameLower = name.lower()
@@ -223,7 +247,41 @@ class GamesDbRomTask(RomTask):
 							if count == MATCH_LIMIT:
 								break
 
-				if gameApiId != None:
+				if gameApiId == None:
+					logging.warning("GamesDbRomTask: no GamesDB match found for %s" % name)
+					rasum = getRasum(self._consoleName, self._rom)
+					retroAchievementGameId = RetroAchievementUser.getRetroAchievementId(rasum)
+					if retroAchievementGameId == None:
+						retroAchievementGameId = 0
+
+					thumbPath = self._noCoverArt
+
+					with self._lock:
+						logging.debug("GamesDbRomTask: creating new GameRecord object")
+						db = self._openDb()
+						game = GameRecord(db, None)
+						game.setExists(True)
+						game.setAdded(time.time())
+						game.setConsoleId(self._consoleId)
+						game.setCoverArt(thumbPath)
+						game.setLastPlayed(0)
+						game.setName(name)
+						game.setOverview("")
+						game.setPath(self._rom)
+						game.setPlayCount(0)
+						game.setRasum(rasum)
+						game.setReleased(0)
+						game.setRetroAchievementId(retroAchievementGameId)
+						game.setScoreTotal(0)
+						game.setSize(os.path.getsize(self._rom))
+						game.save()
+						gameId = game.getId()
+						del game
+						del db
+						QSqlDatabase.removeDatabase(self._connName)
+
+					added += 1
+				else:
 					logging.debug("GamesDbRomTask: \"%s\" (%s) theGamesDb ID: %d" % (name, self._consoleApiName, gameApiId))
 					# now get ROM meta data
 					dataOk = False
@@ -248,7 +306,7 @@ class GamesDbRomTask(RomTask):
 								# thrown if date is not valid
 								released = -1
 
-						if thumbPath == "0":
+						if thumbPath == None:
 							# no cover art, let's download some
 							logging.debug("GamesDbRomTask: downloading cover art for %s" % name)
 							boxartElement = xmlData.find("Game/Images/boxart[@side='front']")
@@ -270,7 +328,7 @@ class GamesDbRomTask(RomTask):
 												f.write(chunk)
 										# resize the image (if required)
 										if not self._scaleImage(thumbPath):
-											thumbPath = "0"
+											thumbPath = None
 									else:
 										logging.error("GamesDbRomTask: failed to get covert art for %d, status code: %s" % (gameApiId, response.status_code))
 								except Exception as e:
@@ -278,29 +336,16 @@ class GamesDbRomTask(RomTask):
 									logging.error(e)
 
 						# get rasum
-						rasum = 0
+						rasum = getRasum(self._consoleName, self._rom)
 						retroAchievementGameId = 0
-						if self._retroAchievementId > 0:
-							command = pes.rasumExe
-							if self._consoleName == "MegaDrive" or self._consoleName == "Genesis":
-								command += " -t genesis "
-							elif self._consoleName == "NES":
-								command += " -t nes "
-							elif self._consoleName == "SNES":
-								command += " -t snes "
-							command += "\"%s\"" % self._rom
+						if rasum != 0:
+							# get retroAchievement game Id
+							retroAchievementGameId = RetroAchievementUser.getRetroAchievementId(rasum)
+							if retroAchievementGameId == None:
+								retroAchievementGameId = 0
 
-							process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-							stdout, stderr = process.communicate()
-							if process.returncode != 0:
-								logging.error("GamesDbRomTask: failed to get rasum for %s\nstdout: %s\nstderr: %s" % (self._rom, stdout.decode(), stderr.decode()))
-							else:
-								rasum = stdout.decode().strip()
-								logging.debug("GamesDbRomTask: rasum for %s is %s" % (self._rom, rasum))
-								# get retroAchievement game Id
-								retroAchievementGameId = RetroAchievementUser.getRetroAchievementId(rasum)
-								if retroAchievementGameId == None:
-									retroAchievementGameId = 0
+						if thumbPath == None:
+							thumbPath = self._noCoverArt
 
 						with self._lock:
 							logging.debug("GamesDbRomTask: creating new GameRecord object")
@@ -318,6 +363,7 @@ class GamesDbRomTask(RomTask):
 							game.setRasum(rasum)
 							game.setReleased(released)
 							game.setRetroAchievementId(retroAchievementGameId)
+							game.setScoreTotal(0)
 							game.setSize(os.path.getsize(self._rom))
 							game.save()
 							gameId = game.getId()
@@ -498,6 +544,7 @@ class RomScanThread(QThread):
 			romExtensions = console.getExtensions()
 			ignoreRoms = console.getIgnoreRomList()
 			coverArtDir = console.getCoverArtDir()
+			noCoverArt = console.getNoCoverArt()
 			logging.debug("RomScanThread.run: pre-processing %s" % consoleName)
 
 			query.exec_("UPDATE `game` SET `exists` = 0 WHERE `console_id` = %d;" % consoleId)
@@ -533,7 +580,7 @@ class RomScanThread(QThread):
 
 					if consoleApiName != None:
 						for f in romFiles:
-							self.__tasks.put(GamesDbRomTask(f, consoleId, consoleName, consoleApiName, retroAchievementId, romExtensions, ignoreRoms, coverArtDir))
+							self.__tasks.put(GamesDbRomTask(f, consoleId, consoleName, consoleApiName, retroAchievementId, romExtensions, ignoreRoms, coverArtDir, noCoverArt))
 
 		self.romsFoundSignal.emit(self.__romTotal)
 		logging.debug("RomScanThread.run: added %d ROMs to the process queue" % self.__romTotal)

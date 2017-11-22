@@ -40,7 +40,7 @@ import sdl2.ext
 import sdl2.joystick
 
 import pes
-from pes.data import doQuery, Console, ConsoleRecord, Settings
+from pes.data import doQuery, Console, ConsoleRecord, GameRecord, Settings
 from pes.common import checkDir, checkFile, getIpAddress, mkdir, pesExit
 from pes.romscan import RomScanThread
 import pes.gamecontroller
@@ -425,7 +425,7 @@ class LoadingThread(QThread):
 					consoleParser.get(c, "extensions").split(),
 					ignoreRoms,
 					consoleParser.get(c, "command"),
-					consoleParser.get(c, "nocoverart"),
+					consoleParser.get(c, "nocoverart").replace("%%BASE%%", pes.baseDir),
 					coverArtDir
 				)
 				self.__window.consoles.append(console)
@@ -479,7 +479,6 @@ class RomScanMonitorThread(QThread):
 		romName = ""
 		coverArtPath = "0"
 
-		#while not self.__scanThread.isFinished():
 		while self.__running:
 			lastRom = self.__scanThread.getLastRom()
 			if lastRom:
@@ -574,20 +573,17 @@ class CallHandler(QObject):
 
 	@pyqtSlot(int, int, result=list)
 	def getLatestAdditions(self, limit=10, consoleId=None):
-		query = QSqlQuery()
+		games = []
 		if consoleId:
-			q = "SELECT `name`, `coverart`, `console_id`, `overview` FROM `game` WHERE `console_id` = %d ORDER BY `added` DESC LIMIT %d;" % (consoleId, limit)
-		else:
-			q = "SELECT `name`, `coverart`, `console_id`, `overview` FROM `game` ORDER BY `added` DESC LIMIT %d;" % limit
-		if not query.exec_(q):
-			logging.error("Handler.getLatestAdditions: query %s failed with error %s" % (q, query.lastError().text()))
-			return []
+			for g in self.__window.consoleIdMap[consoleId].getLatestAdditions(limit):
+				games.append(g.toDic())
+			return games
+		query = doQuery(self.__window.db, "SELECT * FROM `game` ORDER BY `added` DESC LIMIT %d;" % limit)
 		games = []
 		while query.next():
-			coverart = query.value(1)
-			if coverart == "0":
-				coverart = self.__window.consoleIdMap[query.value(2)].getNoCoverArt()
-			games.append({"name": query.value(0), "coverart": coverart, "overview": query.value(3)})
+			record = query.record()
+			g = GameRecord(self.__window.db, record.value("game_id"), record)
+			games.append(g.toDic())
 		return games
 
 	@pyqtSlot(result=QVariant)
