@@ -13,7 +13,7 @@ Arch Linux packages are provided for software used by PES for easier management 
 PES 2.3
 -------
 
-Date: 2017-07-26
+Date: 2017-11-23
 
 Changes (and bug fixes):
 
@@ -86,7 +86,7 @@ Changes (and bug fixes):
 
 * Corrected build flags for the picodrive libretro core to produce a more optimized version. Thanks to Michell F for pointing out the error.
 
-PES 1.5.0 
+PES 1.5.0
 ---------
 
 Date: 2015-10-22
@@ -189,7 +189,7 @@ Changes (and bug fixes):
 * Moved all PES classes into the new peslib.py module
 * Arch Linux packages updated
 * Raspberry Pi B+ now supported
-* Console screen added 
+* Console screen added
 * Missing cover art graphics revamped (graphics from Eric Smith)
 * PESPad added thus allowing players to use their tablets and smart phones as control pads
 * Game info screen added
