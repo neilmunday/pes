@@ -1,0 +1,1 @@
+../arch-common/install-bluez-ps3.sh
