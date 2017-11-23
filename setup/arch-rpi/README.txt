@@ -46,7 +46,7 @@ Also set check:
 	gpu_mem=384
 	dtparam=audio=on
 	disable_overscan=0
-  overscan_scale=1
+	overscan_scale=1
 
 The extra GPU RAM is required for some of the emulators, e.g. Mupen64Plus and the "dtpara=audio" parameter enables the ALSA kernel module required for sound.
 
