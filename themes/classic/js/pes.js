@@ -445,6 +445,7 @@ $(document).ready(function(){
 							$("#gameInfoTitle").html(rom.name);
 							$("#gameInfoCoverArt").attr("src", rom.coverart);
 							$("#gameInfoOverview").html(rom.overview);
+							$("#gameInfoPlayCount").html(rom.play_count);
 							showScreen("game");
 						});
 						mainPanelAdditionsPanel.draw();
