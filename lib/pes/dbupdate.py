@@ -43,20 +43,20 @@ import multiprocessing
 
 URL_TIMEOUT = 30
 logging.getLogger("PIL").setLevel(logging.WARNING)
-	
+
 class ConsoleTask(object):
-	
+
 	SCALE_WIDTH = 200.0
-	
+
 	def __init__(self, rom, consoleApiName, console):
 		self.rom = rom
 		self.consoleApiName = consoleApiName
 		self.console = console
 		self.consoleName = console.getName()
-		
+
 	def __repr__(self):
 		return self.rom
-	
+
 	def __execute(self, query, fetch=False):
 		row = None
 		con = None
@@ -68,7 +68,7 @@ class ConsoleTask(object):
 				cur.execute(query)
 				if fetch:
 					row = cur.fetchone()
-				else:	
+				else:
 					con.commit()
 				con.close()
 			except sqlite3.Error, e:
@@ -77,21 +77,21 @@ class ConsoleTask(object):
 				if con:
 					con.close()
 		return row
-		
+
 	def run(self):
 		url = 'http://thegamesdb.net/api/'
 		headers = {'User-Agent': 'PES Scraper'}
 		imgExtensions = ['jpg', 'jpeg', 'png', 'gif']
-		
+
 		rom = self.rom
 		consoleApiName = self.consoleApiName
 		console = self.console
 		cacheDir = console.getImgCacheDir()
 		consoleId = self.console.getId()
-		
+
 		added = 0
 		updated = 0
-		
+
 		filename = os.path.split(rom)[1]
 		#if not console.ignoreRom(filename):
 		logging.debug("ConsoleTask: processing -> %s" % filename)
@@ -99,19 +99,19 @@ class ConsoleTask(object):
 		fileSize = os.path.getsize(rom)
 		for e in console.getExtensions():
 			name = name.replace(e, '')
-			
+
 		if not console.ignoreRom(name):
-				
+
 			row = self.__execute("SELECT `full_name` FROM `games_catalogue` WHERE `short_name` = \"%s\"" % name, True)
 			if row:
 				name = row['full_name']
-				
+
 			row = self.__execute("SELECT `game_id`, `name`, `cover_art`, `game_path`, `thegamesdb_id` FROM `games` WHERE `game_path` = \"%s\";" % rom, True)
 			if row == None or (row['cover_art'] == "0" and row['thegamesdb_id'] == -1) or (row['cover_art'] != "0" and not os.path.exists(row['cover_art'])):
 				gameApiId = None
 				bestName = name
 				thumbPath = '0'
-				
+
 				# has cover art already been provided by the user or downloaded previously?
 				for e in imgExtensions:
 					path = os.path.join(cacheDir, "%s.%s" % (filename, e))
@@ -124,7 +124,7 @@ class ConsoleTask(object):
 						if os.path.exists(path):
 							thumbPath = path
 							break
-					
+
 				if thumbPath != '0':
 					# can the image be opened?
 					imgOk = False
@@ -132,10 +132,10 @@ class ConsoleTask(object):
 						img = Image.open(thumbPath)
 						img.close()
 					except IOError as e:
-						logging.warning("ConsoleTask: %s is not a valid image, it will be deleted")
+						logging.warning("ConsoleTask: %s is not a valid image, it will be deleted" % thumbPath)
 						os.remove(thumbPath)
 						thumbPath = '0'
-				
+
 				overview = ''
 				released = -1
 				if consoleApiName != None:
@@ -162,7 +162,7 @@ class ConsoleTask(object):
 						except ParseError, e:
 							logging.error(e)
 							logging.error("Failed response for console %s was: %s" % (name, response))
-						
+
 						if dataOk:
 							for x in xmlData.findall("Game"):
 								xname = x.find("GameTitle").text.encode('ascii', 'ignore')
@@ -201,7 +201,7 @@ class ConsoleTask(object):
 							logging.error(e)
 							logging.error("Failed URL was: %s" % gameUrl)
 							logging.error("Failed content was: %s" % response)
-							
+
 						if dataOk:
 							overviewElement = xmlData.find("Game/Overview")
 							if overviewElement != None:
@@ -215,13 +215,14 @@ class ConsoleTask(object):
 								except ValueError, e:
 									# thrown if date is not valid
 									released = -1
-									
+
 							if thumbPath == "0":
 								boxartElement = xmlData.find("Game/Images/boxart[@side='front']")
 								if boxartElement != None:
 									imageSaved = False
 									try:
 										imgUrl = "http://thegamesdb.net/banners/%s" % boxartElement.text
+										logging.debug("Downloading image from: %s" % imgUrl)
 										extension = imgUrl[imgUrl.rfind('.'):]
 										thumbPath =  console.getImgCacheDir() + os.sep + name.replace('/', '_') + extension
 										request = urllib2.Request(imgUrl, headers=headers)
@@ -237,16 +238,31 @@ class ConsoleTask(object):
 
 									if imageSaved:
 										# resize the image if it is too big
-										if not self.__scaleImage(thumbPath, name):
+										try:
+											thumbPathNew = self.__scaleImage(thumbPath)
+											thumbPath = thumbPathNew
+										except Exception as e:
+											logging.error("Failed to scale %s" % thumbPath)
+											logging.error(e)
 											thumbPath = '0'
 							else:
 								# does the provided image need to be scaled?
-								if not self.__scaleImage(thumbPath, name):
+								try:
+									thumbPathNew = self.__scaleImage(thumbPath)
+									thumbPath = thumbPathNew
+								except Exception as e:
+									logging.error("Failed to scale %s" % thumbPath)
+									logging.error(e)
 									thumbPath = '0'
 						else:
 							if thumbPath != "0":
 								# does the provided image need to be scaled?
-								if not self.__scaleImage(thumbPath, name):
+								try:
+									thumbPathNew = self.__scaleImage(thumbPath)
+									thumbPath = thumbPathNew
+								except Exception as e:
+									logging.error("Failed to scale %s" % thumbPath)
+									logging.error(e)
 									thumbPath = '0'
 				else:
 					gameApiId = -1
@@ -284,7 +300,7 @@ class ConsoleTask(object):
 							except Exception as e:
 								logging.error("The following error occurred when processing: %s" % rom)
 								logging.error(e)
-					
+
 					self.__execute("INSERT INTO `games`(`exists`, `console_id`, `name`, `game_path`, `thegamesdb_id`, `cover_art`, `overview`, `released`, `added`, `favourite`, `last_played`, `play_count`, `size`, `rasum`, `achievement_api_id`) VALUES (1, %d, '%s', '%s', %d, '%s', '%s', %d, %d, 0, -1, 0, %d, '%s', %d);" % (consoleId, name.replace("'", "''"), rom.replace("'", "''"), gameApiId, thumbPath.replace("'", "''"), overview.replace("'", "''"), released, time.time(), fileSize, rasum, achievementApiId))
 					added += 1
 				elif gameApiId != -1:
@@ -294,31 +310,43 @@ class ConsoleTask(object):
 					self.__execute("UPDATE `games` SET `exists` = 1 WHERE `game_id` = %d;" % row["game_id"])
 			else:
 				self.__execute("UPDATE `games` SET `exists` = 1 WHERE `game_id` = %d;" % row["game_id"])
-				
+
 		return (added, updated)
-				
+
 	@staticmethod
-	def __scaleImage(path, name):
-		try:
-			img = Image.open(path)
-			width, height = img.size
-			scaleWidth = ConsoleTask.SCALE_WIDTH
-			ratio = min(float(scaleWidth / width), float(scaleWidth / height))
-			newWidth = width * ratio
-			newHeight = height * ratio
-			if width > newWidth or height > newHeight:
-				# scale image
-				img.thumbnail((newWidth, newHeight), Image.ANTIALIAS)
-				img.save(path)
-			img.close()
-		except IOError as e:
-			logging.error("Failed to scale: %s" % path)
-			return False
-		return True
-			
+	def __scaleImage(path):
+		img = Image.open(path)
+		imgFormat = img.format
+		filename, extension = os.path.splitext(path)
+		logging.debug("%s format is %s" % (path, imgFormat))
+		width, height = img.size
+		scaleWidth = ConsoleTask.SCALE_WIDTH
+		ratio = min(float(scaleWidth / width), float(scaleWidth / height))
+		newWidth = width * ratio
+		newHeight = height * ratio
+		if width > newWidth or height > newHeight:
+			# scale image
+			img.thumbnail((newWidth, newHeight), Image.ANTIALIAS)
+		if imgFormat == "JPEG":
+			extension = ".jpg"
+		elif imgFormat == "PNG":
+			extension = ".png"
+		elif imgFormat == "GIF":
+			extension = ".gif"
+		else:
+			imgFormat = "PNG"
+			extension = ".png"
+		newPath = "%s%s" % (filename, extension)
+		if newPath != path:
+			logging.warning("%s will be deleted and saved as %s due to incorrect image format" % (path, newPath))
+			os.remove(path)
+		img.save(newPath, imgFormat)
+		img.close()
+		return newPath
+
 	def setLock(self, lock):
 		self.lock = lock
-			
+
 class Consumer(multiprocessing.Process):
 	def __init__(self, taskQueue, resultQueue, exitEvent, lock):
 	#def __init__(self, taskQueue, lock):
@@ -327,7 +355,7 @@ class Consumer(multiprocessing.Process):
 		self.resultQueue = resultQueue
 		self.lock = lock
 		self.exitEvent = exitEvent
-		
+
 	def run(self):
 		# keep track of updated and added totals within the consumer
 		# rather than adding to the result queue, thus keeping the maximum
@@ -350,9 +378,9 @@ class Consumer(multiprocessing.Process):
 				self.taskQueue.task_done()
 		self.resultQueue.put((added, updated))
 		self.resultQueue.close()
-	
+
 class UpdateDbThread(Thread):
-	
+
 	def __init__(self, consoles):
 		Thread.__init__(self)
 		self.done =  False
@@ -366,14 +394,14 @@ class UpdateDbThread(Thread):
 		self.deleted = 0
 		self.interrupted = False
 		self.__queueSetUp = False
-		
+
 	@staticmethod
 	def __extensionOk(extensions, filename):
 		for e in extensions:
 			if filename.endswith(e):
 				return True
 		return False
-	
+
 	@staticmethod
 	def formatTime(time):
 		if time < 60:
@@ -383,7 +411,7 @@ class UpdateDbThread(Thread):
 		if h == 0:
 			return "%dm %ds" % (m, s)
 		return "%dh %dm %ds" % (h, m, s)
-	
+
 	def getElapsed(self):
 		if not self.started:
 			return self.formatTime(0)
@@ -391,14 +419,14 @@ class UpdateDbThread(Thread):
 			return self.formatTime(time.time() - self.__startTime)
 		if self.done:
 			return self.formatTime(self.__endTime - self.__startTime)
-	
+
 	def getProcessed(self):
 		if not self.started or not self.__queueSetUp:
 			return 0
 		if self.done:
 			return self.romTotal
 		return self.romTotal - self.__tasks.qsize()
-		
+
 	def getProgress(self):
 		if self.done:
 			return 100
@@ -411,19 +439,19 @@ class UpdateDbThread(Thread):
 		if qsize <= 0:
 			return 100
 		return int((float(self.romTotal - qsize) / float(self.romTotal)) * 100.0)
-	
+
 	def getRemaining(self):
 		processed = self.getProcessed()
 		if processed == 0 or not self.started or self.done or self.__tasks.qsize() == 0:
 			return self.formatTime(0)
 		# now work out average time taken per ROM
 		return self.formatTime(((time.time() - self.__startTime) / processed) * self.__tasks.qsize())
-	
+
 	def getUnprocessed(self):
 		if not self.__queueSetUp:
 			return self.romTotal
 		return self.__tasks.qsize()
-	
+
 	def run(self):
 		self.__startTime = time.time()
 		self.added = 0
@@ -441,13 +469,13 @@ class UpdateDbThread(Thread):
 		consumers = [Consumer(self.__tasks, results, self.__exitEvent, lock) for i in xrange(self.consumerTotal)]
 		#for w in consumers:
 		#	w.start()
-		
+
 		url = 'http://thegamesdb.net/api/'
 		headers = {'User-Agent': 'PES Scraper'}
-		
+
 		con = None
 		cur = None
-		
+
 		for c in self.consoles:
 			consoleName = c.getName()
 			consoleId = c.getId()
@@ -455,7 +483,7 @@ class UpdateDbThread(Thread):
 
 			urlLoaded = False
 			consoleApiName = None
-			
+
 			try:
 				con = sqlite3.connect(userPesDb)
 				con.row_factory = sqlite3.Row
@@ -470,7 +498,7 @@ class UpdateDbThread(Thread):
 			finally:
 				if con:
 					con.close()
-				
+
 			files = glob.glob("%s%s*" % (c.getRomDir(), os.sep))
 			fileTotal = len(files)
 			extensions = c.getExtensions()
@@ -481,7 +509,7 @@ class UpdateDbThread(Thread):
 				if os.path.isfile(f) and self.__extensionOk(extensions, f):
 					romFiles.append(f)
 					self.romTotal += 1
-					
+
 			if len(romFiles) > 0:
 				try:
 					# get API name for this console
@@ -494,45 +522,45 @@ class UpdateDbThread(Thread):
 				except Exception as e:
 					logging.error(e)
 					logging.error("UpdateDbThread.run: not get console API name for: %s" % consoleName)
-				
+
 				if not urlLoaded:
 					logging.warning("UpdateDbThread.run: Could not get console API name for: %s" % consoleName)
-					
+
 				for f in romFiles:
 					self.__tasks.put(ConsoleTask(f, consoleApiName, c))
-					
+
 		logging.debug("UpdateDbThread.run: added %d ROMs to the queue" % self.romTotal)
-		
+
 		for i in xrange(self.consumerTotal):
 			self.__tasks.put(None)
-			
+
 		logging.debug("UpdateDbThread.run: added poison pills")
 		self.__queueSetUp = True
-		
+
 		logging.debug("UpdateDbThread.run: starting consumers...")
 		for w in consumers:
 			w.start()
-		
+
 		for w in consumers:
 			w.join()
 		logging.debug("UpdateDbThread.run: consumers joined!")
-		
+
 		self.__tasks.join()
 		logging.debug("UpdateDbThread.run: tasks joined!")
-		
+
 		logging.debug("UpdateDbThread.run: processing results...")
 		while not results.empty():
 			(added, updated) = results.get()
 			self.added += added
 			self.updated += updated
-		
+
 		logging.debug("UpdateDbThread.run: processes finished")
-		
+
 		try:
 			con = sqlite3.connect(userPesDb)
 			con.row_factory = sqlite3.Row
 			cur = con.cursor()
-			
+
 			if self.interrupted:
 				cur.execute("UPDATE `games` SET `exists` = 1 WHERE `exists` = 0")
 			else:
@@ -546,14 +574,14 @@ class UpdateDbThread(Thread):
 		finally:
 			if con:
 				con.close()
-		
+
 		logging.debug("UpdateDbThread.run: pushing PES event...")
 		pes.event.pushPesEvent(pes.event.EVENT_DB_UPDATE)
-		
+
 		self.done = True
 		self.__endTime = time.time()
 		logging.debug("UpdateDbThread.run: exiting")
-		
+
 	def stop(self):
 		if self.started and not self.done:
 			self.interrupted = True
