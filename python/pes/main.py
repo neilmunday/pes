@@ -135,6 +135,11 @@ if __name__ == '__main__':
 			pesExit("Could not find \"coverartDir\" parameter in \"settings\" section in %s" % pes.userPesConfigFile)
 		logging.debug("cover art dir: %s" % covertArtDir)
 		mkdir(covertArtDir)
+		romsDir = settings.get("settings", "romsDir")
+		if romsDir == None:
+			pesExit("Could not find \"romsDir\" parameter in \"settings\" section in %s" % pes.userPesConfigFile)
+		logging.debug("ROMs dir: %s" % romsDir)
+		mkdir(romsDir)
 
 		romScraper = settings.get("settings", "romScraper")
 		if romScraper == None:
