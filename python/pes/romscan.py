@@ -107,22 +107,34 @@ class RomTask(object):
 
 	@staticmethod
 	def _scaleImage(path):
-		try:
-			img = Image.open(path)
-			width, height = img.size
-			scaleWidth = RomTask.SCALE_WIDTH
-			ratio = min(float(scaleWidth / width), float(scaleWidth / height))
-			newWidth = width * ratio
-			newHeight = height * ratio
-			if width > newWidth or height > newHeight:
-				# scale image
-				img.thumbnail((newWidth, newHeight), Image.ANTIALIAS)
-				img.save(path)
-			img.close()
-		except IOError as e:
-			logging.error("RomTask._scaleImage: Failed to scale: %s" % path)
-			return False
-		return True
+		img = Image.open(path)
+		imgFormat = img.format
+		filename, extension = os.path.splitext(path)
+		logging.debug("RomTask._scaleImage: %s format is %s" % (path, imgFormat))
+		width, height = img.size
+		scaleWidth = ConsoleTask.SCALE_WIDTH
+		ratio = min(float(scaleWidth / width), float(scaleWidth / height))
+		newWidth = width * ratio
+		newHeight = height * ratio
+		if width > newWidth or height > newHeight:
+			# scale image
+			img.thumbnail((newWidth, newHeight), Image.ANTIALIAS)
+		if imgFormat == "JPEG":
+			extension = ".jpg"
+		elif imgFormat == "PNG":
+			extension = ".png"
+		elif imgFormat == "GIF":
+			extension = ".gif"
+		else:
+			imgFormat = "PNG"
+			extension = ".png"
+		newPath = "%s%s" % (filename, extension)
+		if newPath != path:
+			logging.warning("RomTask._scaleImage: %s will be deleted and saved as %s due to incorrect image format" % (path, newPath))
+			os.remove(path)
+		img.save(newPath, imgFormat)
+		img.close()
+		return newPath
 
 class GamesDbRomTask(RomTask):
 
@@ -327,7 +339,11 @@ class GamesDbRomTask(RomTask):
 											for chunk in response.iter_content(chunk_size=128):
 												f.write(chunk)
 										# resize the image (if required)
-										if not self._scaleImage(thumbPath):
+										try:
+											newThumbPath = self._scaleImage(thumbPath)
+											thumbPath = newThumbPath
+										except Exception as e:
+											logging.error("GamesDbRomTask: failed to scale %s" % thumbPath)
 											thumbPath = None
 									else:
 										logging.error("GamesDbRomTask: failed to get covert art for %d, status code: %s" % (gameApiId, response.status_code))
@@ -610,11 +626,13 @@ class RomScanThread(QThread):
 
 			self.__db.open()
 
-		# delete missing games
-		for c in consoles:
-			logging.debug("RomScanThread.run: deleting missing ROMs")
-			query.exec_("DELETE FROM `game` WHERE `exists` = 0 AND `console_id` = %d;" % console.getId())
-		self.__db.commit()
+		if not self.__exitEvent.is_set():
+			# delete missing games
+			logging.debug("RomScanThread.run: purging missing ROMs...")
+			for c in consoles:
+				logging.debug("RomScanThread.run: deleting missing ROMs")
+				query.exec_("DELETE FROM `game` WHERE `exists` = 0 AND `console_id` = %d;" % console.getId())
+			self.__db.commit()
 
 		self.__endTime = time.time()
 		self.__done = True
