@@ -52,6 +52,18 @@ function commandLineExit(){
 	});
 }
 
+function formatBytes(bytes){
+    if (bytes < 1024) return bytes + " Bytes";
+    else if(bytes < 1048576) return(bytes / 1024).toFixed(0) + " KB";
+    else if(bytes < 1073741824) return(bytes / 1048576).toFixed(0) + " MB";
+    else return(bytes / 1073741824).toFixed(0) + " GB";
+}
+
+function formatDate(ts){
+	var d = new Date(ts * 1000);
+	return addLeadingZero(d.getDate() + '/' + addLeadingZero(d.getMonth() + 1) + '/' + d.getFullYear());
+}
+
 function formatTime(s){
 	var hours = Math.floor(s / 3600);
 	var mins = Math.floor((s % 3600) / 60);
@@ -437,15 +449,24 @@ $(document).ready(function(){
 							roms.push(g);
 						});
 						mainPanelAdditionsPanel = new RomPanel("panel_main_additions", roms, "No ROMs found", function(rom){
-							/*$("#main").hide();
-							$("#gameInfo").show();
-							$("#gameInfoTitle").html(rom.name);
-							$("#gameInfoCoverArt").attr("src", rom.coverart);
-							$("#gameInfoOverview").html(rom.overview);*/
 							$("#gameInfoTitle").html(rom.name);
 							$("#gameInfoCoverArt").attr("src", rom.coverart);
 							$("#gameInfoOverview").html(rom.overview);
 							$("#gameInfoPlayCount").html(rom.play_count);
+							$("#gameInfoSize").html(formatBytes(rom.size));
+							$("#gameInfoFilename").html(rom.path);
+							if (rom.last_played == 0){
+								$("#gameInfoLastPlayed").html("N/A");
+							}
+							else{
+								$("#gameInfoLastPlayed").html(formatDate(rom.last_played));
+							}
+							if (rom.released == 0){
+								$("#gameInfoReleased").html("Unknown");
+							}
+							else{
+								$("#gameInfoReleased").html(formatDate(rom.released));
+							}
 							showScreen("game");
 						});
 						mainPanelAdditionsPanel.draw();

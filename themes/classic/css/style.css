@@ -390,6 +390,12 @@ button.romPanel {
 	opacity: 0.2;
 }
 
+#gameInfoOverview {
+	font-size: 20pt;
+	height: 50%;
+	overflow: hidden;
+}
+
 label {
 	font-size: 20pt;
 }
