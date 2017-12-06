@@ -80,6 +80,28 @@ function setIconVisible(icon, visible){
 	}
 }
 
+function showGameScreen(rom){
+	$("#gameInfoTitle").html(rom.name);
+	$("#gameInfoCoverArt").attr("src", rom.coverart);
+	$("#gameInfoOverview").html(rom.overview);
+	$("#gameInfoPlayCount").html(rom.play_count);
+	$("#gameInfoSize").html(formatBytes(rom.size));
+	$("#gameInfoFilename").html(rom.path);
+	if (rom.last_played == 0){
+		$("#gameInfoLastPlayed").html("N/A");
+	}
+	else{
+		$("#gameInfoLastPlayed").html(formatDate(rom.last_played));
+	}
+	if (rom.released == 0){
+		$("#gameInfoReleased").html("Unknown");
+	}
+	else{
+		$("#gameInfoReleased").html(formatDate(rom.released));
+	}
+	showScreen("game");
+}
+
 function showScreen(s){
 	//$("#gameInfo").hide();
 	$("#main").show();
@@ -419,12 +441,7 @@ $(document).ready(function(){
 									$("#panel_console_additions").empty();
 									if (!consoleAdditionsPanels.hasOwnProperty(c.name)){
 										consoleAdditionsPanels[c.name] = new RomPanel("panel_console_additions", gamesArray, "No ROMs found", function(rom){
-											/*$("#main").hide();
-											$("#gameInfo").show();
-											$("#gameInfoTitle").html(rom.name);
-											$("#gameInfoCoverArt").attr("src", rom.coverart);
-											$("#gameInfoOverview").html(rom.overview);*/
-											showScreen("game");
+											showGameScreen(rom);
 										});
 									}
 									consoleAdditionsPanels[c.name].draw();
@@ -449,25 +466,7 @@ $(document).ready(function(){
 							roms.push(g);
 						});
 						mainPanelAdditionsPanel = new RomPanel("panel_main_additions", roms, "No ROMs found", function(rom){
-							$("#gameInfoTitle").html(rom.name);
-							$("#gameInfoCoverArt").attr("src", rom.coverart);
-							$("#gameInfoOverview").html(rom.overview);
-							$("#gameInfoPlayCount").html(rom.play_count);
-							$("#gameInfoSize").html(formatBytes(rom.size));
-							$("#gameInfoFilename").html(rom.path);
-							if (rom.last_played == 0){
-								$("#gameInfoLastPlayed").html("N/A");
-							}
-							else{
-								$("#gameInfoLastPlayed").html(formatDate(rom.last_played));
-							}
-							if (rom.released == 0){
-								$("#gameInfoReleased").html("Unknown");
-							}
-							else{
-								$("#gameInfoReleased").html(formatDate(rom.released));
-							}
-							showScreen("game");
+							showGameScreen(rom);
 						});
 						mainPanelAdditionsPanel.draw();
 					});
