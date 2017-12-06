@@ -98,9 +98,10 @@ class Record(object):
 				self.__dirtyFields = self.__getWritableFields()
 			else:
 				for f in self.__fields:
-					self.__properties[f] = query.record().indexOf(f)
+					self.__properties[f] = query.value(query.record().indexOf(f))
 				self.__isNew = False
 				self.__dirtyFields = []
+				logging.debug("Record.refresh: properties dictionary set to %s" % self.__properties)
 		else:
 			self.__isNew = True
 
