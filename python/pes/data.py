@@ -230,6 +230,42 @@ class GameRecord(Record):
 			row
 		)
 
+	def getAchievementTotal(self):
+		return int(self._getProperty("achievement_total"))
+
+	def getAdded(self):
+		return int(self._getProperty("added"))
+
+	def getConsoleId(self):
+		return int(self._getProperty("console_id"))
+
+	def getGameMatchId(self):
+		return int(self._getProperty("game_match_id"))
+
+	def getName(self):
+		return self._getProperty("name")
+
+	def getPath(self):
+		return self._getProperty("path")
+
+	def getPlayCount(self):
+		return self._getProperty("play_count")
+
+	def getOverview(self):
+		return self._getProperty("overview")
+
+	def getReleased(self):
+		return int(self._getProperty("released"))
+
+	def getRasum(self):
+		return self._getProperty("rasum")
+
+	def getRetroAchievementId(self):
+		return int(self._getProperty("retroachievement_id"))
+
+	def getSize(self):
+		return int(self._getProperty("size"))
+
 	def setAchievementTotal(self, total):
 		self._setProperty("achievement_total", int(total))
 
