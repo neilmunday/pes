@@ -95,6 +95,8 @@ if __name__ == '__main__':
 		profileObj = cProfile.Profile()
 		profileObj.enable()
 
+	#mkdir(userLogDir)
+
 	logLevel = logging.INFO
 	if args.verbose:
 		logLevel = logging.DEBUG
@@ -115,6 +117,7 @@ if __name__ == '__main__':
 		checkDir(themeDir)
 		logging.debug("user dir: %s" % userDir)
 		mkdir(userDir)
+		mkdir(userBiosDir)
 		mkdir(userConfDir)
 		mkdir(userRetroArchConfDir)
 		mkdir(userRetroArchJoysticksConfDir)

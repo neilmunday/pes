@@ -20,6 +20,7 @@
 #    along with PES.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+import codecs
 import configparser
 import logging
 import os
@@ -45,6 +46,9 @@ from pes.common import checkDir, checkFile, getIpAddress, mkdir, pesExit
 from pes.romscan import RomScanThread
 import pes.gamecontroller
 
+def getLitteEndianFromHex(x):
+	return int("%s%s" % (x[2:4], x[0:2]), 16)
+
 # workaround for http://bugs.python.org/issue22273
 # thanks to https://github.com/GreatFruitOmsk/py-sdl2/commit/e9b13cb5a13b0f5265626d02b0941771e0d1d564
 def getJoystickGUIDString(guid):
@@ -57,10 +61,45 @@ def getJoystickGUIDString(guid):
 def getJoystickDeviceInfoFromGUID(guid):
 	vendorId = guid[8:12]
 	productId = guid[16:20]
+	print("%s\n%s" % (vendorId, productId))
 	# swap from big endian to little endian and covert to an int
-	vendorId = int(vendorId.decode('hex')[::-1].encode('hex'), 16)
-	productId = int(productId.decode('hex')[::-1].encode('hex'), 16)
+	vendorId = getLitteEndianFromHex(vendorId)
+	productId = getLitteEndianFromHex(productId)
 	return (vendorId, productId)
+
+def getRetroArchConfigAxisValue(param, controller, axis, both=False):
+	bind = sdl2.SDL_GameControllerGetBindForAxis(controller, axis)
+	if bind:
+		if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_AXIS:
+			if both:
+					return "%s_plus_axis = \"+%d\"\n%s_minus_axis = \"-%d\"\n" % (param, bind.value.axis, param, bind.value.axis)
+			return "%s_axis = \"+%d\"\n" % (param, bind.value.axis)
+		if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_BUTTON:
+			return "%s_btn = \"%d\"\n" % (param, bind.value.button)
+
+	if both:
+		return "%s_plus_axis = \"nul\"\n%s_minus_axis = \"nul\"\n" % (param, param)
+	return "%s = \"nul\"\n" % param
+
+def getRetroArchConfigButtonValue(param, controller, button):
+	bind = sdl2.SDL_GameControllerGetBindForButton(controller, button)
+	if bind:
+		if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_BUTTON:
+			return "%s_btn = \"%d\"\n" % (param, bind.value.button)
+		if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_AXIS:
+			if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP or button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+				return "%s_axis = \"-%d\"\n" % (param, bind.value.axis)
+			return "%s_axis = \"+%d\"\n" % (param, bind.value.axis)
+		if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_HAT:
+			if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP:
+				return "%s_btn = \"h%d%s\"\n" % (param, bind.value.hat.hat, "up")
+			if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+				return "%s_btn = \"h%d%s\"\n" % (param, bind.value.hat.hat, "down")
+			if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+				return "%s_btn = \"h%d%s\"\n" % (param, bind.value.hat.hat, "left")
+			if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+				return "%s_btn = \"h%d%s\"\n" % (param, bind.value.hat.hat, "right")
+	return "%s = \"nul\"\n" % param
 
 def runCommand(command):
 	process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
@@ -175,6 +214,17 @@ class PESWindow(QMainWindow):
 		self.db.close()
 		logging.debug("closing")
 		super(PESWindow, self).close()
+
+	def closeAndRun(self, command):
+		logging.debug("PESWindow.closeAndRun: about to write to: %s" % pes.scriptFile)
+		logging.debug("PESWindow.closeAndRun: command: %s" % command)
+		execLog = os.path.join(pes.userLogDir, "exec.log")
+		with open(pes.scriptFile, 'w') as f:
+			f.write("echo running %s\n" % command)
+			f.write("echo see %s for console output\n" % execLog)
+			f.write("%s &> %s\n" % (command, execLog))
+			f.write("exec %s %s\n" % (os.path.join(pes.baseDir, 'bin', 'pes') , ' '.join(sys.argv[1:])))
+		self.close()
 
 	def closeEvent(self, event):
 		logging.debug("PESWindow: closeEvent")
@@ -414,6 +464,12 @@ class LoadingThread(QThread):
 				if consoleParser.has_option(c, "achievement_id"):
 					retroAchievementId = consoleParser.getint(c, "achievement_id")
 
+				if consoleParser.has_option(c, "require"):
+					for f in consoleParser.get(c, "require").split(","):
+						requiredFiles.append(f.strip().replace("%%USERBIOSDIR%%", pes.userBiosDir))
+				else:
+					requiredFiles = []
+
 				console = Console(
 					self.__window.db,
 					c,
@@ -424,9 +480,10 @@ class LoadingThread(QThread):
 					romDir,
 					consoleParser.get(c, "extensions").split(),
 					ignoreRoms,
-					consoleParser.get(c, "command"),
+					consoleParser.get(c, "command").replace("%%BASE%%", pes.baseDir),
 					consoleParser.get(c, "nocoverart").replace("%%BASE%%", pes.baseDir),
-					coverArtDir
+					coverArtDir,
+					requiredFiles
 				)
 				self.__window.consoles.append(console)
 				self.__window.consoleMap[c] = console
@@ -541,12 +598,24 @@ class CallHandler(QObject):
 	def channelReady(self):
 		self.__window.channelReady()
 
+	@pyqtSlot()
+	def exit(self):
+		logging.debug("CallHandler: exit")
+		self.exitSignal.emit()
+
+	def emitJoysticksConnected(self, n):
+		self.joysticksConnectedSignal.emit(n)
+
 	@pyqtSlot(result=list)
 	def getConsoles(self):
 		consoles = []
 		for c in self.__window.consoles:
 			consoles.append({"gameTotal": c.getGameTotal(), "name": c.getName(), "id": c.getId(), "image": c.getImage()})
 		return consoles
+
+	@pyqtSlot(str)
+	def getIpAddress(self):
+		return getIpAddress()
 
 	@pyqtSlot(result=str)
 	def getKeyboardLayout(self):
@@ -614,17 +683,90 @@ class CallHandler(QObject):
 				logging.debug("Handler.getTimezones: found %d timezones" % len(self.__timezones))
 		return self.__timezones
 
-	@pyqtSlot()
-	def exit(self):
-		logging.debug("CallHandler: exit")
-		self.exitSignal.emit()
+	@pyqtSlot(int, result=QVariant)
+	def play(self, gameId):
+		logging.debug("Handler.play: game ID %d" % gameId)
+		game = GameRecord(self.__window.db, gameId)
+		console = self.__window.consoleIdMap[game.getConsoleId()]
+		for f in console.getRequiredFiles():
+			if not os.path.exists(f):
+				logging.warning("Handler.play: %s is required" % f)
+				return {"success": False, "msg": "%s is required to play %s" % (f, game.getName())}
+		emulator = console.getEmulator()
+		logging.debug("Handler.play: using \"%s\" emulator" % emulator)
+		joystickTotal = sdl2.joystick.SDL_NumJoysticks()
+		logging.debug("Handler.play: %d joystick(s) found" % joystickTotal)
+		if emulator == "RetroArch":
+			# note: RetroArch uses a SNES control pad button layout, SDL2 uses XBOX 360 layout!
+			# check joystick configs
+			if joystickTotal > 0:
+				for i in range(joystickTotal):
+					if sdl2.SDL_IsGameController(i):
+						c = sdl2.SDL_GameControllerOpen(i)
+						if sdl2.SDL_GameControllerGetAttached(c):
+							# get joystick name
+							j = sdl2.SDL_GameControllerGetJoystick(c)
+							jsName = sdl2.SDL_JoystickName(j).decode()
+							jsConfig = os.path.join(pes.userRetroArchJoysticksConfDir, "%s.cfg" % jsName)
+							logging.debug("Handler.play: joystick config file: %s" % jsConfig)
+							vendorId, productId = getJoystickDeviceInfoFromGUID(getJoystickGUIDString(sdl2.SDL_JoystickGetDeviceGUID(i)))
+							with open(jsConfig, 'w') as f:
+								# control pad id etc.
+								f.write("input_device = \"%s\"\n" % jsName)
+								f.write("input_vendor_id = \"%s\"\n" % vendorId)
+								f.write("input_product_id = \"%s\"\n" % productId)
+								# buttons
+								f.write(getRetroArchConfigButtonValue("input_a", c, sdl2.SDL_CONTROLLER_BUTTON_B))
+								f.write(getRetroArchConfigButtonValue("input_b", c, sdl2.SDL_CONTROLLER_BUTTON_A))
+								f.write(getRetroArchConfigButtonValue("input_x", c, sdl2.SDL_CONTROLLER_BUTTON_Y))
+								f.write(getRetroArchConfigButtonValue("input_y", c, sdl2.SDL_CONTROLLER_BUTTON_X))
+								f.write(getRetroArchConfigButtonValue("input_start", c, sdl2.SDL_CONTROLLER_BUTTON_START))
+								f.write(getRetroArchConfigButtonValue("input_select", c, sdl2.SDL_CONTROLLER_BUTTON_BACK))
+								# shoulder buttons
+								f.write(getRetroArchConfigButtonValue("input_l", c, sdl2.SDL_CONTROLLER_BUTTON_LEFTSHOULDER))
+								f.write(getRetroArchConfigButtonValue("input_r", c, sdl2.SDL_CONTROLLER_BUTTON_RIGHTSHOULDER))
+								f.write(getRetroArchConfigAxisValue("input_l2", c, sdl2.SDL_CONTROLLER_AXIS_TRIGGERLEFT))
+								f.write(getRetroArchConfigAxisValue("input_r2", c, sdl2.SDL_CONTROLLER_AXIS_TRIGGERRIGHT))
+								# L3/R3 buttons
+								f.write(getRetroArchConfigButtonValue("input_l3", c, sdl2.SDL_CONTROLLER_BUTTON_LEFTSTICK))
+								f.write(getRetroArchConfigButtonValue("input_r3", c, sdl2.SDL_CONTROLLER_BUTTON_RIGHTSTICK))
+								# d-pad buttons
+								f.write(getRetroArchConfigButtonValue("input_up", c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP))
+								f.write(getRetroArchConfigButtonValue("input_down", c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN))
+								f.write(getRetroArchConfigButtonValue("input_left", c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT))
+								f.write(getRetroArchConfigButtonValue("input_right", c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT))
+								# axis
+								f.write(getRetroArchConfigAxisValue("input_l_x", c, sdl2.SDL_CONTROLLER_AXIS_LEFTX, True))
+								f.write(getRetroArchConfigAxisValue("input_l_y", c, sdl2.SDL_CONTROLLER_AXIS_LEFTY, True))
+								f.write(getRetroArchConfigAxisValue("input_r_x", c, sdl2.SDL_CONTROLLER_AXIS_RIGHTX, True))
+								f.write(getRetroArchConfigAxisValue("input_r_y", c, sdl2.SDL_CONTROLLER_AXIS_RIGHTY, True))
+								# hot key buttons
+								bind = sdl2.SDL_GameControllerGetBindForButton(c, sdl2.SDL_CONTROLLER_BUTTON_GUIDE)
+								if bind:
+									f.write(getRetroArchConfigButtonValue("input_enable_hotkey", c, sdl2.SDL_CONTROLLER_BUTTON_GUIDE))
+								else:
+									f.write(getRetroArchConfigButtonValue("input_enable_hotkey", c, sdl2.SDL_CONTROLLER_BUTTON_BACK))
+								f.write(getRetroArchConfigButtonValue("input_exit_emulator", c, sdl2.SDL_CONTROLLER_BUTTON_START))
+								f.write(getRetroArchConfigButtonValue("input_save_state", c, sdl2.SDL_CONTROLLER_BUTTON_A))
+								f.write(getRetroArchConfigButtonValue("input_load_state", c, sdl2.SDL_CONTROLLER_BUTTON_B))
+								f.write("input_pause_toggle = \"nul\"\n")
+						sdl2.SDL_GameControllerClose(c)
+			# @TODO: create cheevos file if the user has RetroAchievements credentials
+		elif emulator == "Mupen64Plus":
+			# @TODO: write Mupen64Plus config
+			pass
+		elif emulator == "vice":
+			# @TODO: write Vice config
+			pass
+		else:
+			return {"success": False, msg: "Unsupported emulator \"%s\"" % emulator}
 
-	@pyqtSlot(str)
-	def getIpAddress(self):
-		return getIpAddress()
-
-	def emitJoysticksConnected(self, n):
-		self.joysticksConnectedSignal.emit(n)
+		game.incrementPlayCount()
+		game.setLastPlayed()
+		game.save()
+		command = console.getLaunchString(game)
+		self.__window.closeAndRun(command)
+		return {"success": True}
 
 	def __retroUserLoggedIn(self):
 		self.retroAchievementsLoggedInSignal.emit()

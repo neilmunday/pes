@@ -26,7 +26,7 @@
 #	pes
 #
 #	This script is a launch wrapper for PES.
-#	
+#
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -81,14 +81,14 @@ fi
 
 $pesInstallDir/python/pes/main.py $@
 
-#if [ $? -eq 0 ]; then
-#	if [ -e $script ]; then
-#		chmod 700 $script
-#		exec $script
-#	else
-#		exit 0
-#	fi
-#else
-#	echo "PES experienced an error!"
-#	exit 1
-#fi
+if [ $? -eq 0 ]; then
+	if [ -e $script ]; then
+		chmod 700 $script
+		exec $script
+	else
+		exit 0
+	fi
+else
+	echo "PES experienced an error!"
+	exit 1
+fi

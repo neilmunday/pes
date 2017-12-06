@@ -27,6 +27,7 @@ var menus = {};
 var screenStack = [];
 var consoles = [];
 var consoleMap = {};
+var currentGameId = null;
 var keyboardSelect;
 var timezoneSelect;
 var mainPanelAdditionsPanel;
@@ -81,6 +82,7 @@ function setIconVisible(icon, visible){
 }
 
 function showGameScreen(rom){
+	currentGameId = rom.game_id;
 	$("#gameInfoTitle").html(rom.name);
 	$("#gameInfoCoverArt").attr("src", rom.coverart);
 	$("#gameInfoOverview").html(rom.overview);
@@ -503,7 +505,6 @@ $(document).ready(function(){
 		channel.objects.handler.joysticksConnectedSignal.connect(function(total){
 			$("#gamepadIcons").empty();
 			for (var i = 0; i < total; i++){
-				console.log("appending");
 				$("#gamepadIcons").append("<img class=\"gamepadIcon\" />");
 			}
 		});
@@ -585,7 +586,11 @@ $(document).ready(function(){
 
 	menus["game"] = new Menu("menu_game");
 	menus["game"].addMenuItem("Play", function(){
-		console.log("play me");
+		handler.play(currentGameId, function(result){
+			if (!result.success){
+				showWarningMsgBox("Unable to play: " + result.msg);
+			}
+		});
 	}, "panel_game_info");
 	menus["game"].addMenuItem("Badges");
 	//menus["game"].addMenuItem("Edit");

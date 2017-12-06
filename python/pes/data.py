@@ -21,6 +21,7 @@ import configparser
 import logging
 import os
 import pes
+import time
 
 from PyQt5.QtSql import QSqlDatabase, QSqlQuery
 
@@ -267,6 +268,9 @@ class GameRecord(Record):
 	def getSize(self):
 		return int(self._getProperty("size"))
 
+	def incrementPlayCount(self):
+		self.setPlayCount(self.getPlayCount() + 1)
+
 	def setAchievementTotal(self, total):
 		self._setProperty("achievement_total", int(total))
 
@@ -285,7 +289,9 @@ class GameRecord(Record):
 		else:
 			self._setProperty("exists", 0)
 
-	def setLastPlayed(self, timestamp):
+	def setLastPlayed(self, timestamp=None):
+		if timestamp == None:
+			timestamp = time.time()
 		self._setProperty("last_played", int(timestamp))
 
 	def setMatchId(self, matchId):
@@ -360,7 +366,7 @@ class GameTitleRecord(Record):
 
 class Console(object):
 
-	def __init__(self, db, name, gamesDbId, retroAchievementId, image, emulator, romDir, extensions, ignoreRoms, command, noCoverArt, covertArtDir):
+	def __init__(self, db, name, gamesDbId, retroAchievementId, image, emulator, romDir, extensions, ignoreRoms, command, noCoverArt, covertArtDir, requiredFiles):
 		self.__image = image
 		self.__emulator = emulator
 		self.__romDir = romDir
@@ -371,6 +377,7 @@ class Console(object):
 		self.__covertArtDir = covertArtDir
 		self.__consoleRecord = None
 		self.__db = db
+		self.__requiredFiles = requiredFiles
 
 		query = QSqlQuery()
 		query.exec_("SELECT `console_id`, `gamesdb_id`, `gamesdb_name`, `retroachievement_id`, `name` FROM `console` WHERE `name` = \"%s\";" % name)
@@ -388,6 +395,9 @@ class Console(object):
 
 	def getCoverArtDir(self):
 		return self.__covertArtDir
+
+	def getEmulator(self):
+		return self.__emulator
 
 	def getId(self):
 		return self.__consoleRecord.getId()
@@ -418,6 +428,12 @@ class Console(object):
 
 	def getLatestAdditions(self, limit=10):
 		return self.__consoleRecord.getLatestAdditions(limit)
+
+	def getLaunchString(self, game):
+		return self.__command.replace('%%GAME%%', "\"%s\"" % game.getPath()).replace('%%USERCONFDIR%%', pes.userConfDir)
+
+	def getRequiredFiles(self):
+		return self.__requiredFiles
 
 	def getRetroAchievementId(self):
 		return self.__consoleRecord.getRetroAchievementId()
