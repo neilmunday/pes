@@ -174,6 +174,15 @@ class ConsoleRecord(Record):
 	def getGamesDbName(self):
 		return self._getProperty("gamesdb_name")
 
+	def getLastPlayed(self, limit=10):
+		query = self._doQuery("SELECT * FROM `game` WHERE `console_id` = %d AND `last_played` != 0 ORDER BY `last_played` DESC LIMIT %d" % (self.getId(), limit))
+		games = []
+		db = self._getDb()
+		while query.next():
+			record = query.record()
+			games.append(GameRecord(db, record.value("game_id"), record))
+		return games
+
 	def getLatestAdditions(self, limit=10):
 		query = self._doQuery("SELECT * FROM `game` WHERE `console_id` = %d ORDER BY `added` DESC LIMIT %d" % (self.getId(), limit))
 		games = []
@@ -425,6 +434,9 @@ class Console(object):
 
 	def getIgnoreRomList(self):
 		return self.__ignoreRoms
+
+	def getLastPlayed(self, limit=10):
+		return self.__consoleRecord.getLastPlayed(limit)
 
 	def getLatestAdditions(self, limit=10):
 		return self.__consoleRecord.getLatestAdditions(limit)
