@@ -24,6 +24,7 @@ import codecs
 import configparser
 import logging
 import os
+import shlex
 import subprocess
 import sys
 
@@ -102,7 +103,7 @@ def getRetroArchConfigButtonValue(param, controller, button):
 	return "%s = \"nul\"\n" % param
 
 def runCommand(command):
-	process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+	process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 	stdout, stderr = process.communicate()
 	return (process.returncode, stdout.decode(), stderr.decode())
 
@@ -641,7 +642,24 @@ class CallHandler(QObject):
 		return self.__keyboardLayouts
 
 	@pyqtSlot(int, int, result=list)
+	def getLastPlayed(self, limit=10, consoleId=None):
+		logging.debug("Handler.getLastPlayed: called")
+		games = []
+		if consoleId:
+			for g in self.__window.consoleIdMap[consoleId].getLastPlayed(limit):
+				games.append(g.toDic())
+			return games
+		query = doQuery(self.__window.db, "SELECT * FROM `game` WHERE `last_played` != 0 ORDER BY `last_played` DESC LIMIT %d;" % limit)
+		games = []
+		while query.next():
+			record = query.record()
+			g = GameRecord(self.__window.db, record.value("game_id"), record)
+			games.append(g.toDic())
+		return games
+
+	@pyqtSlot(int, int, result=list)
 	def getLatestAdditions(self, limit=10, consoleId=None):
+		logging.debug("Handler.getLatestAdditions: called")
 		games = []
 		if consoleId:
 			for g in self.__window.consoleIdMap[consoleId].getLatestAdditions(limit):

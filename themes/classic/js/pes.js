@@ -31,7 +31,9 @@ var currentGameId = null;
 var keyboardSelect;
 var timezoneSelect;
 var mainPanelAdditionsPanel;
+var mainPanelLastPlayedPanel;
 var consoleAdditionsPanels = {};
+var consoleLastPlayedPanels = {};
 
 jQuery.extend(jQuery.expr[':'], {
 	focus: "a == document.activeElement"
@@ -360,11 +362,11 @@ function RomPanel(el, roms, emptyText, callback){
 	$("#" + me.el).addClass("romPanel");
 	this.draw = function(){
 		$("#" + me.el).empty();
-		if (roms.length == 0){
+		if (me.roms.length == 0){
 			$("#" + me.el).html("<p>" + me.emptyText + "</p>");
 		}
 		else {
-			for (var i = 0; i < roms.length; i++){
+			for (var i = 0; i < me.roms.length; i++){
 				$("#" + me.el).append("<button id=\"" + me.el + "_" + i + "_btn\" class=\"romPanel\" type=\"button\" style=\"background-image: url(" + encodeURI(roms[i].coverart) + ");\"></button>");
 			}
 		}
@@ -389,6 +391,9 @@ function RomPanel(el, roms, emptyText, callback){
 			me.focus();
 		}
 	});
+	this.isEmpty = function(){
+		return me.roms.length == 0;
+	};
 	this.scroll = function(x){
 		$("#" + me.el).scrollLeft(x);
 	};
@@ -427,8 +432,7 @@ $(document).ready(function(){
 						menus["main"].insertMenuItem(
 							c.name, i + 1,
 							function(){
-								consoleAdditionsPanels[c.name].setSelected(0);
-								consoleAdditionsPanels[c.name].focus();
+								// @TODO: load console screen here - need to write that too!
 							},
 							"console_preview",
 							function(){
@@ -436,10 +440,6 @@ $(document).ready(function(){
 								$("#console_bg").attr("src", c.image);
 
 								handler.getLatestAdditions(10, c.id, function(gamesArray){
-									//$("#console_preview_additions").empty();
-									//$.each(gamesArray, function(i, g){
-										//$("#console_preview_additions").append('<img class="thumbnailSmallImg" src="' + g.coverart + '" />');
-									//});
 									$("#panel_console_additions").empty();
 									if (!consoleAdditionsPanels.hasOwnProperty(c.name)){
 										consoleAdditionsPanels[c.name] = new RomPanel("panel_console_additions", gamesArray, "No ROMs found", function(rom){
@@ -447,6 +447,15 @@ $(document).ready(function(){
 										});
 									}
 									consoleAdditionsPanels[c.name].draw();
+								});
+								handler.getLastPlayed(10, c.id, function(gamesArray){
+									$("#panel_console_last_played").empty();
+									if (!consoleLastPlayedPanels.hasOwnProperty(c.name)){
+										consoleLastPlayedPanels[c.name] = new RomPanel("panel_console_last_played", gamesArray, "No ROMs found", function(rom){
+											showGameScreen(rom);
+										});
+									}
+									consoleLastPlayedPanels[c.name].draw();
 								});
 							}
 						);
@@ -463,14 +472,16 @@ $(document).ready(function(){
 				}
 				else{
 					handler.getLatestAdditions(10, 0, function(gamesArray){
-						var roms = [];
-						$.each(gamesArray, function(i, g){
-							roms.push(g);
-						});
-						mainPanelAdditionsPanel = new RomPanel("panel_main_additions", roms, "No ROMs found", function(rom){
+						mainPanelAdditionsPanel = new RomPanel("panel_main_additions", gamesArray, "No ROMs found", function(rom){
 							showGameScreen(rom);
 						});
 						mainPanelAdditionsPanel.draw();
+					});
+					handler.getLastPlayed(10, 0, function(gamesArray){
+						mainPanelLastPlayedPanel = new RomPanel("panel_main_last_played", gamesArray, "No ROMS found", function(rom){
+							showGameScreen(rom);
+						});
+						mainPanelLastPlayedPanel.draw();
 					});
 				}
 			});
@@ -534,7 +545,13 @@ $(document).ready(function(){
 	menus["main"] = new Menu('menu_main');
 	menus["main"].addMenuItem('Home', function(){
 		mainPanelAdditionsPanel.setSelected(0);
-		mainPanelAdditionsPanel.focus();
+		if (mainPanelLastPlayedPanel.isEmpty()){
+			mainPanelAdditionsPanel.focus();
+		}
+		else{
+			mainPanelLastPlayedPanel.setSelected(0);
+			mainPanelLastPlayedPanel.focus();
+		}
 	}, "screen_main");
 
 	menus["main"].addMenuItem('Kodi', function(){
@@ -695,11 +712,33 @@ $(document).ready(function(){
 
 	$("#panel_main").keyup(function(event){
 		if (event.key == "Backspace"){
-			mainPanelAdditionsPanel.setSelected(0);
 			mainPanelAdditionsPanel.scroll(0);
+			if (mainPanelLastPlayedPanel.isEmpty()){
+				mainPanelAdditionsPanel.setSelected(0);
+			}
+			else{
+				mainPanelLastPlayedPanel.scroll(0);
+				mainPanelLastPlayedPanel.setSelected(0);
+			}
 			menus["main"].focus();
 		}
+		else if (event.key == "ArrowDown"){
+			if (!mainPanelLastPlayedPanel.isEmpty()){
+				mainPanelAdditionsPanel.scroll(0);
+				mainPanelAdditionsPanel.setSelected(0);
+				mainPanelAdditionsPanel.focus();
+			}
+		}
+		else if (event.key == "ArrowUp"){
+			if (!mainPanelLastPlayedPanel.isEmpty()){
+				mainPanelLastPlayedPanel.scroll(0);
+				mainPanelLastPlayedPanel.setSelected(0);
+				mainPanelLastPlayedPanel.focus();
+			}
+		}
 	});
+
+	/* Console screen */
 
 	/* System settings screen */
 
