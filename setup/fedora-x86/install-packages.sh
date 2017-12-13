@@ -45,6 +45,7 @@ run sudo dnf install \
 	mesa-libGL-devel \
 	mesa-libGLES-devel \
 	mesa-libEGL-devel \
+	nasm \
 	openssl-devel \
 	patch \
 	pkgconfig \
