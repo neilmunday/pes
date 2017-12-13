@@ -24,13 +24,14 @@ import codecs
 import configparser
 import logging
 import os
+import re
 import shlex
 import subprocess
 import sys
 
 from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
-from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtWidgets import QApplication, QDesktopWidget, QMainWindow
 from PyQt5.QtCore import Qt, QUrl, pyqtSignal, pyqtSlot, QFile, QIODevice, QObject, QEvent, QThread, QVariant
 from PyQt5.QtSql import QSqlDatabase, QSqlQuery
 from PyQt5.QtWebChannel import QWebChannel
@@ -67,6 +68,37 @@ def getJoystickDeviceInfoFromGUID(guid):
 	vendorId = getLitteEndianFromHex(vendorId)
 	productId = getLitteEndianFromHex(productId)
 	return (vendorId, productId)
+
+def getMupen64PlusConfigAxisValue(controller, axis, positive=True, both=False):
+	bind = sdl2.SDL_GameControllerGetBindForAxis(controller, axis)
+	if bind:
+		if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_AXIS:
+			if both:
+				return "axis(%d-,%d+)" % (bind.value.axis, bind.value.axis)
+			if positive:
+				return "axis(%d+)" % bind.value.axis
+			return "axis(%d-)" % bind.value.axis
+		if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_BUTTON:
+			return "button(%d)" % bind.value.button
+	return "\"\""
+
+def getMupen64PlusConfigButtonValue(controller, button, coreEvent=False):
+	bind = sdl2.SDL_GameControllerGetBindForButton(controller, button)
+	if bind:
+		if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_BUTTON:
+			if coreEvent:
+				return "B%d" % bind.value.button
+			return "button(%d)" % bind.value.button
+		if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_HAT:
+			if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP:
+				return "hat(%d Up)" % bind.value.hat.hat
+			if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+				return "hat(%d Down)" % bind.value.hat.hat
+			if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+				return "hat(%d Left)" % bind.value.hat.hat
+			if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+				return "hat(%d Right)" % bind.value.hat.hat
+	return "\"\""
 
 def getRetroArchConfigAxisValue(param, controller, axis, both=False):
 	bind = sdl2.SDL_GameControllerGetBindForAxis(controller, axis)
@@ -241,6 +273,12 @@ class PESWindow(QMainWindow):
 				logging.debug("QMainWindow.event: escape key pressed")
 				self.__page.runJavaScript("commandLineExit();")
 		return super(PESWindow, self).event(event)
+
+	def getPlayer1Controller(self):
+		return self.__player1Controller
+
+	def getPlayer1ControllerIndex(self):
+		return self.__player1ControllerIndex
 
 	def __handleExit(self):
 		self.close()
@@ -771,8 +809,90 @@ class CallHandler(QObject):
 						sdl2.SDL_GameControllerClose(c)
 			# @TODO: create cheevos file if the user has RetroAchievements credentials
 		elif emulator == "Mupen64Plus":
-			# @TODO: write Mupen64Plus config
-			pass
+			if joystickTotal > 0:
+				if not os.path.exists(pes.userMupen64PlusConfFile):
+					return { "success": False, "msg": "Could not open %s" % pes.userMupen64PlusConfFile }
+				player1Controller = self.__window.getPlayer1Controller()
+				player1ControllerIndex = self.__window.getPlayer1ControllerIndex()
+				configParser = configparser.SafeConfigParser()
+				configParser.optionxform = str # make options case sensitive
+				configParser.read(pes.userMupen64PlusConfFile)
+				bind = sdl2.SDL_GameControllerGetBindForButton(player1Controller, sdl2.SDL_CONTROLLER_BUTTON_GUIDE)
+				if bind:
+					hotkey = getMupen64PlusConfigButtonValue(player1Controller, sdl2.SDL_CONTROLLER_BUTTON_GUIDE, True)
+				else:
+					hotkey = getMupen64PlusConfigButtonValue(player1Controller, sdl2.SDL_CONTROLLER_BUTTON_BACK, True)
+				if configParser.has_section('CoreEvents'):
+					configParser.set('CoreEvents', 'Joy Mapping Stop', 'J%d%s/%s' % (player1ControllerIndex, hotkey, getMupen64PlusConfigButtonValue(player1Controller, sdl2.SDL_CONTROLLER_BUTTON_START, True)))
+					configParser.set('CoreEvents', 'Joy Mapping Save State', 'J%d%s/%s' % (player1ControllerIndex, hotkey, getMupen64PlusConfigButtonValue(player1Controller, sdl2.SDL_CONTROLLER_BUTTON_A, True)))
+					configParser.set('CoreEvents', 'Joy Mapping Load State', 'J%d%s/%s' % (player1ControllerIndex, hotkey, getMupen64PlusConfigButtonValue(player1Controller, sdl2.SDL_CONTROLLER_BUTTON_B, True)))
+				else:
+					logging.error("Handler.play: could not find \"CoreEvents\" section in %s" % pes.userMupen64PlusConfFile)
+					return { "success": False, "msg": "Could not find \"CoreEvents\" section in %s" % pes.userMupen64PlusConfFile}
+
+				# loop through each joystick that is connected and save to button config file
+				# note: max of 4 control pads for this emulator
+				joystickTotal = sdl2.joystick.SDL_NumJoysticks()
+				if joystickTotal > 0:
+					counter = 1
+					for i in range(joystickTotal):
+						if sdl2.SDL_IsGameController(i):
+							c = sdl2.SDL_GameControllerOpen(i)
+							if sdl2.SDL_GameControllerGetAttached(c):
+								j = sdl2.SDL_GameControllerGetJoystick(c)
+								jsName = sdl2.SDL_JoystickName(j)
+								logging.debug("PESApp.playGame: generating Mupen64Plus config for joystick %d: %s" % (i, jsName))
+								section = 'Input-SDL-Control%d' % (i + 1)
+								if configParser.has_section(section):
+									configParser.set(section, 'device', "%d" % i)
+									configParser.set(section, 'name', '"%s"' % jsName)
+									configParser.set(section, 'plugged', 'True')
+									configParser.set(section, 'mouse', 'False')
+									configParser.set(section, 'mode', '0') # this must be set to 0 for the following values to take effect
+									configParser.set(section, 'DPad R', getMupen64PlusConfigButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT))
+									configParser.set(section, 'DPad L', getMupen64PlusConfigButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT))
+									configParser.set(section, 'DPad D', getMupen64PlusConfigButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN))
+									configParser.set(section, 'DPad U', getMupen64PlusConfigButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP))
+									configParser.set(section, 'Start', getMupen64PlusConfigButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_START))
+									configParser.set(section, 'Z Trig', getMupen64PlusConfigButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_LEFTSHOULDER))
+									configParser.set(section, 'B Button', getMupen64PlusConfigButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_B))
+									configParser.set(section, 'A Button', getMupen64PlusConfigButtonValue(c, sdl2.SDL_CONTROLLER_BUTTON_A))
+									configParser.set(section, 'C Button R', getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_RIGHTX, positive=True))
+									configParser.set(section, 'C Button L', getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_RIGHTX, positive=False))
+									configParser.set(section, 'C Button D', getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_RIGHTY, positive=True))
+									configParser.set(section, 'C Button U', getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_RIGHTY, positive=False))
+									configParser.set(section, 'L Trig', getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_TRIGGERLEFT))
+									configParser.set(section, 'R Trig', getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_TRIGGERRIGHT))
+									configParser.set(section, 'X Axis', getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_LEFTX, both=True))
+									configParser.set(section, 'Y Axis', getMupen64PlusConfigAxisValue(c, sdl2.SDL_CONTROLLER_AXIS_LEFTY, both=True))
+							sdl2.SDL_GameControllerClose(c)
+						counter += 1
+						if counter == 4:
+							break
+
+				logging.debug("Handler.play: writing Mupen64Plus config to %s" % pes.userMupen64PlusConfFile)
+				with open(pes.userMupen64PlusConfFile, 'w') as f:
+					configParser.write(f)
+
+				widthRe = re.compile("((window|framebuffer)[ ]+width[ ]*)=[ ]*[0-9]+")
+				heightRe = re.compile("((window|framebuffer)[ ]+height[ ]*)=[ ]*[0-9]+")
+				dimensions = QDesktopWidget().screenGeometry()
+				# now update gles2n64.conf file to use current resolution
+				output = ""
+				with open(pes.userGles2n64ConfFile, 'r') as f:
+					for line in f:
+						result = re.sub(widthRe, r"\1=%d" % dimensions.width(), line)
+						if result != line:
+							output += result
+						else:
+							result = re.sub(heightRe, r"\1=%d" % dimensions.height(), line)
+							if result != line:
+								output += result
+							else:
+								output += line
+				logging.debug("Handler.play: writing gles2n64 config to %s" % pes.userGles2n64ConfFile)
+				with open(pes.userGles2n64ConfFile, 'w') as f:
+					f.write(output)
 		elif emulator == "vice":
 			# @TODO: write Vice config
 			pass
