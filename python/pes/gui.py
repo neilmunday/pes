@@ -441,11 +441,32 @@ class LoadingThread(QThread):
 		doQuery(self.__window.db, "CREATE INDEX IF NOT EXISTS \"game_match_index\" on `game_match` (`game_match_id` ASC);")
 		doQuery(self.__window.db, "\
 		CREATE TABLE IF NOT EXISTS `retroachievement_user` (\
+			`user_id` INTEGER PRIMARY KEY, \
 			`username` TEXT, \
 			`score` INTEGER, \
 			`rank` INTEGER \
 		);")
-		doQuery(self.__window.db, "CREATE INDEX IF NOT EXISTS \"retroachievement_user_index\" on `retroachievement_user` (`username` ASC);")
+		doQuery(self.__window.db, "CREATE INDEX IF NOT EXISTS \"retroachievement_user_index\" on `retroachievement_user` (`user_id` ASC);")
+		doQuery(self.__window.db, "\
+		CREATE TABLE IF NOT EXISTS `retroachievement_badge` (\
+			`badge_id` INTEGER PRIMARY KEY, \
+			`title` TEXT, \
+			`game_id` INTEGER, \
+			`description` TEXT, \
+			`points` INTEGER, \
+			`badge_path` TEXT, \
+			`badge_path_locked` TEXT \
+		);")
+		doQuery(self.__window.db, "CREATE INDEX IF NOT EXISTS \"retroachievement_badge_index\" on `retroachievement_badge` (`badge_id` ASC);")
+		doQuery(self.__window.db, "\
+		CREATE TABLE IF NOT EXISTS `retroachievement_earned` (\
+			`user_id` INTEGER, \
+			`badge_id` INTEGER, \
+			`date_earned` INTEGER, \
+			`date_earned_hardcore` INTEGER, \
+			PRIMARY KEY (user_id, badge_id) \
+		);")
+		doQuery(self.__window.db, "CREATE INDEX IF NOT EXISTS \"retroachievement_earned_index\" on `retroachievement_earned` (`user_id` ASC, `badge_id` ASC);")
 		self.__window.db.commit()
 
 		# populate games catalogue (if needed)
