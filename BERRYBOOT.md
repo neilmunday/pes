@@ -30,8 +30,8 @@ To perform the conversion you will need the following:
 Run the following commands as the root user or via `sudo` to mount the image so that we can edit it:
 
 ```
-gunzip pes-2.2-BETA-2017-05-21-rpi2-3.img.gz
-losetup /dev/loop0 pes-2.2-BETA-2017-05-21-rpi2-3.img
+gunzip pes-2.3-2017-11-23-rpi2-3.img.gz
+losetup /dev/loop0 pes-2.3-2017-11-23-rpi2-3.img
 partprobe /dev/loop0p2
 mount /dev/loop0 /mnt
 ```
@@ -71,7 +71,7 @@ rm /mnt/home/pi/pes
 From your home directory for example, run the following command:
 
 ```
-mksquashfs /mnt pes-2.2-BETA-2017-05-21-rpi2-3-berryboot.img256 -comp lzo -e lib/modules
+mksquashfs /mnt pes-2.3-2017-11-23-rpi2-3-berryboot.img256 -comp lzo -e lib/modules
 ```
 
 You can umount the PES image:
@@ -107,7 +107,7 @@ Follow the onscreen instructions to [install BerryBoot](http://www.berryterminal
 Once you get to the BerryBoot menu editor screen proceed as follows:
 
 1. Hold down the left mouse button on the *Add OS* menu button and select *Install from USB stick*
-2. Select the PES BerryBoot image, e.g. pes-2.2-BETA-2017-05-21-rpi2-3-berryboot.img256
+2. Select the PES BerryBoot image, e.g. pes-2.3-2017-11-23-rpi2-3-berryboot.img256
 3. Once installed select *Edit Config* and go to the *config.txt* and change the GPU memory to 384.
 
 Now you can click *Exit* to reboot your Rapsberry Pi. Once rebooted you should now see the PES BerryBoot image as an OS that you can boot.
