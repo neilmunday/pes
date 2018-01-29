@@ -32,7 +32,7 @@ Run the following commands as the root user or via `sudo` to mount the image so 
 ```
 gunzip pes-2.2-BETA-2017-05-21-rpi2-3.img.gz
 losetup /dev/loop0 pes-2.2-BETA-2017-05-21-rpi2-3.img
-partprobe /dev/loop0
+partprobe /dev/loop0p2
 mount /dev/loop0 /mnt
 ```
 
