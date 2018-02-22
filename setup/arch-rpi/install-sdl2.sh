@@ -25,7 +25,7 @@
 functions=`realpath $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../common/functions.sh`
 source $functions || exit 1
 
-VERSION="2.0.4"
+VERSION="2.0.7"
 
 sdl2Tar=$srcDir/SDL2-${VERSION}.tar.gz
 sdl2Dir=$buildDir/SDL2-${VERSION}
@@ -53,7 +53,7 @@ run cd $sdl2Dir
 
 ./configure --prefix=$prefix --host=arm-raspberry-linux-gnueabihf --disable-video-opengl --disable-video-x11 --disable-pulseaudio --disable-esd --enable-video-opengles --enable-libudev
 
-run make 
+run make
 run sudo make install
 
 run sudo rm -f /opt/sdl2/default
@@ -61,7 +61,7 @@ run sudo ln -s $prefix /opt/sdl2/default
 
 SDL image
 header "Downloading SDL2 Image"
-sdl2ImageVersion=2.0.1
+sdl2ImageVersion=2.0.2
 sdl2ImageTar=$srcDir/SDL2_image-${sdl2ImageVersion}.tar.gz
 sdl2ImageDir=$buildDir/SDL2_image-${sdl2ImageVersion}
 
@@ -116,7 +116,7 @@ run make
 run sudo make install
 
 header "Download SDL GFX"
-sdl2GFXVersion=1.0.1
+sdl2GFXVersion=1.0.3
 sdl2GFXTar=$srcDir/SDL2_gfx-${sdl2GFXVersion}.tar.gz
 sdl2GFXDir=$buildDir/SDL2_gfx-${sdl2GFXVersion}
 
