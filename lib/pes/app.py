@@ -140,11 +140,11 @@ def mapControlPadButtonEvent(event, eventType):
 	return None
 
 class PESApp(object):
-	
+
 	__CONTROL_PAD_BUTTON_REPEAT = 150 # delay in ms between firing events for button holds
 	__ICON_WIDTH = 32
 	__ICON_HEIGHT = 32
-	
+
 	def __del__(self):
 		logging.debug("PESApp.del: deleting object")
 		if getattr(self, "__window", None):
@@ -159,19 +159,19 @@ class PESApp(object):
 		self.config = pesConfig
 		self.timezones = []
 		self.currentTimezone = None
-		
+
 		self.__screenSaverTimeout = pesConfig.screenSaverTimeout
-		
+
 		self.__fontSizes = pesConfig.fontSizes
-		
+
 		ConsoleTask.SCALE_WIDTH = pesConfig.coverartSize
 		Thumbnail.CACHE_LEN = pesConfig.coverartCacheLen
 		Icon.CACHE_LEN = pesConfig.iconCacheLen
-		
+
 		self.consoles = []
 		self.consoleSurfaces = {}
 		self.__uiObjects = [] # list of UI objects created so we can destroy them upon exit
-		
+
 		self.lineColour = sdl2.SDL_Color(pesConfig.lineColour[0], pesConfig.lineColour[1], pesConfig.lineColour[2])
 		self.backgroundColour = sdl2.SDL_Color(pesConfig.backgroundColour[0], pesConfig.backgroundColour[1], pesConfig.backgroundColour[2])
 		self.headerBackgroundColour = sdl2.SDL_Color(pesConfig.headerBackgroundColour[0], pesConfig.headerBackgroundColour[1], pesConfig.headerBackgroundColour[2])
@@ -181,7 +181,7 @@ class PESApp(object):
 		self.menuSelectedBgColour = self.lineColour
 		self.textColour = sdl2.SDL_Color(pesConfig.textColour[0], pesConfig.textColour[1], pesConfig.textColour[2])
 		self.lightBackgroundColour = sdl2.SDL_Color(pesConfig.lightBackgroundColour[0], pesConfig.lightBackgroundColour[1], pesConfig.lightBackgroundColour[2])
-		
+
 		self.__headerHeight = pesConfig.headerHeight
 		self.menuWidth = pesConfig.menuWidth
 		self.__footerHeight = 0
@@ -190,13 +190,13 @@ class PESApp(object):
 		self.__cecEnabled = False
 		self.retroAchievementConn = None
 		self.achievementUser = None
-		
+
 		if pesConfig.retroAchievementsUserName != None and pesConfig.retroAchievementsPassword != None and pesConfig.retroAchievementsApiKey != None:
 			logging.debug("PESApp.__init__: RetroAchievements user = %s, apiKey = %s" % (pesConfig.retroAchievementsUserName, pesConfig.retroAchievementsApiKey))
 			self.retroAchievementConn = RetroAchievementConn(pesConfig.retroAchievementsUserName, pesConfig.retroAchievementsApiKey)
 			self.__retroAchievementsPassword = pesConfig.retroAchievementsPassword
 			self.setUpRetroAchievementUser()
-		
+
 	def exit(self, rtn=0, confirm=False):
 		if confirm:
 			self.showMessageBox("Are you sure?", self.exit, rtn, False)
@@ -231,10 +231,10 @@ class PESApp(object):
 			sdl2.SDL_Quit()
 			logging.info("PESApp.exit: exiting...")
 			sys.exit(rtn)
-			
+
 	def getDimensions(self):
 		return self.__dimensions
-			
+
 	def getGameTotal(self):
 		# get number of games
 		try:
@@ -251,7 +251,7 @@ class PESApp(object):
 		finally:
 			if con:
 				con.close()
-			
+
 	@staticmethod
 	def getMupen64PlusConfigAxisValue(controller, axis, positive=True, both=False):
 		bind = sdl2.SDL_GameControllerGetBindForAxis(controller, axis)
@@ -265,7 +265,7 @@ class PESApp(object):
 			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_BUTTON:
 				return "button(%d)" % bind.value.button
 		return "\"\""
-			
+
 	@staticmethod
 	def getMupen64PlusConfigButtonValue(controller, button, coreEvent=False):
 		bind = sdl2.SDL_GameControllerGetBindForButton(controller, button)
@@ -284,7 +284,7 @@ class PESApp(object):
 				if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
 					return "hat(%d Right)" % bind.value.hat.hat
 		return "\"\""
-	
+
 	@staticmethod
 	def getRetroArchConfigAxisValue(param, controller, axis, both=False):
 		bind = sdl2.SDL_GameControllerGetBindForAxis(controller, axis)
@@ -295,15 +295,15 @@ class PESApp(object):
 				return "%s_axis = \"+%d\"\n" % (param, bind.value.axis)
 			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_BUTTON:
 				return "%s_btn = \"%d\"\n" % (param, bind.value.button)
-				
+
 		if both:
 			return "%s_plus_axis = \"nul\"\n%s_minus_axis = \"nul\"\n" % (param, param)
 		return "%s = \"nul\"\n" % param
-	
+
 	@staticmethod
 	def getRetroArchConfigButtonValue(param, controller, button):
 		bind = sdl2.SDL_GameControllerGetBindForButton(controller, button)
-		if bind:			
+		if bind:
 			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_BUTTON:
 				return "%s_btn = \"%d\"\n" % (param, bind.value.button)
 			if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_AXIS:
@@ -321,7 +321,7 @@ class PESApp(object):
 				if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
 					return "%s_btn = \"h%d%s\"\n" % (param, bind.value.hat.hat, "right")
 		return "%s = \"nul\"\n" % param
-	
+
 	@staticmethod
 	def getViceButtonValue(controller, joyIndex, button, pin):
 		bind = sdl2.SDL_GameControllerGetBindForButton(controller, button)
@@ -341,7 +341,7 @@ class PESApp(object):
 				if button == sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
 					return "%d 2 3 1 0 %d\n" % (joyIndex, abs(pin))
 		return "# error: could not generate binding for button: %d\n" % button
-	
+
 	def goBack(self):
 		logging.debug("PESApp.goBack: adding backspace event to event queue...")
 		self.screens[self.screenStack[-1]].setMenuActive(False)
@@ -349,7 +349,7 @@ class PESApp(object):
 		e.type = sdl2.SDL_KEYDOWN
 		e.key.keysym.sym = sdl2.SDLK_BACKSPACE
 		sdl2.SDL_PushEvent(e)
-	
+
 	def initScreens(self):
 		logging.debug("PESApp.initScreens: initialising screens...")
 		self.screens["Home"] = HomeScreen(self, self.renderer, self.menuRect, self.screenRect)
@@ -362,7 +362,7 @@ class PESApp(object):
 				consoleScreens += 1
 		logging.debug("PESApp.initScreens: initialised %d screens of which %d are console screens" % (len(self.screens), consoleScreens))
 		self.screenStack = ["Home"]
-	
+
 	def initSurfaces(self, refreshConsoles=False):
 		logging.debug("PESApp.initSurfaces: pre-loading console images...")
 		for c in self.consoles:
@@ -377,7 +377,7 @@ class PESApp(object):
 					self.exit(1)
 				self.consoleSurfaces[consoleName] = surface
 				logging.debug("PESApp.initSurfaces: pre-loaded %s surface from %s" % (consoleName, image))
-			
+
 	def playGame(self, game):
 		console = game.getConsole()
 		# are there any files required to use this emulator?
@@ -385,7 +385,7 @@ class PESApp(object):
 			if not os.path.exists(f):
 				self.showMessageBox("The file %s is required to play games for %s. Please add this file and try again." % (f, console.getName()), None, None)
 				return
-				
+
 		emulator = console.getEmulator()
 		logging.debug("PESApp.playGame: emulator is %s" % emulator)
 		if emulator == "RetroArch":
@@ -478,7 +478,7 @@ class PESApp(object):
 					configParser.set('CoreEvents', 'Joy Mapping Stop', 'J%d%s/%s' % (self.__controlPadIndex, hotkey, self.getMupen64PlusConfigButtonValue(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_START, True)))
 					configParser.set('CoreEvents', 'Joy Mapping Save State', 'J%d%s/%s' % (self.__controlPadIndex, hotkey, self.getMupen64PlusConfigButtonValue(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_A, True)))
 					configParser.set('CoreEvents', 'Joy Mapping Load State', 'J%d%s/%s' % (self.__controlPadIndex, hotkey, self.getMupen64PlusConfigButtonValue(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_B, True)))
-					
+
 				# loop through each joystick that is connected and save to button config file
 				# note: max of 4 control pads for this emulator
 				joystickTotal = sdl2.joystick.SDL_NumJoysticks()
@@ -518,11 +518,11 @@ class PESApp(object):
 						counter += 1
 						if counter == 4:
 							break
-				
+
 				logging.debug("PESApp.playGame: writing Mupen64Plus config to %s" % userMupen64PlusConfFile)
 				with open(userMupen64PlusConfFile, 'wb') as f:
 					configParser.write(f)
-				
+
 				widthRe = re.compile("((window|framebuffer)[ ]+width[ ]*)=[ ]*[0-9]+")
 				heightRe = re.compile("((window|framebuffer)[ ]+height[ ]*)=[ ]*[0-9]+")
 				# now update gles2n64.conf file to use current resolution
@@ -563,7 +563,7 @@ class PESApp(object):
 								f.write(self.getViceButtonValue(c, i, sdl2.SDL_CONTROLLER_BUTTON_A, 16))
 								f.write(self.getViceButtonValue(c, i, sdl2.SDL_CONTROLLER_BUTTON_BACK, -4))
 								f.write(self.getViceButtonValue(c, i, sdl2.SDL_CONTROLLER_BUTTON_GUIDE, -4))
-		
+
 		logging.info("loading game: %s" % game.getName())
 		game.setPlayCount()
 		game.setLastPlayed()
@@ -571,28 +571,28 @@ class PESApp(object):
 		launchString = game.getCommand()
 		logging.debug("PESApp.playGame: launch string: %s" % launchString)
 		self.runCommand(launchString)
-	
+
 	def processCecEvent(self, btn, dur):
 		if dur > 0:
 			logging.debug("PESApp.processCecEvent")
 			e = mapRemoteButtonEvent(btn)
 			if e:
 				sdl2.SDL_PushEvent(e)
-	
+
 	def reboot(self, confirm=True):
 		if confirm:
 			self.showMessageBox("Are you sure?", self.reboot, False)
 		else:
 			logging.info("PES is rebooting...")
 			self.runCommand(self.config.rebootCommand)
-			
+
 	def reload(self, confirm=True):
 		if confirm:
 			self.showMessageBox("Are you sure?", self.reload, False)
 		else:
 			logging.info("PES is reloading...")
 			self.runCommand("sleep 1")
-		
+
 	def resetConfig(self, confirm=True):
 		if confirm:
 			self.showMessageBox("Are you sure?", self.resetConfig, False)
@@ -608,7 +608,7 @@ class PESApp(object):
 					logging.debug("PESApp.resetConfig: deleting directory %s" % path)
 					os.rmdir(path)
 			self.runCommand("sleep 1")
-		
+
 	def resetDatabase(self, confirm=True):
 		if confirm:
 			self.showMessageBox("Are you sure?", self.resetDatabase, False)
@@ -617,7 +617,7 @@ class PESApp(object):
 			logging.debug("PESApp.resetDatabase: deleting %s" % userPesDb)
 			os.remove(userPesDb)
 			self.runCommand("sleep 1")
-        
+
 	def run(self):
 		if sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO | sdl2.SDL_INIT_JOYSTICK | sdl2.SDL_INIT_GAMECONTROLLER) != 0:
 			pesExit("Failed to inialise SDL!", True)
@@ -630,16 +630,18 @@ class PESApp(object):
 		videoMode = sdl2.video.SDL_DisplayMode()
 		if sdl2.video.SDL_GetDesktopDisplayMode(0, videoMode) != 0:
 			pesExit("PESApp.run: unable to get current video mode!")
-			
+
 		logging.debug("PESApp.run: video mode (%d, %d), refresh rate: %dHz" % (videoMode.w, videoMode.h, videoMode.refresh_rate))
-		
+		logging.debug("Using PySDL2 %s" % sdl2.__version__)
+		sdl2Version = sdl2.SDL_version()
+		logging.debug("Using SDL2 %s.%s.%s" % (sdl2Version.major, sdl2Version.minor, sdl2Version.patch))
 		# register PES event type
 		if pes.event.registerPesEventType():
 			logging.debug("PESApp.run: PES event type registered in SDL2: %s" % pes.event.EVENT_TYPE)
 		else:
 			logging.error("PESApp.run: could not register PES event type in SDL2!")
 			self.exit(1)
-		
+
 		if self.__dimensions[0] == 0 or self.__dimensions == 0:
 			# assume full screen
 			logging.debug("PESApp.run: running fullscreen")
@@ -649,26 +651,25 @@ class PESApp(object):
 			# windowed
 			logging.debug("PESApp.run: running windowed")
 			self.__window = sdl2.video.SDL_CreateWindow('PES', sdl2.video.SDL_WINDOWPOS_UNDEFINED, sdl2.video.SDL_WINDOWPOS_UNDEFINED, self.__dimensions[0], self.__dimensions[1], 0)
-		
+
 		self.menuHeight = self.__dimensions[1] - self.__footerHeight - self.__headerHeight
-		
 		self.menuRect = [0, self.__headerHeight + 1, self.menuWidth, self.__dimensions[1] - self.__headerHeight + 1]
 		self.screenRect = [self.menuWidth + 1, self.__headerHeight + 1, self.__dimensions[0] - self.menuWidth + 1, self.__dimensions[1] - self.__headerHeight + 1]
-		
+
 		logging.debug("PESApp.run: window dimensions: (%d, %d)" % (self.__dimensions[0], self.__dimensions[1]))
-		
+
 		self.splashFont = sdl2.sdlttf.TTF_OpenFont(self.config.fontFile, self.__fontSizes['splash'])
 		self.menuFont = sdl2.sdlttf.TTF_OpenFont(self.config.fontFile, self.__fontSizes['menu'])
 		self.headerFont = sdl2.sdlttf.TTF_OpenFont(self.config.fontFile, self.__fontSizes['header'])
 		self.titleFont = sdl2.sdlttf.TTF_OpenFont(self.config.fontFile, self.__fontSizes['title'])
 		self.bodyFont = sdl2.sdlttf.TTF_OpenFont(self.config.fontFile, self.__fontSizes['body'])
 		self.smallBodyFont = sdl2.sdlttf.TTF_OpenFont(self.config.fontFile, self.__fontSizes['smallBody'])
-		
+
 		self.renderer = sdl2.SDL_CreateRenderer(self.__window, -1, sdl2.render.SDL_RENDERER_ACCELERATED)
-		
+
 		# pre-initialise screens
 		self.screens = {}
-		
+
 		headerLabel = Label(self.renderer, 5, 0, "Pi Entertainment System", self.headerFont, self.textColour)
 		self.__uiObjects.append(headerLabel)
 		dateLabel = Label(self.renderer, 0, 0, "00:00:00 00/00/0000", self.headerFont, self.textColour)
@@ -678,10 +679,10 @@ class PESApp(object):
 		splashLabel = Label(self.renderer, 0, 0, "Pi Entertainment System", self.splashFont, self.textColour)
 		splashLabel.x = int((self.__dimensions[0] - splashLabel.width) / 2)
 		splashLabel.y = ((self.__dimensions[1]) / 2) - splashLabel.height
-		
+
 		running = True
 		loading = True
-		
+
 		lastTick = sdl2.timer.SDL_GetTicks()
 		splashTextureAlpha = 25
 		progressBarWidth = splashLabel.width
@@ -693,16 +694,16 @@ class PESApp(object):
 		statusLabel = Label(self.renderer, 0, 0, loadingThread.status, self.bodyFont, self.textColour)
 		statusLabel.x = int((self.__dimensions[0] - statusLabel.width) / 2)
 		statusLabel.y = progressBarY + progressBarHeight + 2
-		
+
 		# load joystick database
 		sdl2.SDL_GameControllerAddMappingsFromFile(userGameControllerFile)
-		
+
 		self.__gamepadIcon = Icon(self.renderer, dateLabel.x, dateLabel.y, self.__ICON_WIDTH, self.__ICON_HEIGHT, gamepadImageFile, False)
 		self.__gamepadIcon.setVisible(False)
-		
+
 		self.__remoteIcon = Icon(self.renderer, dateLabel.x, dateLabel.y, self.__ICON_WIDTH, self.__ICON_HEIGHT, remoteImageFile, False)
 		self.__remoteIcon.setVisible(self.__cecEnabled)
-		
+
 		self.__networkIcon = Icon(self.renderer, dateLabel.x - 42, dateLabel.y, self.__ICON_WIDTH, self.__ICON_HEIGHT, networkImageFile, False)
 		self.ip = None
 		defaultInterface = getDefaultInterface()
@@ -712,9 +713,9 @@ class PESApp(object):
 		else:
 			logging.warning("PESApp.run: default network interface not found!")
 			self.__networkIcon.setVisible(False)
-			
+
 		self.__msgBox = None
-		
+
 		self.__controlPad = None
 		self.__controlPadIndex = None
 		self.__dpadAsAxis = False
@@ -723,9 +724,12 @@ class PESApp(object):
 		screenSaverTick = joystickTick
 		screenSaverActive = False
 		self.__screenSaverLabel = None
-		
+
+		fpsManager = sdl2.sdlgfx.FPSManager()
+		sdl2.sdlgfx.SDL_setFramerate(fpsManager, 60)
+
 		while running:
-			
+
 			if self.__screenSaverTimeout > 0 and not screenSaverActive and sdl2.timer.SDL_GetTicks() - screenSaverTick  > self.__screenSaverTimeout * 60000: # milliseconds per minute
 				logging.debug("PESApp.run: activating screen saver")
 				screenSaverActive = True
@@ -733,7 +737,7 @@ class PESApp(object):
 				if self.__screenSaverLabel == None:
 					self.__screenSaverLabel = Label(self.renderer, 0, 0, "Pi Entertainment System", self.splashFont, self.textColour)
 				self.__screenSaverLabel.setCoords(random.randint(0, self.__dimensions[0] - self.__screenSaverLabel.width), random.randint(0, self.__dimensions[1] - self.__screenSaverLabel.height))
-			
+
 			events = sdl2.ext.get_events()
 			for event in events:
 				if self.doJsToKeyEvents:
@@ -788,7 +792,7 @@ class PESApp(object):
 													e.key.keysym.sym = key
 													sdl2.SDL_PushEvent(e)
 											break
-										
+
 				if event.type == pes.event.EVENT_TYPE:
 					(t, d1, d2) = pes.event.decodePesEvent(event)
 					logging.debug("PESApp.run: trapping PES Event")
@@ -802,10 +806,10 @@ class PESApp(object):
 								else:
 									logging.debug("PESApp.run adding ConsoleScreen for %s following database update" % c.getName())
 									self.screens[screenName] = ConsoleScreen(self, self.renderer, self.menuRect, self.screenRect, c)
-								
+
 						self.screens["Home"].refreshMenu()
 						Thumbnail.destroyTextures()
-						
+
 						if screenSaverActive:
 							screenSaverActive = False
 							screenSaverTick = sdl2.timer.SDL_GetTicks()
@@ -815,7 +819,7 @@ class PESApp(object):
 						self.screens["Home"].updateRecentBadges()
 					#elif t == pes.event.EVENT_RESOURCES_LOADED:
 					#	pass
-					
+
 
 				if screenSaverActive:
 					if event.type == sdl2.SDL_KEYDOWN:
@@ -859,16 +863,16 @@ class PESApp(object):
 								self.screens[self.screenStack[-1]].processEvent(event)
 						elif event.type == sdl2.SDL_KEYUP or event.type == sdl2.SDL_JOYBUTTONUP or event.type == sdl2.SDL_JOYAXISMOTION or event.type == sdl2.SDL_JOYHATMOTION:
 							self.screens[self.screenStack[-1]].processEvent(event)
-								
+
 				if event.type == sdl2.SDL_KEYDOWN and event.key.keysym.sym == sdl2.SDLK_ESCAPE:
 					logging.debug("PESApp.run: trapping escape key event")
 					self.exit(confirm=True)
-					
+
 				# joystick events
 				if event.type == sdl2.SDL_QUIT:
 					running = False
 					break
-			
+
 			if loading:
 				sdl2.SDL_SetRenderDrawColor(self.renderer, self.backgroundColour.r, self.backgroundColour.g, self.backgroundColour.b, 255)
 				sdl2.SDL_RenderClear(self.renderer)
@@ -907,31 +911,31 @@ class PESApp(object):
 				sdl2.SDL_RenderClear(self.renderer)
 				sdl2.sdlgfx.boxRGBA(self.renderer, 0, 0, self.__dimensions[0], self.__headerHeight, self.headerBackgroundColour.r, self.headerBackgroundColour.g, self.headerBackgroundColour.b, 255) # header bg
 				headerLabel.draw()
-				
+
 				self.screens[self.screenStack[-1]].draw()
-			
+
 				now = datetime.now()
 				dateLabel.setText(now.strftime("%H:%M:%S %d/%m/%Y"))
 				dateLabel.draw()
-				
+
 				iconX = dateLabel.x - 42
-				
+
 				if self.__networkIcon.visible:
 					self.__networkIcon.x = iconX
 					self.__networkIcon.draw()
 					iconX -= 37
-					
+
 				if self.__gamepadIcon.visible:
 					self.__gamepadIcon.x = iconX
 					self.__gamepadIcon.draw()
 					iconX -= 37
-					
+
 				if self.__remoteIcon.visible:
 					self.__remoteIcon.x = iconX
 					self.__remoteIcon.draw()
-				
+
 				sdl2.sdlgfx.rectangleRGBA(self.renderer, 0, self.__headerHeight, self.__dimensions[0], self.__headerHeight, self.lineColour.r, self.lineColour.g, self.lineColour.b, 255) # header line
-			
+
 			if not loading:
 				# detect joysticks
 				if self.__controlPad and not sdl2.SDL_GameControllerGetAttached(self.__controlPad):
@@ -971,7 +975,7 @@ class PESApp(object):
 										e.type = sdl2.SDL_KEYDOWN
 										e.key.keysym.sym = key
 										sdl2.SDL_PushEvent(e)
-					
+
 					# is the user holding down an axis?
 					# note: at the moment we only care about the left axis in the Y plane
 					for a in [sdl2.SDL_CONTROLLER_AXIS_LEFTY]:
@@ -985,7 +989,7 @@ class PESApp(object):
 									e.type = sdl2.SDL_KEYDOWN
 									e.key.keysym.sym = key
 									sdl2.SDL_PushEvent(e)
-				
+
 				if sdl2.timer.SDL_GetTicks() - joystickTick > 1000:
 					tick = sdl2.timer.SDL_GetTicks()
 					joystickTotal = sdl2.joystick.SDL_NumJoysticks()
@@ -1010,14 +1014,16 @@ class PESApp(object):
 										#print sdl2.SDL_GameControllerMapping(c)
 								if close:
 									sdl2.SDL_GameControllerClose(c)
-									
+
 			if self.__msgBox and self.__msgBox.isVisible():
 				self.__msgBox.draw()
-			
+
 			sdl2.SDL_RenderPresent(self.renderer)
-			
+			# limit frame rate
+			sdl2.sdlgfx.SDL_framerateDelay(fpsManager)
+
 		self.exit(0)
-		
+
 	def runCommand(self, command):
 		logging.debug("PESApp.runCommand: about to write to: %s" % scriptFile)
 		logging.debug("PESApp.runCommand: command: %s" % command)
@@ -1028,14 +1034,14 @@ class PESApp(object):
 			f.write("%s &> %s\n" % (command, execLog))
 			f.write("exec %s %s\n" % (os.path.join(baseDir, 'bin', 'pes') , ' '.join(sys.argv[1:])))
 		self.exit(0)
-		
+
 	def runKodi(self):
 		logging.debug("PESApp.runKodi: launching kodi using: %s" % self.config.kodiCommand)
 		self.runCommand(self.config.kodiCommand)
-		
+
 	def setCecEnabled(self, enabled):
 		self.__cecEnabled = enabled
-		
+
 	def setScreen(self, screen, doAppend=True):
 		if not screen in self.screens:
 			logging.warning("PESApp.setScreen: invalid screen selection \"%s\"" % screen)
@@ -1045,7 +1051,7 @@ class PESApp(object):
 			if doAppend:
 				self.screenStack.append(screen)
 			self.screens[screen].setMenuActive(True)
-		
+
 	def setUpRetroAchievementUser(self):
 		if self.retroAchievementConn:
 			if self.achievementUser:
@@ -1073,31 +1079,31 @@ class PESApp(object):
 				finally:
 					if con:
 						con.close()
-			
+
 	def showMessageBox(self, text, callback, *callbackArgs):
 		if self.__msgBox:
 			self.__msgBox.destroy()
 		self.__msgBox = MessageBox(self.renderer, text, self.bodyFont, self.textColour, self.menuBackgroundColour, self.lineColour, callback, *callbackArgs)
 		self.__msgBox.setVisible(True)
-			
+
 	def shutdown(self, confirm=True):
 		if confirm:
 			self.showMessageBox("Are you sure?", self.shutdown, False)
 		else:
 			logging.info("PES is shutting down...")
 			self.runCommand(self.config.shutdownCommand)
-			
+
 	def updateControlPad(self, jsIndex):
 		if jsIndex == self.__controlPadIndex:
 			# hack for instances where a dpad is an axis
 			bind = sdl2.SDL_GameControllerGetBindForButton(self.__controlPad, sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP)
-			if bind:			
+			if bind:
 				if bind.bindType == sdl2.SDL_CONTROLLER_BINDTYPE_AXIS:
 					self.__dpadAsAxis = True
 					logging.debug("PESApp.run: enabling dpad as axis hack")
 				else:
 					self.__dpadAsAxis = False
-			
+
 class PESLoadingThread(threading.Thread):
 	def __init__(self, app):
 		super(PESLoadingThread, self).__init__()
@@ -1106,10 +1112,10 @@ class PESLoadingThread(threading.Thread):
 		self.started = False
 		self.done = False
 		self.status = "Initialising"
-		
+
 	def run(self):
 		self.started = True
-		
+
 		# create database (if needed)
 		con = None
 		logging.debug('PESLoadingThread.run: connecting to database: %s' % userPesDb)
@@ -1134,9 +1140,9 @@ class PESLoadingThread(threading.Thread):
 			cur.execute('CREATE INDEX IF NOT EXISTS "achievements_badge_index" on achievements_badges (badge_id ASC)')
 			cur.execute('CREATE TABLE IF NOT EXISTS `achievements_earned`(`user_id` INT, `badge_id` INT, `date_earned` INT, `date_earned_hardcore` INT, PRIMARY KEY (user_id, badge_id))')
 			cur.execute('CREATE INDEX IF NOT EXISTS "achievements_earned_index" on achievements_earned (user_id ASC, badge_id ASC)')
-			
+
 			self.progress = 16
-			
+
 			# is the games catalogue populated?
 			cur.execute('SELECT COUNT(*) AS `total` FROM `games_catalogue`')
 			row = cur.fetchone()
@@ -1147,7 +1153,7 @@ class PESLoadingThread(threading.Thread):
 				catalogueConfigParser.read(userGamesCatalogueFile)
 				sections = catalogueConfigParser.sections()
 				sectionTotal = float(len(sections))
-				
+
 				i = 0.0
 				insertValues = []
 				for section in sections:
@@ -1162,17 +1168,17 @@ class PESLoadingThread(threading.Thread):
 					self.progress = 16 + (16 * (i / sectionTotal))
 				if len(insertValues) > 0:
 					cur.execute('INSERT INTO `games_catalogue` (`short_name`, `full_name`) VALUES %s;' % ','.join(insertValues))
-						
+
 			con.commit()
 		except sqlite3.Error, e:
 			pesExit("Error: %s" % e.args[0], True)
 		finally:
 			if con:
 				con.close()
-				
+
 		self.progress = 32
 		self.status = "Loading consoles..."
-		
+
 		# load consoles
 		configParser = ConfigParser.ConfigParser()
 		configParser.read(userConsolesConfigFile)
@@ -1210,7 +1216,7 @@ class PESLoadingThread(threading.Thread):
 				finally:
 					if con:
 						con.close()
-				
+
 				console = Console(c, consoleId, thegamesdbApiId, extensions, consolePath, command, userPesDb, consoleImg, nocoverart, consoleCoverartDir, emulator)
 				if configParser.has_option(c, 'ignore_roms'):
 					for r in configParser.get(c, 'ignore_roms').split(','):
@@ -1220,7 +1226,7 @@ class PESLoadingThread(threading.Thread):
 				if configParser.has_option(c, 'require'):
 					for f in configParser.get(c, 'require').split(','):
 						console.addRequiredFile(f.strip().replace('%%USERBIOSDIR%%', self.app.config.biosDir))
-				
+
 				if console.isNew():
 					console.save()
 				self.app.consoles.append(console)
@@ -1236,8 +1242,8 @@ class PESLoadingThread(threading.Thread):
 				self.done = True
 				self.app.exit(1)
 				return
-		
-		
+
+
 		self.progress = 48
 		self.status = "Loading timezone info..."
 		process = Popen(self.app.config.listTimezonesCommand, stdout=PIPE, stderr=PIPE, shell=True)
@@ -1249,7 +1255,7 @@ class PESLoadingThread(threading.Thread):
 			for l in stdout.split("\n")[:-1]:
 				self.app.timezones.append(l)
 			logging.debug("PESLoadingThread.run: loaded %d timezones" % len(self.app.timezones))
-				
+
 			process = Popen(self.app.config.getTimezoneCommand, stdout=PIPE, stderr=PIPE, shell=True)
 			stdout, stderr = process.communicate()
 			if process.returncode != 0:
@@ -1258,7 +1264,7 @@ class PESLoadingThread(threading.Thread):
 			else:
 				self.app.currentTimezone = stdout[:-1]
 				logging.debug("PESLoadingThread.run: current timezone is: %s" % self.app.currentTimezone)
-			
+
 		self.progress = 64
 		self.status = "Loading surfaces..."
 		self.app.initSurfaces()
@@ -1272,9 +1278,9 @@ class PESLoadingThread(threading.Thread):
 		logging.debug("PESLoadingThread.run: %d complete" % self.progress)
 		self.done = True
 		return
-		
+
 class Screen(object):
-	
+
 	def __init__(self, app, renderer, title, menu, menuRect, screenRect):
 		super(Screen, self).__init__()
 		self.title = title
@@ -1295,27 +1301,27 @@ class Screen(object):
 			self.menu.setSelected(0)
 			self.__menuList = self.addUiObject(List(self.renderer, self.__menuMargin + self.menuRect[0], self.menuRect[1] + self.__menuTopMargin, self.menuRect[2] - (self.__menuMargin * 2), self.menuRect[3] - (self.menuRect[1] + self.__menuTopMargin), self.menu, self.app.menuFont, self.app.menuTextColour, self.app.menuSelectedTextColour, self.app.menuSelectedBgColour, self.app.menuTextColour, List.SCROLLBAR_DISABLED, labelMargin=0))
 			self.__menuList.setFocus(True)
-		
+
 	def addUiObject(self, o):
 		if o not in self.__uiObjects:
 			self.__uiObjects.append(o)
 		return o
-		
+
 	def draw(self):
 		if self.menu:
 			self.drawMenu()
 		self.drawScreen()
-		
+
 	def drawMenu(self):
 		sdl2.sdlgfx.boxRGBA(self.renderer, self.menuRect[0], self.menuRect[1], self.menuRect[0] + self.menuRect[2], self.menuRect[1] + self.menuRect[3], self.app.menuBackgroundColour.r, self.app.menuBackgroundColour.g, self.app.menuBackgroundColour.b, 255)
 		self.__menuList.draw()
-	
+
 	def drawScreen(self):
 		sdl2.sdlgfx.boxRGBA(self.renderer, self.screenRect[0], self.screenRect[1], self.screenRect[0] + self.screenRect[2], self.screenRect[1] + self.screenRect[3], self.app.backgroundColour.r, self.app.backgroundColour.g, self.app.backgroundColour.b, 255)
-		
+
 	def isBusy(self):
 		return False
-	
+
 	def processEvent(self, event):
 		if self.menuActive and event.type == sdl2.SDL_KEYDOWN:
 			if event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER:
@@ -1328,21 +1334,21 @@ class Screen(object):
 				self.__menuList.processEvent(event)
 		elif not self.menuActive:
 			self.justActivated = False
-				
+
 	def removeUiObject(self, o):
 		if o in self.__uiObjects:
 			self.__uiObjects.remove(o)
-			
+
 	def select(self, index):
 		if self.menu:
 			self.menu.setSelected(0, True)
-	
+
 	def setMenuActive(self, active):
 		if self.menu:
 			self.menuActive = active
 			self.__menuList.setFocus(active)
 			logging.debug("Screen.setMenuActive: \"%s\" activate state is now: %s" % (self.title, self.menuActive))
-		
+
 	def stop(self):
 		uiObjectLen = len(self.__uiObjects)
 		if uiObjectLen > 0:
@@ -1351,7 +1357,7 @@ class Screen(object):
 				o.destroy()
 
 class ConsoleScreen(Screen):
-	
+
 	def __init__(self, app, renderer, menuRect, screenRect, console):
 		super(ConsoleScreen, self).__init__(app, renderer, console.getName(), Menu([
 			MenuItem("Favourites"),
@@ -1415,7 +1421,7 @@ class ConsoleScreen(Screen):
 		self.refreshNeeded = True
 		#self.refresh()
 		logging.debug("ConsoleScreen.init: initialised for %s" % self.__consoleName)
-		
+
 	def __createMenu(self, games):
 		menu = Menu([])
 		for g in games:
@@ -1423,21 +1429,21 @@ class ConsoleScreen(Screen):
 			m.toggle(g.isFavourite())
 			menu.addItem(m)
 		return menu
-		
+
 	def __createPreviewThumbnail(self, game):
 		if self.__previewThumbnail == None:
 			self.__previewThumbnail = self.addUiObject(Thumbnail(self.renderer, self.__previewThumbnailX, self.__previewThumbnailY, self.__previewThumbnailWidth, self.__previewThumbnailHeight, game, self.app.bodyFont, self.app.textColour, False))
-		
+
 	def drawScreen(self):
 		if self.refreshNeeded:
 			self.refresh()
-		
+
 		if self.__consoleTexture == None:
 			self.__consoleTexture = sdl2.SDL_CreateTextureFromSurface(self.renderer, self.app.consoleSurfaces[self.__consoleName])
 			sdl2.SDL_SetTextureAlphaMod(self.__consoleTexture, CONSOLE_TEXTURE_ALPHA)
 		sdl2.SDL_RenderCopy(self.renderer, self.__consoleTexture, None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
 		self.__titleLabel.draw()
-		
+
 		selectedText = self.menu.getSelectedItem().getText()
 		if self.menuActive:
 			if selectedText == "Recently Added":
@@ -1508,7 +1514,7 @@ class ConsoleScreen(Screen):
 				self.__previewThumbnail.draw()
 				self.__gameInfoLabel.draw()
 				self.__gameOverviewLabel.draw()
-			
+
 	def __getGameInfoText(self, game):
 		lastPlayed = "N/A"
 		playCount = game.getPlayCount()
@@ -1519,14 +1525,14 @@ class ConsoleScreen(Screen):
 			achievementGame = self.app.achievementUser.getGame(game.getAchievementApiId())
 			achievementInfo = "%d%% complete, %d points" % (achievementGame.getPercentComplete(), achievementGame.getUserPointsTotal())
 		return "File name: %s\nReleased: %s\nPlay Count: %d\nLast Played: %s\nSize: %s\nBadges: %s\nOverview:" % (os.path.basename(game.getPath()), game.getReleased("%d/%m/%Y"), playCount, lastPlayed, game.getSize(True), achievementInfo)
-	
+
 	def __playGame(self, game):
 		if self.app.retroAchievementConn and self.app.achievementUser and game.hasAchievements():
 			self.app.screens["Play"].setGame(game)
 			self.app.setScreen("Play")
 		else:
 			self.app.playGame(game)
-			
+
 	def processEvent(self, event):
 		super(ConsoleScreen, self).processEvent(event)
 		if self.menuActive:
@@ -1617,7 +1623,7 @@ class ConsoleScreen(Screen):
 						self.__recentlyPlayedList.processEvent(event)
 					elif selectedText == "Have Badges" and self.__achievementsList:
 						self.__achievementsList.processEvent(event)
-						
+
 	def processListEvent(self, uiList, eventType, item):
 		if eventType == List.LISTEN_ITEM_SELECTED:
 			if self.__previewThumbnail:
@@ -1630,7 +1636,7 @@ class ConsoleScreen(Screen):
 			g.setFavourite(item.isToggled())
 			g.save()
 			self.__updateFavourites()
-						
+
 	def refresh(self):
 		logging.debug("ConsoleScreen.refresh: reloading content for %s..." % self.__consoleName)
 		start = time.time()
@@ -1697,7 +1703,7 @@ class ConsoleScreen(Screen):
 		self.__updateFavourites()
 		self.refreshNeeded = False
 		logging.debug("ConsoleScreen.__refresh: time taken = %0.02fs" % (time.time() - start))
-		
+
 	def __updateFavourites(self):
 		self.__favouriteGames = []
 		favouriteGameIds = self.__console.getFavouriteIds()
@@ -1721,15 +1727,15 @@ class ConsoleScreen(Screen):
 			if self.__favouritesList:
 				self.__favouritesList.destroy()
 				self.__favouritesList = None
-		
+
 	def stop(self):
 		super(ConsoleScreen, self).stop()
 		logging.debug("ConsoleScreen.stop: deleting textures for %s..." % self.__consoleName)
 		if self.__consoleTexture:
 			sdl2.SDL_DestroyTexture(self.__consoleTexture)
-	
+
 class HomeScreen(Screen):
-	
+
 	def __init__(self, app, renderer, menuRect, screenRect):
 		super(HomeScreen, self).__init__(app, renderer, "Home", Menu([MenuItem("Home")]), menuRect, screenRect)
 		#super(HomeScreen, self).__init__(app, renderer, "Home", Menu([MenuItem("Achievements", False, False, app.setScreen, "Achievements")]), menuRect, screenRect)
@@ -1752,37 +1758,37 @@ class HomeScreen(Screen):
 		self.__consoleName = None
 		self.__headerLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], "Welcome to PES!", self.app.titleFont, self.app.textColour))
 		#self.__headerLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.screenRect[1], "Achievements", self.app.titleFont, self.app.textColour))
-		
+
 		self.__gamesAdded = self.app.getGameTotal() > 0
-		
+
 		self.__noGamesAddedWelcomeText = "Before you can start playing any games, please add some to PES and then go to \"Update Games\" under the \"Settings\" screen.\n\nNote: if you sign up for an account at www.retroachievements.org and enter your details into your pes.ini file, PES will show your achievements here.\n\nFor help please visit http://pes.mundayweb.com."
 		self.__gamesAddedWelcomeText = "Please select an item from the menu on the left.\n\nNote: if you sign up for an account at www.retroachievements.org and enter your details into your pes.ini file, PES will show your achievements here.\n\nFor help please visit http://pes.mundayweb.com."
-		
+
 		if self.__gamesAdded:
 			self.__welcomeText = self.__gamesAddedWelcomeText
 		else:
 			self.__welcomeText = self.__noGamesAddedWelcomeText
-				
+
 		self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__welcomeText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
 		#self.__descriptionLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), "BLAH", self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
 		self.__recentlyAddedText = "Recently Added"
 		self.__recentlyAddedLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), self.__recentlyAddedText, self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
 		self.__recentlyPlayedLabel = self.addUiObject(Label(self.renderer, self.screenRect[0] + self.screenMargin, self.__headerLabel.y + (self.__headerLabel.height * 2), "Recently Played", self.app.bodyFont, self.app.textColour, fixedWidth=self.wrap))
-		
+
 		self.__recentlyAddedThumbPanels = {}
 		self.__recentlyPlayedThumbPanels = {}
-		
+
 		self.__badgePanels = []
 		self.__initBadges = True # hack to make sure badges are not initialised inside the PES loading thread
 
 		logging.debug("HomeScreen.init: initialised")
-		
+
 	def __doNothing(self):
 		self.setMenuActive(True)
-			
+
 	def drawScreen(self):
 		super(HomeScreen, self).drawScreen()
-		
+
 		self.__headerLabel.draw()
 		if self.__consoleSelected:
 			sdl2.SDL_RenderCopy(self.renderer, self.__consoleTexture, None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
@@ -1801,12 +1807,12 @@ class HomeScreen(Screen):
 				p.draw()
 		else:
 			self.__descriptionLabel.draw()
-			
+
 	def __loadConsoleScreen(self, console):
 		screenName = "Console %s" % console.getName()
 		self.app.screens[screenName].refresh()
 		self.app.setScreen(screenName)
-		
+
 	def loadTextures(self):
 		logging.debug("HomeScreen.loadTextures: pre-loading textures for thumb panels...")
 		for console in self.app.consoles:
@@ -1821,7 +1827,7 @@ class HomeScreen(Screen):
 					t = ThumbnailPanel(self.renderer, self.screenRect[0] + self.screenMargin, self.__recentlyPlayedLabel.y + self.__recentlyPlayedLabel.height + self.__thumbYGap, self.screenRect[2] - self.screenMargin, games, self.app.smallBodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.__thumbXGap, True, self.__showThumbs)
 					t.loadTextures()
 					self.__recentlyPlayedThumbPanels[console.getName()] = self.addUiObject(t)
-		
+
 
 	def processEvent(self, event):
 		super(HomeScreen, self).processEvent(event)
@@ -1829,7 +1835,7 @@ class HomeScreen(Screen):
 			self.update()
 		elif not self.menuActive and self.menu.getSelectedItem().getText() == "Home" and event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_KP_ENTER or event.key.keysym.sym == sdl2.SDLK_RETURN):
 			self.setMenuActive(True)
-		
+
 	def refreshMenu(self):
 		logging.debug("HomeScreen.refreshMenu: refreshing menu contents...")
 		items = self.menu.getItems()
@@ -1866,12 +1872,12 @@ class HomeScreen(Screen):
 			else:
 				self.__welcomeText = self.__noGamesAddedWelcomeText
 		self.update()
-		
+
 	def stop(self):
 		super(HomeScreen, self).stop()
 		logging.debug("HomeScreen.stop: deleting textures...")
 		sdl2.SDL_DestroyTexture(self.__consoleTexture)
-		
+
 	def update(self):
 		selected = self.menu.getSelectedItem()
 		if isinstance(selected, ConsoleMenuItem):
@@ -1882,7 +1888,7 @@ class HomeScreen(Screen):
 			self.__consoleTexture = sdl2.SDL_CreateTextureFromSurface(self.renderer, self.app.consoleSurfaces[self.__consoleName])
 			sdl2.SDL_SetTextureAlphaMod(self.__consoleTexture, CONSOLE_TEXTURE_ALPHA)
 			self.__headerLabel.setText(self.__consoleName)
-			
+
 			if self.__consoleName in self.__recentlyPlayedThumbPanels:
 				self.__recentlyPlayedLabel.y = self.__recentlyAddedThumbPanels[self.__consoleName].y + self.__recentlyAddedThumbPanels[self.__consoleName].height + 50
 				self.__recentlyPlayedLabel.setVisible(True)
@@ -1914,7 +1920,7 @@ class HomeScreen(Screen):
 			elif selectedText == "Power Off":
 				self.__headerLabel.setText("Power Off")
 				self.__descriptionLabel.setText("Select this menu item to power off your system.", True)
-				
+
 	def updateRecentBadges(self):
 		if self.__gamesAdded and self.app.achievementUser:
 			logging.debug("HomeScreen.updateRecentBadges: updating...")
@@ -1938,9 +1944,9 @@ class HomeScreen(Screen):
 				y += badgePanel.height + 10
 				if y + badgePanel.height > self.screenRect[1] + self.screenRect[3]:
 					break
-				
+
 class PlayScreen(Screen):
-	
+
 	def __init__(self, app, renderer, menuRect, screenRect, game):
 		super(PlayScreen, self).__init__(app, renderer, "Play", Menu([MenuItem("Play", False, False, self.__play), MenuItem("Browse")]), menuRect, screenRect)
 		self.__game = game
@@ -1949,19 +1955,19 @@ class PlayScreen(Screen):
 		self.__consoleName = None
 		self.__achievementsList = None
 		logging.debug("PlayScreen.init: intialised")
-		
+
 	def drawScreen(self):
 		super(PlayScreen, self).drawScreen()
 		sdl2.SDL_RenderCopy(self.renderer, self.__consoleTexture, None, sdl2.SDL_Rect(self.screenRect[0], self.screenRect[1], self.screenRect[2], self.screenRect[3]))
 		self.__titleLabel.draw()
 		self.__achievementsList.draw()
-		
+
 	def __play(self):
 		self.app.playGame(self.__game)
-		
+
 	def processEvent(self, event):
 		super(PlayScreen, self).processEvent(event)
-		
+
 		if not self.menuActive and not self.justActivated:
 			if self.menu.getSelectedItem().getText() == "Browse":
 				self.__achievementsList.setFocus(True)
@@ -1970,7 +1976,7 @@ class PlayScreen(Screen):
 				self.__achievementsList.setFocus(False)
 		elif self.__achievementsList.hasFocus():
 			self.__achievementsList.setFocus(False)
-		
+
 	def setGame(self, game):
 		if game == self.__game:
 			return
@@ -2003,23 +2009,23 @@ class PlayScreen(Screen):
 			self.__achievementsList = self.addUiObject(IconPanelList(self.renderer, self.__titleLabel.x, y, self.screenRect[2] - (self.screenMargin * 2), self.screenRect[3] - y - self.screenMargin, menu, self.app.bodyFont, self.app.smallBodyFont, self.app.textColour, self.app.textColour, None, self.app.menuSelectedBgColour, List.SCROLLBAR_AUTO, True, False))
 		else:
 			self.__achievementsList.setMenu(menu)
-				
+
 class JoystickPromptMap(object):
-	
+
 	BUTTON = 1
 	AXIS = 2
 	HAT = 3
 	AXIS_POSITIVE = 1
 	AXIS_NEGATIVE = -1
-	
+
 	def __init__(self, prompt, sdlName):
 		self.__prompt = prompt
 		self.__sdlName = sdlName
 		self.reset()
-		
+
 	def getPrompt(self):
 		return "Press: %s" % self.__prompt
-	
+
 	def getInputTypeAsString(self):
 		if self.__inputType == None:
 			return "None"
@@ -2030,7 +2036,7 @@ class JoystickPromptMap(object):
 		if self.__inputType == self.AXIS:
 			return "Axis"
 		return "Unknown!"
-	
+
 	def getMap(self):
 		if self.__inputType == self.BUTTON:
 			return "%s:b%s" % (self.__sdlName, self.__value)
@@ -2041,31 +2047,31 @@ class JoystickPromptMap(object):
 			hat, value = self.__value
 			return "%s:h%s.%s" % (self.__sdlName, hat, value)
 		return None
-	
+
 	def getValue(self):
 		return self.__value
-	
+
 	def getValueAsString(self):
 		if self.__inputType == self.HAT:
 			return "(Hat: %d %d)" % (self.__value[0], self.__value[1])
 		if self.__inputType == self.AXIS:
 			return "(Axis: %d %d)" % (self.__value[0], self.__value[1])
 		return "%s" % self.__value
-	
+
 	def getType(self):
 		return self.__inputType
-	
+
 	def reset(self):
 		self.__value = None
 		self.__inputType = None
-		
+
 	def setValue(self, inputType, value):
 		self.__inputType = inputType
 		self.__value = value
 		logging.debug("JoystickPromptMap.setValue: name: %s, type: %s, value: %s" % (self.__sdlName, self.getInputTypeAsString(), self.getValueAsString()))
-		
+
 class SettingsScreen(Screen):
-	
+
 	def __init__(self, app, renderer, menuRect, screenRect):
 		super(SettingsScreen, self).__init__(app, renderer, "Settings", Menu([
 			MenuItem("Update Games"),
@@ -2073,17 +2079,17 @@ class SettingsScreen(Screen):
 			MenuItem("Joystick Set-Up"),
 			MenuItem("Gameplay")]),
 		menuRect, screenRect)
-		
+
 		if self.app.currentTimezone != None:
 			self.menu.addItem(MenuItem("Timezone"))
-		
+
 		self.menu.addItem(MenuItem("Reset Database", False, False, app.resetDatabase))
 		self.menu.addItem(MenuItem("Reset Config", False, False, app.resetConfig))
 		self.menu.addItem(MenuItem("About"))
-		
+
 		self.__hardcoreModeMenuItem = MenuItem("Hardcore mode", True, True)
 		self.__hardcoreModeMenuItem.toggle(self.app.config.retroAchievementsHardcore)
-		
+
 		self.__init = True
 		self.__updateDatabaseMenu = Menu([])
 		for c in self.app.consoles:
@@ -2148,18 +2154,18 @@ class SettingsScreen(Screen):
 
 	def drawScreen(self):
 		super(SettingsScreen, self).drawScreen()
-		
+
 		currentX = self.screenRect[0] + self.screenMargin
 		currentY = self.screenRect[1]
-		
+
 		self.__headerLabel.draw()
 		self.__descriptionLabel.draw()
-		
+
 		if self.__init:
 			return
-		
+
 		selected = self.menu.getSelectedItem().getText()
-		
+
 		if selected == "Update Games":
 			if self.__updateDbThread != None:
 				if self.__updateDbThread.started and not self.__updateDbThread.done:
@@ -2210,9 +2216,9 @@ class SettingsScreen(Screen):
 				if tick - self.__jsTimerTick > 1000:
 					self.__jsTimerTick = tick
 					self.__jsTimeRemaining -= 1
-					
+
 					self.__jsTimerLabel.setText("Timeout in: %ds" % self.__jsTimeRemaining)
-					
+
 					if self.__jsTimeRemaining == 0:
 						# trigger back event
 						e = sdl2.SDL_Event()
@@ -2221,7 +2227,7 @@ class SettingsScreen(Screen):
 						sdl2.SDL_PushEvent(e)
 						self.__jsTimeRemaining = -1
 						poll = False
-				
+
 				if poll:
 					# check buttons
 					value = None
@@ -2232,10 +2238,10 @@ class SettingsScreen(Screen):
 							self.__jsLastButton = value
 							self.__jsLastEventTick = sdl2.SDL_GetTicks()
 							break
-			
+
 					if value != None:
 						self.__jsTimeRemaining = self.__jsTimeOut
-						
+
 						if value == self.__jsPrompts[0].getValue():
 							logging.debug("SettingsScreen.draw: skipping button %s" % self.__jsPrompts[self.__jsPrompt].getPrompt())
 							self.__jsPrompt += 1
@@ -2249,13 +2255,13 @@ class SettingsScreen(Screen):
 									logging.warning("SettingsScreen.draw: this button has already been assigned")
 									btnOk = False
 									break
-								
+
 							if btnOk:
 								self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.BUTTON, value)
 								self.__jsPrompt += 1
 								if self.__jsPrompt < self.__jsPromptLen:
 									self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
-					
+
 					else:
 						# do hats
 						for i in xrange(sdl2.SDL_JoystickNumHats(js)):
@@ -2267,7 +2273,7 @@ class SettingsScreen(Screen):
 								self.__jsLastHatValue = hvalue
 								self.__jsLastEventTick = sdl2.SDL_GetTicks()
 								break
-							
+
 						if value != None:
 							self.__jsTimeRemaining = self.__jsTimeOut
 							hatOk = True
@@ -2279,13 +2285,13 @@ class SettingsScreen(Screen):
 										logging.warning("SettingsScreen.draw: this hat has already been assigned")
 										hatOk = False
 										break
-						
+
 							if hatOk:
 								self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.HAT, (self.__jsLastHat, value))
 								self.__jsPrompt += 1
 								if self.__jsPrompt < self.__jsPromptLen:
 									self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
-						
+
 						elif sdl2.SDL_GetTicks() - self.__jsLastEventTick > 750:
 							# check axis
 							for i in xrange(sdl2.SDL_JoystickNumAxes(js)):
@@ -2295,7 +2301,7 @@ class SettingsScreen(Screen):
 									self.__jsLastAxis = value
 									self.__jsLastEventTick = sdl2.SDL_GetTicks()
 									break
-								
+
 							if value != None:
 								self.__jsTimeRemaining = self.__jsTimeOut
 								axisOk = True
@@ -2307,17 +2313,17 @@ class SettingsScreen(Screen):
 											logging.warning("SettingsScreen.draw: this axis has already been assigned")
 											axisOk = False
 											break
-									
+
 								if axisOk:
 									if avalue < JOYSTICK_AXIS_MIN:
 										self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.AXIS, (value, JoystickPromptMap.AXIS_NEGATIVE))
 									else:
 										self.__jsPrompts[self.__jsPrompt].setValue(JoystickPromptMap.AXIS, (value, JoystickPromptMap.AXIS_POSITIVE))
-										
+
 									self.__jsPrompt += 1
 									if self.__jsPrompt < self.__jsPromptLen:
 										self.__jsPromptLabel.setText(self.__jsPrompts[self.__jsPrompt].getPrompt())
-									
+
 					if self.__jsPrompt == self.__jsPromptLen:
 						logging.debug("SettingsScreen.draw: joystick configuration complete!")
 						self.__jsPromptLabel.setVisible(False)
@@ -2325,7 +2331,7 @@ class SettingsScreen(Screen):
 						self.__ignoreJsEvents = True
 						self.app.doJsToKeyEvents = True
 						errors = []
-						
+
 						jsGUID = getJoystickGUIDString(sdl2.SDL_JoystickGetDeviceGUID(self.__jsIndex))
 						logging.debug("SettingsScreen.draw: creating SDL2 controller mapping using GUID: %s" % jsGUID)
 						# remove commas from the name
@@ -2337,10 +2343,10 @@ class SettingsScreen(Screen):
 								jsMap.append(m)
 						jsMapStr = ','.join(jsMap)
 						logging.debug("SettingsScreen.draw: map: %s" % jsMapStr)
-						
+
 						for j in self.__joysticks:
 							sdl2.SDL_JoystickClose(j)
-							
+
 						rtn = sdl2.SDL_GameControllerAddMapping(jsMapStr)
 						if  rtn == 0 or rtn == 1:
 							logging.debug("SettingsScreen.draw: mapping loaded OK!")
@@ -2357,24 +2363,24 @@ class SettingsScreen(Screen):
 						else:
 							errors.append("Could not add SDL2 mapping for control pad!")
 							logging.error("SettingsScreen.draw: SDL_GameControllerAddMapping failed for joystick %d, %s" % (self.__jsIndex, self.__jsName))
-							
+
 						if len(errors) == 0:
 							self.app.updateControlPad(self.__jsIndex)
 							self.__descriptionLabel.setText("Configuration complete. Please press the BACK button to return to the previous menu.")
 						else:
 							self.__descriptionLabel.setText("Configuration failed with the following errors:\n\n%s" % "\n".join(errors))
-			
+
 			self.__jsPromptLabel.draw()
 			self.__jsTimerLabel.draw()
 			self.__gamepadLayoutIcon.draw()
-			
+
 	def isBusy(self):
 		return self.__isBusy
-		
+
 	def processEvent(self, event):
 		selected = self.menu.getSelectedItem().getText()
 		oldMenuActive = self.menuActive # store state before parent method changes it!
-		
+
 		# don't pass up the event if a games scan is in progress
 		if event.type == sdl2.SDL_KEYDOWN and selected == "Update Games" and self.__updateDbThread != None:
 			if event.key.keysym.sym == sdl2.SDLK_BACKSPACE or event.key.keysym.sym == sdl2.SDLK_HOME:
@@ -2401,9 +2407,9 @@ class SettingsScreen(Screen):
 					self.__updateAchievementsThread = None
 					if event.key.keysym.sym == sdl2.SDLK_HOME:
 						self.__reset()
-		
+
 		super(SettingsScreen, self).processEvent(event)
-		
+
 		if oldMenuActive:
 			if event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER):
 				logging.debug("SettingsScreen.processEvent: return key trapped for %s" % selected)
@@ -2482,7 +2488,7 @@ class SettingsScreen(Screen):
 						self.__jsTimerLabel.setText("Timeout in: %ds" % self.__jsTimeRemaining)
 						self.__jsTimerLabel.setCoords(self.__jsPromptLabel.x, self.__jsPromptLabel.y + self.__jsPromptLabel.height + 10)
 						self.__jsTimerLabel.setVisible(True)
-						
+
 					if not self.__gamepadLayoutIcon:
 						try:
 							img = Image.open(gamepadLayoutImageFile)
@@ -2492,14 +2498,14 @@ class SettingsScreen(Screen):
 							self.app.exit(1)
 						self.__gamepadLayoutIcon = self.addUiObject(Icon(self.renderer, self.screenRect[0] + ((self.screenRect[2] - imgWidth) / 2), self.__jsTimerLabel.y + self.__jsTimerLabel.height, imgWidth, imgHeight, gamepadLayoutImageFile, False))
 					self.__gamepadLayoutIcon.setVisible(True)
-						
+
 					joystickTotal = sdl2.joystick.SDL_NumJoysticks()
 					if joystickTotal > 0:
 						#logging.debug("PESApp.run: found %d control pads" % joystickTotal)
 						for i in xrange(joystickTotal):
 							js = sdl2.SDL_JoystickOpen(i)
 							self.__joysticks.append(js)
-					
+
 				self.__init = False
 		else:
 				if selected == "Update Games" and self.__consoleList:
@@ -2517,7 +2523,7 @@ class SettingsScreen(Screen):
 							self.__scanButton.processEvent(event)
 							self.__selectAllButton.processEvent(event)
 							self.__deselectAllButton.processEvent(event)
-								
+
 						if not self.__consoleList.hasFocus():
 							if event.key.keysym.sym == sdl2.SDLK_DOWN:
 								if self.__scanButton.hasFocus():
@@ -2579,7 +2585,7 @@ class SettingsScreen(Screen):
 				if event.key.keysym.sym == sdl2.SDLK_BACKSPACE:
 					logging.debug("SettingsScreen.processEvent: trapping backspace event")
 					self.__reset(False)
-					
+
 	def __reset(self, resetMenu=True):
 		self.__init = True
 		self.__headerLabel.setText(self.__defaultHeaderText)
@@ -2588,7 +2594,7 @@ class SettingsScreen(Screen):
 		if resetMenu:
 			self.menu.setSelected(0)
 		self.app.doJsToKeyEvents = True
-		
+
 	def __setTimezone(self, timezone):
 		process = Popen("%s %s" % (self.app.config.setTimezoneCommand, timezone), stdout=PIPE, stderr=PIPE, shell=True)
 		stdout, stderr = process.communicate()
@@ -2599,7 +2605,7 @@ class SettingsScreen(Screen):
 		self.app.currentTimezone = timezone
 		self.__descriptionLabel.setText("You can change the current timezone from \"%s\" by selecting one from the list below." % self.app.currentTimezone, True)
 		self.app.showMessageBox("Timezone changed successfully", None, None)
-		
+
 	def saveSettings(self):
 		logging.debug("SettingsScreen.saveSettings: saving settings...")
 		try:
@@ -2619,7 +2625,7 @@ class SettingsScreen(Screen):
 			self.__scanProgressBar.setProgress(0)
 		self.__updateDbThread = UpdateDbThread([c.getConsole() for c in self.__updateDatabaseMenu.getToggled()])
 		self.__updateDbThread.start()
-									
+
 	def stop(self):
 		logging.debug("SettingsScreen.stop: deleting UI objects...")
 		super(SettingsScreen, self).stop()
