@@ -1,6 +1,16 @@
 PES Changelog
 =============
 
+PES 2.4
+-------
+
+Date: 2018-02-22
+
+Changes (and bug fixes):
+
+* Updated SDL2 to version 2.0.7 as well as updating add-ons to latest versions
+* Added framerate limiting code to improve GUI responsiveness
+
 PES 2.3
 -------
 
