@@ -6,7 +6,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2017 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2018 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -51,13 +51,13 @@ if __name__ == "__main__":
 	logLevel = logging.INFO
 	if args.verbose:
 		logLevel = logging.DEBUG
-		
+
 	logging.basicConfig(format='%(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logLevel)
-	
+
 	logging.debug("checking for existence of %s" % args.device)
 	if not os.path.exists(args.device):
 		die("%s does not exist" % args.device)
-	
+
 	fstabFile = '/etc/fstab'
 	fsType = 'vfat'
 	label = "data"
@@ -66,30 +66,30 @@ if __name__ == "__main__":
 	coverartDir = mountPoint + os.sep + "coverart"
 	user = 'pi'
 	userAttrs = getpwnam(user)
-	
+
 	# look for existing "roms" partition - uses disk label to see if we have already made it or not
 	logging.debug("looking for existing \"%s\" partition" % label)
 	labelDir = '/dev/disk/by-label'
 	if not os.path.exists(labelDir):
 		die("%s does not exist" % labelDir)
-	
+
 	if not os.path.isdir(labelDir):
 		die("%s is not a directory" % labelDir)
 		exit(1)
-	
+
 	for l in os.listdir(labelDir):
 		logging.debug("found disk with label: %s" % l)
 		if l == label:
 			logging.info("found %s partition - no need to continue." % label)
 			sys.exit(0)
-	
+
 	logging.debug("could not find disk with \"%s\" label... continuing" % label)
-	
+
 	dataDevice = None
-	
+
 	try:
 		device = Device(args.device)
-		disk = Disk(device)	
+		disk = Disk(device)
 		freeSpace = disk.usable_free_space
 		logging.debug("will use %s space to create %s partition" % (mountPoint, freeSpace))
 		partition = Partition(disk, freeSpace)
@@ -100,7 +100,7 @@ if __name__ == "__main__":
 	except Exception, e:
 		logging.exception(e)
 		sys.exit(1)
-	
+
 	logging.info("partition created")
 	command = "mkfs.vfat -n %s %s" % (label, dataDevice)
 	logging.debug("now formatting using command: %s" % command)
@@ -109,30 +109,30 @@ if __name__ == "__main__":
 		for line in iter(process.stdout.readline, b''):
 			logging.debug(line)
 	rtn = process.wait()
-	
+
 	if rtn != 0:
 		die("%s returned non zero!" % command)
-		
+
 	logging.info("partition formatted")
-	
+
 	if not os.path.exists(mountPoint):
 		logging.debug("creating mount point: %s" % mountPoint)
 		os.mkdir(mountPoint)
 	elif not os.path.isdir(mountPoint):
 		die("%s is not a valid mount point" % mountPoint)
-	
+
 	fstab = Fstab()
 	fstab.read(fstabFile)
 	foundDataMount = False
 	for l in fstab.lines:
 		if l.directory == mountPoint:
 			foundDataMount = True
-			
+
 	if not foundDataMount:
 		logging.info("adding entry to %s" % fstabFile)
 		fstab.lines.append(Line("%s  %s           %s    defaults,uid=%d,gid=%d        0       0" % (dataDevice, mountPoint, fsType, userAttrs.pw_uid, userAttrs.pw_gid)))
 		fstab.write(fstabFile)
-	
+
 	logging.debug("attempting to mount")
 	rtn = subprocess.call(["mount", mountPoint])
 	if rtn != 0:
@@ -150,6 +150,6 @@ if __name__ == "__main__":
 		logging.debug("creating symlink: %s -> %s" % (pesLink, pesDir))
 		os.symlink(pesDir, pesLink)
 		os.lchown(pesLink, userAttrs.pw_uid, userAttrs.pw_gid)
-	
+
 	logging.info("operations completed successfully")
 	sys.exit(0)

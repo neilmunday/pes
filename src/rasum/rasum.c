@@ -4,7 +4,7 @@
     PES provides an interactive GUI for games console emulators
     and is designed to work on the Raspberry Pi.
 
-    Copyright (C) 2017 Neil Munday (neil@mundayweb.com)
+    Copyright (C) 2018 Neil Munday (neil@mundayweb.com)
 
     PES is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,16 +18,16 @@
 
     You should have received a copy of the GNU General Public License
     along with PES.  If not, see <http://www.gnu.org/licenses/>.
-    
+
     Description:
-    
+
     This program takes a ROM and calculates its RetroAchivements.org hash value.
-    
+
     Use the -t option to specify the ROM type (nes, snes, genesis or generic).
     If not specified, then "generic" is assumed.
-    
+
     Acknowledgements:
-    
+
     This program relies heavily on the methods used by https://github.com/libretro/RetroArch/blob/master/cheevos.c
 */
 
@@ -57,13 +57,13 @@ int gameHash(FILE *ptr, MD5_CTX *context){
 	uint8_t buffer[4096];
 	int read = 0;
 	int size = 0;
-	
+
 	while(1){
 		read = fread(buffer, sizeof(uint8_t), 4096, ptr);
 		size += read;
-		
+
 		MD5_Update(context, buffer, read);
-		
+
 		if (read < 4096){
 			break;
 		}
@@ -159,7 +159,7 @@ int main(int argc, char **argv){
 	int c;
 	char *romFile = NULL;
 	char *romType = "generic";
-	
+
 	while ((c = getopt (argc, argv, "ht:")) != -1){
 		switch(c){
 			case 't':
@@ -183,14 +183,14 @@ int main(int argc, char **argv){
 				abort();
 		}
 	}
-	
+
 	if (optind == argc){
 		fprintf(stderr, "Rom file path not specified!\n");
 		return 1;
 	}
-	
+
 	romFile = argv[optind];
-	
+
 	FILE *ptr;
 
 	ptr = fopen(romFile, "rb");
@@ -199,10 +199,10 @@ int main(int argc, char **argv){
 		fprintf(stderr, "Unable to open file: %s\n", romFile);
 		return 1;
 	}
-	
+
 	MD5_CTX context;
 	MD5_Init(&context);
-	
+
 	if (strcmp(romType, "nes") == 0){
 		nesHash(ptr, &context);
 	}

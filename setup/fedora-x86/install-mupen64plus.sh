@@ -6,7 +6,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2018 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -195,7 +195,7 @@ cd $buildDir
 # 	cd $component
 # 	run git pull origin master
 # fi
-# 
+#
 # checkDir projects/unix
 # cd projects/unix
 # run make clean
