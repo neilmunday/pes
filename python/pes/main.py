@@ -158,6 +158,7 @@ if __name__ == '__main__':
 		retroUser = None
 		if retroUsername != None and retroPassword != None:
 			retroUser = RetroAchievementUser(retroUsername, retroPassword, retroApiKey)
+			#print(retroUser.getUserSummary())
 
 		logging.info("loading GUI...")
 		signal.signal(signal.SIGINT, signalHandler)

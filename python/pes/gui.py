@@ -443,7 +443,8 @@ class LoadingThread(QThread):
 		CREATE TABLE IF NOT EXISTS `retroachievement_user` (\
 			`user_id` INTEGER PRIMARY KEY, \
 			`username` TEXT, \
-			`score` INTEGER, \
+			`total_points` INTEGER, \
+			`total_truepoints` INTEGER, \
 			`rank` INTEGER \
 		);")
 		doQuery(self.__window.db, "CREATE INDEX IF NOT EXISTS \"retroachievement_user_index\" on `retroachievement_user` (`user_id` ASC);")
