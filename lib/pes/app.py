@@ -726,6 +726,7 @@ class PESApp(object):
 		self.__screenSaverLabel = None
 
 		fpsManager = sdl2.sdlgfx.FPSManager()
+		sdl2.sdlgfx.SDL_initFramerate(fpsManager)
 		sdl2.sdlgfx.SDL_setFramerate(fpsManager, 60)
 
 		while running:
