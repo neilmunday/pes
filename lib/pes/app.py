@@ -634,6 +634,7 @@ class PESApp(object):
 		logging.debug("PESApp.run: video mode (%d, %d), refresh rate: %dHz" % (videoMode.w, videoMode.h, videoMode.refresh_rate))
 		logging.debug("Using PySDL2 %s" % sdl2.__version__)
 		sdl2Version = sdl2.SDL_version()
+		sdl2.SDL_GetVersion(sdl2Version)
 		logging.debug("Using SDL2 %s.%s.%s" % (sdl2Version.major, sdl2Version.minor, sdl2Version.patch))
 		# register PES event type
 		if pes.event.registerPesEventType():
