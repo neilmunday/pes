@@ -54,7 +54,7 @@ run tar xvfz $sdl2Tar
 checkDir $sdl2Dir
 run cd $sdl2Dir
 
-./configure --prefix=$prefix --host=arm-raspberry-linux-gnueabihf --disable-video-opengl --disable-video-x11 --disable-pulseaudio --disable-esd --enable-video-opengles --enable-libudev
+./configure --prefix=$prefix --host=arm-raspberry-linux-gnueabihf --enable-assertions=disabled --disable-video-opengl --disable-video-x11 --disable-pulseaudio --disable-esd --enable-video-opengles --enable-libudev
 
 run make
 run sudo make -j 2 install
@@ -62,7 +62,6 @@ run sudo make -j 2 install
 run sudo rm -f /opt/sdl2/default
 run sudo ln -s $prefix /opt/sdl2/default
 
-SDL image
 header "Downloading SDL2 Image"
 sdl2ImageVersion=2.0.2
 sdl2ImageTar=$srcDir/SDL2_image-${sdl2ImageVersion}.tar.gz
@@ -90,7 +89,6 @@ run cd $sdl2ImageDir
 run make -j 2
 run sudo make install
 
-SDL TTF
 header "Downloading SDL2 TTF"
 sdl2TTFVersion=2.0.14
 sdl2TTFTar=$srcDir/SDL2_ttf-${sdl2TTFVersion}.tar.gz

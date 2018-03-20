@@ -51,7 +51,7 @@ run tar xvfz $sdl2Tar
 checkDir $sdl2Dir
 run cd $sdl2Dir
 
-./configure --prefix=$prefix --host=arm-raspberry-linux-gnueabihf --disable-video-opengl --disable-video-x11 --disable-pulseaudio --disable-esd --enable-video-opengles --enable-libudev
+./configure --prefix=$prefix --host=arm-raspberry-linux-gnueabihf --disable-video-opengl --enable-assertions=disabled --disable-video-x11 --disable-pulseaudio --disable-esd --enable-video-opengles --enable-libudev
 
 run make
 run sudo make install
