@@ -25,7 +25,7 @@
 functions=`realpath $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../common/functions.sh`
 source $functions || exit 1
 
-version=2.4.31
+version=3.1
 
 SDL2_CONFIG=/opt/sdl2/default/bin/sdl2-config
 SDL_CFLAGS="-I/opt/sdl2/default/include -I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host/linux -D_REENTRANT -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard "
@@ -41,7 +41,7 @@ tarFile=$srcDir/vice-${version}.tar.gz
 header "Building C64 emulator - vice"
 
 if [ ! -e $tarFile ]; then
-	run wget -O $tarFile https://sourceforge.net/projects/vice-emu/files/development-releases/vice-${version}.tar.gz/download
+	run wget -O $tarFile https://sourceforge.net/projects/vice-emu/files/releases/vice-${version}.tar.gz/download
 fi
 
 run tar xvfz $tarFile

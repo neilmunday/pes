@@ -43,11 +43,9 @@ component=mupen64plus-core
 rmSourceDir $component
 
 header "Downloading $component"
-run git clone https://github.com/ricrpi/$component
+git clone https://github.com/mupen64plus/$component
 checkDir $component
 cd $component
-run git remote add upstream https://github.com/mupen64plus/$component
-run git checkout ric_dev
 
 set APIDIR=`pwd`/src/api
 SDL_CFLAGS=`$SDL2_CONFIG --cflags`
@@ -55,12 +53,9 @@ SDL_LDLIBS=`$SDL2_CONFIG --libs`
 
 checkDir projects/unix
 cd projects/unix
-echo "Fixing Makefile..."
-run sed -r -i "s/else if/else ifeq/" Makefile
 
-#run make USE_GLES=1 VFP=1 clean
-run make PREFIX=$PREFIX USE_GLES=1 VFP=1 RPIFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -L/opt/vc/lib -fgcse-after-reload -finline-functions -fipa-cp-clone -funswitch-loops -fpredictive-commoning -ftree-loop-distribute-patterns -ftree-vectorize -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -D__ARM_PCS_VFP" SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j 
-run sudo make PREFIX=$PREFIX USE_GLES=1 VFP=1 RPIFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -L/opt/vc/lib -fgcse-after-reload -finline-functions -fipa-cp-clone -funswitch-loops -fpredictive-commoning -ftree-loop-distribute-patterns -ftree-vectorize -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -D__ARM_PCS_VFP" SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install 
+run make PREFIX=$PREFIX USE_GLES=1 VFP=1 NEON=1 VFP_HARD=1 SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j all
+sudo run make PREFIX=$PREFIX USE_GLES=1 VFP=1 NEON=1 VFP_HARD=1 SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install
 
 unset APIDIR
 
@@ -89,7 +84,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j all 
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j all
 run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install
 
 #
@@ -114,7 +109,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX V=1 VC=1 -j all 
+run make PREFIX=$PREFIX V=1 VC=1 -j all
 run sudo make PREFIX=$PREFIX V=1 VC=1 -j install
 
 #
@@ -139,7 +134,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j all 
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j all
 run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install
 
 #
@@ -152,11 +147,9 @@ component=mupen64plus-rsp-hle
 
 if [ ! -e $component ]; then
 	header "Downloading $component"
-	run git clone https://github.com/ricrpi/$component
+	run git clone https://github.com/mupen64plus/$component
 	checkDir $component
 	cd $component
-	run git remote add upstream https://github.com/mupen64plus/$component
-	run git checkout master
 else
 	header "Updating $component"
 	cd $component
@@ -166,7 +159,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX V=1 -j all 
+run make PREFIX=$PREFIX V=1 -j all
 run sudo make PREFIX=$PREFIX V=1 -j install
 
 #
@@ -179,7 +172,7 @@ component=mupen64plus-video-gles2rice
 
 if [ ! -e $component ]; then
 	header "Downloading $component"
-	run git clone https://github.com/neilmunday/$component
+	run git clone https://github.com/ricrpi/$component
 	checkDir $component
 	cd $component
 else
@@ -204,7 +197,9 @@ component=mupen64plus-video-gles2n64
 
 if [ ! -e $component ]; then
 	header "Downloading $component"
-	run git clone https://github.com/ricrpi/$component
+	# use Neil's fork for now as it has a linker fix
+	#run git clone https://github.com/ricrpi/$component
+	run git clone https://github.com/neilmunday/$component
 	checkDir $component
 	cd $component
 else
@@ -216,7 +211,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" PREFIX=$PREFIX V=1 VC=1 all 
+run make SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" PREFIX=$PREFIX V=1 VC=1 all
 run sudo make SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" PREFIX=$PREFIX V=1 VC=1 install
 # remove shared installation of gles2n64.conf so that PES' copy takes precedence
 run sudo rm -fv $PREFIX/share/mupen64plus/gles2n64.conf

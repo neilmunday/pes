@@ -39,5 +39,5 @@ export CFLAGS="-mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
 export CXXFLAGS=$CFLAGS
 
 run make -f makefile.libretro profile=performance
-checkFile fba_libretro.so
-run sudo cp fba_libretro.so $retroArchCoresDir
+checkFile fbalpha_libretro.so
+run sudo cp fbalpha_libretro.so $retroArchCoresDir

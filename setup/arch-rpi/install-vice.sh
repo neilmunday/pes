@@ -25,7 +25,7 @@
 functions=`realpath $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../common/functions.sh`
 source $functions || exit 1
 
-version=2.4
+version=3.1
 
 cd $buildDir
 
@@ -40,7 +40,7 @@ patchFile="$rootDir/src/vice-patches/gifdrv.patch"
 checkFile $patchFile
 
 if [ ! -e $tarFile ]; then
-	run wget -O $tarFile http://sourceforge.net/projects/vice-emu/files/releases/vice-${version}.tar.gz/download
+	run wget -O $tarFile https://sourceforge.net/projects/vice-emu/files/releases/vice-${version}.tar.gz/download
 fi
 
 run tar xvfz $tarFile
@@ -54,8 +54,8 @@ patch < $patchFile
 
 cd ../..
 
-run ./configure --prefix=$PREFIX --enable-sdlui
-run make
+run ./configure --prefix=$PREFIX --enable-sdlui2 --disable-sdlui --enable-fullscreen
+run make V=1
 run sudo make install
 
 # now copy over data files

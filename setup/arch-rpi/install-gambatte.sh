@@ -34,13 +34,9 @@ header "Downloading GameBoy/GameBoy Color emulator - gambatte"
 run git clone git://github.com/libretro/gambatte-libretro
 checkDir "gambatte-libretro"
 cd gambatte-libretro
-checkDir libgambatte
-cd libgambatte
 checkFile Makefile.libretro
-
 export CFLAGS="-mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
 export CXXFLAGS=$CFLAGS
-
 run make -f Makefile.libretro
 checkFile gambatte_libretro.so
 run sudo cp gambatte_libretro.so $retroArchCoresDir

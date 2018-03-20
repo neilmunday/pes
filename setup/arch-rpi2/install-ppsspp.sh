@@ -33,8 +33,8 @@ header "Downloading Sony PSP emulator - ppsspp (standalone)"
 
 installDir="$emulatorInstallDir/ppsspp"
 run sudo mkdir -pv $installDir
-#run git clone git://github.com/hrydgard/ppsspp
-run git clone git://github.com/neilmunday/ppsspp
+run git clone git://github.com/hrydgard/ppsspp
+#run git clone git://github.com/neilmunday/ppsspp
 checkDir "ppsspp"
 cd ppsspp
 run git submodule init

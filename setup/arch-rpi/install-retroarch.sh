@@ -37,7 +37,7 @@ checkDir $retroarchDir
 header "Building RetroArch"
 
 cd $retroarchDir
-run git checkout tags/v1.6.0
+run git checkout tags/v1.7.1
 
 run sudo mkdir -p $retroArchCoresDir
 run sudo mkdir -p $retroArchConfigDir
@@ -48,4 +48,3 @@ export CXXFLAGS=$CFLAGS
 run ./configure --prefix="$retroArchInstallDir" --enable-udev --disable-ffmpeg --enable-networking --disable-pulse --disable-x11 --enable-sdl
 run make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1
 run sudo make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1 install
-
