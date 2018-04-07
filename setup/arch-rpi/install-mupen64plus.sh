@@ -31,6 +31,9 @@ SDL2_CONFIG=/opt/sdl2/default/bin/sdl2-config
 header "Building N64 emulator - mupenplus64"
 
 checkFile $SDL2_CONFIG
+# check that gcc v5 exists as this is needed to compile mupen64plus-video-gles2n64, see https://github.com/ricrpi/mupen64plus-video-gles2n64/issues/25
+checkFile /usr/bin/gcc-5
+checkFile /usr/bin/g++-5
 
 #
 # core
@@ -59,8 +62,8 @@ echo "Fixing Makefile..."
 run sed -r -i "s/else if/else ifeq/" Makefile
 
 #run make USE_GLES=1 VFP=1 clean
-run make PREFIX=$PREFIX USE_GLES=1 VFP=1 RPIFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -L/opt/vc/lib -fgcse-after-reload -finline-functions -fipa-cp-clone -funswitch-loops -fpredictive-commoning -ftree-loop-distribute-patterns -ftree-vectorize -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s -D__ARM_PCS_VFP" SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j 
-run sudo make PREFIX=$PREFIX USE_GLES=1 VFP=1 RPIFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -L/opt/vc/lib -fgcse-after-reload -finline-functions -fipa-cp-clone -funswitch-loops -fpredictive-commoning -ftree-loop-distribute-patterns -ftree-vectorize -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s -D__ARM_PCS_VFP" SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install 
+run make PREFIX=$PREFIX USE_GLES=1 VFP=1 RPIFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -L/opt/vc/lib -fgcse-after-reload -finline-functions -fipa-cp-clone -funswitch-loops -fpredictive-commoning -ftree-loop-distribute-patterns -ftree-vectorize -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s -D__ARM_PCS_VFP" SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j
+run sudo make PREFIX=$PREFIX USE_GLES=1 VFP=1 RPIFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -L/opt/vc/lib -fgcse-after-reload -finline-functions -fipa-cp-clone -funswitch-loops -fpredictive-commoning -ftree-loop-distribute-patterns -ftree-vectorize -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s -D__ARM_PCS_VFP" SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install
 
 unset APIDIR
 
@@ -89,7 +92,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j 
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j
 run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install
 
 #
@@ -114,7 +117,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX V=1 VC=1 -j 
+run make PREFIX=$PREFIX V=1 VC=1 -j
 run sudo make PREFIX=$PREFIX V=1 VC=1 -j install
 
 #
@@ -139,7 +142,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j 
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j
 run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install
 
 #
@@ -166,7 +169,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX V=1 -j 
+run make PREFIX=$PREFIX V=1 -j
 run sudo make PREFIX=$PREFIX V=1 -j install
 
 #
@@ -216,8 +219,8 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" PREFIX=$PREFIX V=1 VC=1 
-run sudo make SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" PREFIX=$PREFIX V=1 VC=1 install
+run make SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" PREFIX=$PREFIX V=1 VC=1 CC=gcc-5 CXX=g++-5 all
+run sudo make SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" PREFIX=$PREFIX V=1 VC=1 CC=gcc-5 CXX=g++-5 install
 # remove shared installation of gles2n64.conf so that PES' copy takes precedence
 run sudo rm -fv $PREFIX/share/mupen64plus/gles2n64.conf
 

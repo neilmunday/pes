@@ -43,6 +43,9 @@ run $setupDir/install-bluez-ps3.sh
 header "Customising OS..."
 run $setupDir/customise-os.sh
 
+header "Installing GCC 5.4"
+run $setupDir/install-gcc54.sh
+
 header "Installing splash screen..."
 run $setupDir/install-splash-screen.sh
 
