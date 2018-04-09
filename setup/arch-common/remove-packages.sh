@@ -34,6 +34,7 @@ ruby
 binutils
 cmake
 gcc
+gcc54
 libxml2
 libyaml
 lua
