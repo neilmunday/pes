@@ -46,7 +46,7 @@ component=mupen64plus-core
 rmSourceDir $component
 
 header "Downloading $component"
-run git clone https://github.com/ricrpi/$component
+git clone https://github.com/mupen64plus/$component
 checkDir $component
 cd $component
 run git remote add upstream https://github.com/mupen64plus/$component
@@ -61,9 +61,8 @@ cd projects/unix
 echo "Fixing Makefile..."
 run sed -r -i "s/else if/else ifeq/" Makefile
 
-#run make USE_GLES=1 VFP=1 clean
-run make PREFIX=$PREFIX USE_GLES=1 VFP=1 RPIFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -L/opt/vc/lib -fgcse-after-reload -finline-functions -fipa-cp-clone -funswitch-loops -fpredictive-commoning -ftree-loop-distribute-patterns -ftree-vectorize -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s -D__ARM_PCS_VFP" SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j
-run sudo make PREFIX=$PREFIX USE_GLES=1 VFP=1 RPIFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -L/opt/vc/lib -fgcse-after-reload -finline-functions -fipa-cp-clone -funswitch-loops -fpredictive-commoning -ftree-loop-distribute-patterns -ftree-vectorize -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s -D__ARM_PCS_VFP" SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install
+run make PREFIX=$PREFIX USE_GLES=1 VFP=1 NEON=0 VFP_HARD=1 SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 all
+sudo run make PREFIX=$PREFIX USE_GLES=1 VFP=1 NEON=0 VFP_HARD=1 SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 install
 
 unset APIDIR
 
@@ -92,8 +91,8 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j
-run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 all
+run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 install
 
 #
 # audio-omx
@@ -117,8 +116,8 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX V=1 VC=1 -j
-run sudo make PREFIX=$PREFIX V=1 VC=1 -j install
+run make PREFIX=$PREFIX V=1 VC=1 all
+run sudo make PREFIX=$PREFIX V=1 VC=1 install
 
 #
 # input-sdl
@@ -142,8 +141,8 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j
-run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 all
+run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 install
 
 #
 # rsp-hle
@@ -155,11 +154,9 @@ component=mupen64plus-rsp-hle
 
 if [ ! -e $component ]; then
 	header "Downloading $component"
-	run git clone https://github.com/ricrpi/$component
+	run git clone https://github.com/mupen64plus/$component
 	checkDir $component
 	cd $component
-	run git remote add upstream https://github.com/mupen64plus/$component
-	run git checkout master
 else
 	header "Updating $component"
 	cd $component
@@ -194,7 +191,7 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 VC=1
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 VC=1 all
 run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 VC=1 install
 
 #

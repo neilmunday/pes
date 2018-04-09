@@ -200,9 +200,7 @@ component=mupen64plus-video-gles2n64
 
 if [ ! -e $component ]; then
 	header "Downloading $component"
-	# use Neil's fork for now as it has a linker fix
-	#run git clone https://github.com/ricrpi/$component
-	run git clone https://github.com/neilmunday/$component
+	run git clone https://github.com/ricrpi/$component
 	checkDir $component
 	cd $component
 else
