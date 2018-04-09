@@ -27,16 +27,15 @@ source $functions || exit 1
 
 cd $buildDir
 
-rmSourceDir "pocketsnes-libretro"
+rmSourceDir "snes9x2002"
 
 header "Downloading SNES emulator - pocketsnes"
 
-run git clone https://github.com/libretro/pocketsnes-libretro
-checkDir pocketsnes-libretro
-cd "pocketsnes-libretro"
+run git clone https://github.com/libretro/snes9x2002
+checkDir snes9x2002
+cd "snes9x2002"
 export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -O3"
 export CXXFLAGS=$CFLAGS
 run make -j
-checkFile pocketsnes_libretro.so
-run sudo cp pocketsnes_libretro.so $retroArchCoresDir/pocketsnes_libretro.so
-
+checkFile snes9x2002_libretro.so
+run sudo cp snes9x2002_libretro.so $retroArchCoresDir/pocketsnes_libretro.so

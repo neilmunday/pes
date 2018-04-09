@@ -27,13 +27,13 @@ source $functions || exit 1
 
 cd $buildDir
 
-rmSourceDir "snes9x-next"
+rmSourceDir "snes9x2010"
 
-header "Downloading SNES emulator - snes9x-next"
+header "Downloading SNES emulator - snes9x2010"
 
 run git clone git://github.com/libretro/snes9x2010
-checkDir snes9x-next
-cd "snes9x-next"
+checkDir snes9x2010 
+cd "snes9x2010"
 checkFile Makefile.libretro
 export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -O3"
 export CXXFLAGS=$CFLAGS
