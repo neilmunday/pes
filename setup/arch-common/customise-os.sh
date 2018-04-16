@@ -59,7 +59,7 @@ header "Fixing systemd udev service for Bluetooth"
 run sudo sed -r -i "s/^(RestrictAddressFamilies=)(.*?)/\1AF_UNIX AF_NETLINK AF_INET AF_INET6 AF_BLUETOOTH/" /usr/lib/systemd/system/systemd-udevd.service
 
 header "Auto enable Bluetooth (when using Bluez)"
-run sudo sed -r -i "s/AutoEnable=false/AutoEnable=true/" /etc/bluetooth/main.cf
+run sudo sed -r -i "s/AutoEnable=false/AutoEnable=true/" /etc/bluetooth/main.conf
 
 header "Disabling core files in /etc/systemd/system.conf"
 
