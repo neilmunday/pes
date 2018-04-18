@@ -6,7 +6,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2015 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2018 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -27,6 +27,10 @@ source $functions || exit 1
 
 version=3.1
 
+SDL2_CONFIG=/opt/sdl2/default/bin/sdl2-config
+SDL_CFLAGS="-I/opt/sdl2/default/include -I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host/linux -D_REENTRANT -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s "
+SDL_LDLIBS=`$SDL2_CONFIG --libs`
+
 cd $buildDir
 
 rmSourceDir "vice-${version}"
@@ -36,9 +40,6 @@ tarFile=$srcDir/vice-${version}.tar.gz
 
 header "Building C64 emulator - vice"
 
-patchFile="$rootDir/src/vice-patches/gifdrv.patch"
-checkFile $patchFile
-
 if [ ! -e $tarFile ]; then
 	run wget -O $tarFile https://sourceforge.net/projects/vice-emu/files/releases/vice-${version}.tar.gz/download
 fi
@@ -47,12 +48,8 @@ run tar xvfz $tarFile
 checkDir vice-${version}
 cd vice-${version}
 
-# apply patches
-checkDir src/gfxoutputdrv
-cd src/gfxoutputdrv
-patch < $patchFile
-
-cd ../..
+export CFLAGS="$SDL_CFLAGS"
+export LDFLAGS="$SDL_LDLIBS"
 
 run ./configure --prefix=$PREFIX --enable-sdlui2 --disable-sdlui --enable-fullscreen
 run make V=1
