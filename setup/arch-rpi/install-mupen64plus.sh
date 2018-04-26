@@ -49,8 +49,6 @@ header "Downloading $component"
 git clone https://github.com/mupen64plus/$component
 checkDir $component
 cd $component
-run git remote add upstream https://github.com/mupen64plus/$component
-run git checkout ric_dev
 
 set APIDIR=`pwd`/src/api
 SDL_CFLAGS=`$SDL2_CONFIG --cflags`
@@ -58,8 +56,6 @@ SDL_LDLIBS=`$SDL2_CONFIG --libs`
 
 checkDir projects/unix
 cd projects/unix
-echo "Fixing Makefile..."
-run sed -r -i "s/else if/else ifeq/" Makefile
 
 run make PREFIX=$PREFIX USE_GLES=1 VFP=1 NEON=0 VFP_HARD=1 SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 all
 sudo run make PREFIX=$PREFIX USE_GLES=1 VFP=1 NEON=0 VFP_HARD=1 SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 install
