@@ -88,6 +88,9 @@ class Record(object):
 	def _getProperty(self, field):
 		return self.__properties[field]
 
+	def isDirty(self):
+		return len(self.__dirtyFields) > 0
+
 	def isNew(self):
 		return self.__isNew
 
@@ -106,7 +109,7 @@ class Record(object):
 		else:
 			self.__isNew = True
 
-	def save(self):
+	def save(self, commit=True):
 		q = ''
 		if self.__isNew:
 			logging.debug("Record.save: saving new %s record" % self.__table)
@@ -131,9 +134,12 @@ class Record(object):
 
 			q += ') VALUES (%s);' % endQuery
 		else:
-			logging.debug("Record.save: updating %s record %d" % (self.__table, self.__properties[self.__keyField]))
 			i = 0
 			total = len(self.__dirtyFields)
+			if total == 0:
+				logging.debug("Record.save: no need to update %s record %d" % (self.__table, self.__properties[self.__keyField]))
+				return
+			logging.debug("Record.save: updating %s record %d" % (self.__table, self.__properties[self.__keyField]))
 			q = 'UPDATE `%s` SET ' % self.__table
 			for f in self.__dirtyFields:
 				q += '`%s` = :%s' % (f, f)
@@ -143,7 +149,8 @@ class Record(object):
 			q += ' WHERE `%s` = %d;' % (self.__keyField, self.__properties[self.__keyField])
 
 		query = self._doQuery(q, self.__properties)
-		self.__db.commit()
+		if commit:
+			self.__db.commit()
 
 		if self.__isNew:
 			self.__isNew = False
@@ -372,6 +379,54 @@ class GameTitleRecord(Record):
 
 	def setTitle(self, title):
 		self._setProperty("title", title)
+
+class RetroAchievementUserRecord(Record):
+
+	def __init__(self, db, keyValue, row=None):
+		super(RetroAchievementUserRecord, self).__init__(db, "retroachievement_user", ["user_id", "username", "total_points", "total_truepoints", "rank", "updated"], "user_id", keyValue, False, row)
+
+	def getName(self):
+		return self._getProperty("username")
+
+	def getRank(self):
+		return self._getProperty("rank")
+
+	def getTotalPoints(self):
+		return int(self._getProperty("total_points"))
+
+	def getTotalTruePoints(self):
+		return int(self._getProperty("total_truepoints"))
+
+	def getUpdated(self):
+		return int(self._getProperty("updated"))
+
+	def save(self, commit=True):
+		if self.isNew():
+			logging.debug("RetroAchievementUserRecord.save: new record")
+			self.setUpdated(time.time())
+			super(RetroAchievementUserRecord, self).save(commit)
+			return
+		if not self.isDirty():
+			logging.debug("RetroAchievementUserRecord.save: no need to save")
+			return
+		logging.debug("RetroAchievementUserRecord.save: existing record")
+		self.setUpdated(time.time())
+		super(RetroAchievementUserRecord, self).save(commit)
+
+	def setName(self, name):
+		self._setProperty("username", name)
+
+	def setRank(self, rank):
+		self._setProperty("rank", int(rank))
+
+	def setTotalPoints(self, p):
+		self._setProperty("total_points", int(p))
+
+	def setTotalTruePoints(self, p):
+		self._setProperty("total_truepoints", int(p))
+
+	def setUpdated(self, ts):
+		self._setProperty("updated", int(ts))
 
 class Console(object):
 
