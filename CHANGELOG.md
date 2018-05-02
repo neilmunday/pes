@@ -4,7 +4,7 @@ PES Changelog
 PES 2.4
 -------
 
-Date: 2018-02-22
+Date: 2018-05-02
 
 Changes (and bug fixes):
 
