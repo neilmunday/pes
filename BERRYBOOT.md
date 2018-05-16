@@ -32,8 +32,8 @@ Run the following commands as the root user or via `sudo` to mount the image so 
 ```
 gunzip pes-2.3-2017-11-23-rpi2-3.img.gz
 losetup /dev/loop0 pes-2.3-2017-11-23-rpi2-3.img
-partprobe /dev/loop0p2
-mount /dev/loop0 /mnt
+partprobe /dev/loop0
+mount /dev/loop0p2 /mnt
 ```
 
 ### Modify /etc/fstab
