@@ -28,6 +28,7 @@ URL_TIMEOUT = 30
 MATCH_LIMIT = 5
 logging.getLogger("PIL").setLevel(logging.WARNING)
 logging.getLogger("requests").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 def doXmlRequest(url, parameters):
 	logging.debug("doXmlRequest: loading %s with %s" % (url, parameters))
