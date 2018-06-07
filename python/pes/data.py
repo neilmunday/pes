@@ -380,6 +380,47 @@ class GameTitleRecord(Record):
 	def setTitle(self, title):
 		self._setProperty("title", title)
 
+class RetroAchievementBadgeRecord(Record):
+
+	def __init__(self, db, keyValue, row=None):
+		super(RetroAchievementBadgeRecord, self).__init__(db, "retroachievement_badge", ["badge_id", "title", "game_id", "description", "points", "badge_path", "badge_path_locked"], "badge_id", keyValue, False, row)
+
+	def getDescription(self):
+		return self._getProperty("description")
+
+	def getGameId(self):
+		return self._getProperty("game_id")
+
+	def getLockedPath(self):
+		return self._getProperty("badge_path")
+
+	def getPath(self):
+		return self._getProperty("badge_path_locked")
+
+	def getPoints(self):
+		return self._getProperty("points")
+
+	def getTitle(self):
+		return self._getProperty("title")
+
+	def setDescription(self, txt):
+		self._setProperty("description", txt)
+
+	def setGameId(self, i):
+		self._setProperty("game_id", int(i))
+
+	def setLockedPath(self, path):
+		self._setProperty("badge_path_locked", path)
+
+	def setPath(self, path):
+		self._setProperty("badge_path", path)
+
+	def setPoints(self, p):
+		self._setProperty("points", int(p))
+
+	def setTitle(self, t):
+		self._setProperty("title", t)
+
 class RetroAchievementUserRecord(Record):
 
 	def __init__(self, db, keyValue, row=None):
