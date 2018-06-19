@@ -48,6 +48,53 @@ def doQuery(db, q, bindings=None):
 		db.close()
 	return query
 
+class BatchQuery(object):
+
+	_BATCH_INTERVAL = 100
+
+	def __init__(self, db):
+		self._db = db
+
+class BatchInsertQuery(BatchQuery):
+
+	def __init__(self, db):
+		super(BatchInsertQuery, self).__init__(db)
+		logging.debug("BatchInsertQuery.__init__: object created")
+		self.__values = []
+		self.__query = None
+
+	def addRecord(self, record):
+		logging.debug("BatchInsertQuery.addRecord: record added, %d cached" % len(self.__values))
+		values = []
+		for field, value in record.getProperties().items():
+			if isinstance(value, str):
+				values.append("'%s'" % value.replace("'", "''"))
+			else:
+				values.append(value)
+		self.__values.append("(%s)" % ",".join(str(x) for x in values))
+		if self.__query == None:
+			fieldNames = []
+			if record.isAutoIncrement():
+				for f in record.getWritableFields():
+					fieldNames.append("`%s`" % f)
+			else:
+				for f in record.getFields():
+					fieldNames.append("`%s`" % f)
+			self.__query = "INSERT INTO `%s` (%s) VALUES " % (record.getTableName(), ",".join(fieldNames))
+		if len(self.__values) > self._BATCH_INTERVAL:
+			self.execute()
+
+	def execute(self):
+		logging.info("BatchInsertQuery.execute: executing query")
+		doQuery(self._db, "%s %s;" % (self.__query, ",".join(self.__values)))
+		self._db.commit()
+		self.__values = []
+
+	def finish(self):
+		if len(self.__values) > 0:
+			logging.debug("BatchInsertQuery: finishing...")
+			self.execute()
+
 class Record(object):
 
 	def __init__(self, db, table, fields, keyField, keyValue, autoIncrement=True, record=None):
@@ -69,7 +116,7 @@ class Record(object):
 			for i in range(0, record.count()):
 				self.__properties[record.fieldName(i)] = record.value(i)
 
-	def __getWritableFields(self):
+	def getWritableFields(self):
 		l = []
 		for f in self.__fields:
 			if f != self.__keyField:
@@ -88,6 +135,18 @@ class Record(object):
 	def _getProperty(self, field):
 		return self.__properties[field]
 
+	def getFields(self):
+		return self.__fields
+
+	def getProperties(self):
+		return self.__properties
+
+	def getTableName(self):
+		return self.__table
+
+	def isAutoIncrement(self):
+		return self.__autoIncrement
+
 	def isDirty(self):
 		return len(self.__dirtyFields) > 0
 
@@ -99,7 +158,7 @@ class Record(object):
 			query = self._doQuery("SELECT %s FROM `%s` WHERE `%s` = %d;" % (','.join("`%s`" % f for f in self.__fields), self.__table, self.__keyField, self.__properties[self.__keyField]))
 			if not query.first():
 				self.__isNew = True
-				self.__dirtyFields = self.__getWritableFields()
+				self.__dirtyFields = self.getWritableFields()
 			else:
 				for f in self.__fields:
 					self.__properties[f] = query.value(query.record().indexOf(f))
@@ -116,7 +175,7 @@ class Record(object):
 			i = 0
 			writableFields = None
 			if self.__autoIncrement:
-				writableFields = self.__getWritableFields()
+				writableFields = self.getWritableFields()
 			else:
 				writableFields = self.__fields
 			total = len(writableFields)

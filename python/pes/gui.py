@@ -4,7 +4,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2017 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2018 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -23,7 +23,9 @@
 import codecs
 import configparser
 import logging
+import multiprocessing
 import os
+import queue
 import re
 import shlex
 import subprocess
@@ -45,6 +47,7 @@ import sdl2.joystick
 import pes
 from pes.data import doQuery, Console, ConsoleRecord, GameRecord, Settings
 from pes.common import checkDir, checkFile, getIpAddress, mkdir, pesExit
+from pes.retroachievement import BadgeScanWorkerThread
 from pes.romscan import RomScanThread
 import pes.gamecontroller
 
@@ -208,8 +211,12 @@ class PESWindow(QMainWindow):
 		self.db.setDatabaseName(pes.userDb)
 		self.db.open()
 
+		if self.retroUser:
+			self.retroUser.enableDbSync(self.db)
+
 		self.__loadingThread = LoadingThread(self)
 		self.__romScanMonitorThread = RomScanMonitorThread(self.db, self.settings.get("settings", "romScraper"))
+		self.__badgeScanMonitorThread = BadgeScanMonitorThread(self.db, self.retroUser, self.settings.get("settings", "badgeDir"))
 
 		self.__page = WebPage()
 		self.__webview = WebView()
@@ -220,6 +227,7 @@ class PESWindow(QMainWindow):
 		self.__channel.registerObject('handler', self.__handler)
 		self.__channel.registerObject('loadingThread', self.__loadingThread)
 		self.__channel.registerObject('romScanMonitorThread', self.__romScanMonitorThread)
+		self.__channel.registerObject('badgeScanMonitorThread', self.__badgeScanMonitorThread)
 		self.__handler.exitSignal.connect(self.__handleExit)
 		self.__loadingThread.finishedSignal.connect(self.__loadingFinished)
 		self.setCentralWidget(self.__webview)
@@ -239,6 +247,9 @@ class PESWindow(QMainWindow):
 		if self.__romScanMonitorThread.isRunning():
 			logging.debug("stopping rom scan thread")
 			self.__romScanMonitorThread.stop()
+		if self.__badgeScanMonitorThread.isRunning():
+			logging.debug("stopping badge scan thread")
+			self.__badgeScanMonitorThread.stop()
 		logging.debug("stopping event loop")
 		self.__running = False
 		logging.debug("shutting down SDL2")
@@ -445,7 +456,8 @@ class LoadingThread(QThread):
 			`username` TEXT, \
 			`total_points` INTEGER, \
 			`total_truepoints` INTEGER, \
-			`rank` INTEGER \
+			`rank` INTEGER, \
+			`updated` INTEGER \
 		);")
 		doQuery(self.__window.db, "CREATE INDEX IF NOT EXISTS \"retroachievement_user_index\" on `retroachievement_user` (`user_id` ASC);")
 		doQuery(self.__window.db, "\
@@ -561,15 +573,106 @@ class LoadingThread(QThread):
 				self.__window.close()
 				return
 
-		self.__window.retroUser.login()
+		if self.__window.retroUser:
+			self.__window.retroUser.login()
 
 		self.__progress = 100
 		self.finishedSignal.emit()
 
+class BadgeScanMonitorThread(QThread):
+
+	finishedSignal = pyqtSignal(int, int, int, int) # scanned, added, updated, time taken
+	progressSignal = pyqtSignal(int, int, int, str, str) # progress (%), unprocessed, time remaining, name, badge path
+	romsFoundSignal = pyqtSignal(int) # badges found
+
+	def __init__(self, db, retroUser, badgeDir):
+		super(BadgeScanMonitorThread, self).__init__(None)
+		self.__db = db
+		self.__retroUser = retroUser
+		self.__badgeDir = badgeDir
+		self.__scanThread = None
+		self.__running = False
+		self.__romTotal = 0
+		self.__romsRemaining = 0
+		self.__startTime = 0
+		self.__threadTotal = multiprocessing.cpu_count() * 2
+
+	def __badgesFoundEvent(self, badgeTotal):
+		self.badgesFoundSignal.emit(badgeTotal)
+
+	def __scanFinishedEvent(self):
+		self.__running = False
+
+	def isRunning(self):
+		return self.__running
+
+	def __romProcessedEvent(self):
+		self.__romsRemaining -= 1
+		eta = ((time.time() - self.__startTime) / (self.__romTotal - self.__romsRemaining)) * self.__romTotal
+		timeRemaining = eta - (time.time() - self.__startTime)
+		self.progressSignal.emit((float(self.__romTotal - self.__romsRemaining) / float(self.__romTotal)) * 100.0, self.__romsRemaining, timeRemaining, "", "")
+
+	def run(self):
+		logging.debug("BadgeScanMonitorThread.run: starting")
+		self.__startTime = time.time()
+		processQueue = queue.Queue()
+
+		query = doQuery(self.__db, "SELECT `retroachievement_id` FROM `game` WHERE `retroachievement_id` > 0;")
+		self.__romTotal = 0
+		while query.next():
+			record = query.record()
+			processQueue.put(record.value(0))
+			self.__romTotal += 1
+		logging.debug("BadgeScanMonitorThread.run: found %d games to process" % self.__romTotal)
+		self.__romsRemaining = self.__romTotal
+		self.romsFoundSignal.emit(self.__romTotal)
+		threads = []
+
+		for i in range(0, self.__threadTotal):
+			t = BadgeScanWorkerThread(i, self.__db, self.__retroUser, processQueue, self.__badgeDir)
+			t.romProcessedSignal.connect(self.__romProcessedEvent)
+			threads.append(t)
+			t.start()
+
+		for t in threads:
+			t.wait()
+
+		timeTaken = time.time() - self.__startTime
+
+		added = 0
+		updated = 0
+
+		for t in threads:
+			added += t.getAdded()
+			updated += t.getUpdated()
+
+		logging.info("BadgeScanMonitorThread: added %d and updated %d badges in %ds" % (added, updated, timeTaken))
+
+		self.progressSignal.emit(100, 0, 0, "", "0")
+		self.finishedSignal.emit(self.__romTotal, added, updated, timeTaken)
+
+		logging.debug("BadgeScanMonitorThread.run: finished")
+
+	@pyqtSlot()
+	def startThread(self):
+		logging.debug("BadgeScanMonitorThread.startThread: starting thread")
+		#if self.__scanThread != None:
+		#	self.__scanThread.badgesFoundSignal.disconnect()
+		#	self.__scanThread.finishedSignal.disconnect()
+		#self.__scanThread = BadgeScanThread(self.__db, self.__retroUser)
+		#self.__scanThread.badgesFoundSignal.connect(self.__badgesFoundEvent)
+		#self.__scanThread.finishedSignal.connect(self.__scanFinishedEvent)
+		self.start()
+
+	@pyqtSlot()
+	def stop(self):
+		if self.__scanThread:
+			self.__scanThread.stop()
+
 class RomScanMonitorThread(QThread):
 
 	finishedSignal = pyqtSignal(int, int, int, int) # scanned, added, updated, time taken
-	progressSignal = pyqtSignal(int, int, int, str, str) # progress (%), unprocessed, time remaining
+	progressSignal = pyqtSignal(int, int, int, str, str) # progress (%), unprocessed, time remaining, name, covert art path
 	romsFoundSignal = pyqtSignal(int) # roms found
 
 	def __init__(self, db, romScraper):
@@ -616,7 +719,7 @@ class RomScanMonitorThread(QThread):
 
 	@pyqtSlot(list)
 	def startThread(self, consoleNames):
-		logging.debug("RomScanThread.startThread: starting thread")
+		logging.debug("RomScanMonitorThread.startThread: starting thread")
 		if self.__scanThread != None:
 			self.__scanThread.romsFoundSignal.disconnect()
 			self.__scanThread.finishedSignal.disconnect()

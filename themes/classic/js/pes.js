@@ -367,7 +367,7 @@ function RomPanel(el, roms, emptyText, callback){
 		}
 		else {
 			for (var i = 0; i < me.roms.length; i++){
-				$("#" + me.el).append("<button id=\"" + me.el + "_" + i + "_btn\" class=\"romPanel\" type=\"button\" style=\"background-image: url(" + encodeURI(roms[i].coverart) + ");\"></button>");
+				$("#" + me.el).append("<button id=\"" + me.el + "_" + i + "_btn\" class=\"romPanel\" type=\"button\" style=\"background-image: url('" + encodeURI(roms[i].coverart).replace('\'', '\\\'') + "');\"></button>");
 			}
 		}
 	};
@@ -490,12 +490,34 @@ $(document).ready(function(){
 			menus["main"].setSelected(0);
 		});
 
+		channel.objects.badgeScanMonitorThread.progressSignal.connect(function(percent, badgesRemaining, timeRemaining, badgeName, badgePath){
+			$("#badgeScanProgressBarComplete").width(percent + "%");
+			$("#badgeScanRemainingCell").html(badgesRemaining);
+			$("#badgeScanTimeRemainingCell").html(formatTime(timeRemaining));
+			//if (badgePath != "0"){
+			//	$("#badgeScanPreviewImg").attr("src", "file://" + coverArtPath);
+			//}
+		});
+
+		channel.objects.badgeScanMonitorThread.romsFoundSignal.connect(function(badgeTotal){
+			$("#badgeScanRomsFoundCell").html(badgeTotal);
+		});
+
+		channel.objects.badgeScanMonitorThread.finishedSignal.connect(function(processed, added, updated, timeTaken){
+			$("#panel_update_badges_process").hide();
+			$("#panel_update_badges_finished").show();
+			$("#badgesRomsProcessedCell").html(processed);
+			$("#badgesAddedCell").html(added);
+			$("#badgesUpdatedCell").html(updated);
+			$("#badgesTimeTakenCell").html(formatTime(timeTaken));
+		});
+
 		channel.objects.romScanMonitorThread.progressSignal.connect(function(percent, romsRemaining, timeRemaining, romName, coverArtPath){
-			$("#scanProgressBarComplete").width(percent + "%");
-			$("#romsRemainingCell").html(romsRemaining);
-			$("#timeRemainingCell").html(formatTime(timeRemaining));
+			$("#romScanProgressBarComplete").width(percent + "%");
+			$("#romScanRemainingCell").html(romsRemaining);
+			$("#romScanTimeRemainingCell").html(formatTime(timeRemaining));
 			if (coverArtPath != "0"){
-				$("#romPreviewImg").attr("src", "file://" + coverArtPath);
+				$("#romScanPreviewImg").attr("src", "file://" + coverArtPath);
 			}
 		});
 
@@ -570,7 +592,13 @@ $(document).ready(function(){
 		$("#updateConsolesBtn").focus();
 	}, "update_games_preview");
 	menus["settings"].addMenuItem("Update Badges", function(){
-
+		$("#update_badges_preview").hide();
+		$("#badgeScanPreviewImg").hide();
+		$("#badgeScanProgressBarComplete").width(0);
+		$("#panel_update_badges_process").show();
+		$("#badgeScanStartBtn").show();
+		$("#badgeScanStopBtn").hide();
+		$("#badgeScanStartBtn").focus();
 	}, "update_badges_preview");
 	menus["settings"].addMenuItem("Control Pad", function(){
 
@@ -723,7 +751,7 @@ $(document).ready(function(){
 			menus["main"].focus();
 		}
 		else if (event.key == "ArrowDown"){
-			if (!mainPanelLastPlayedPanel.isEmpty()){
+			if (!mainPanelAdditionsPanel.isEmpty()){
 				mainPanelAdditionsPanel.scroll(0);
 				mainPanelAdditionsPanel.setSelected(0);
 				mainPanelAdditionsPanel.focus();
@@ -768,6 +796,25 @@ $(document).ready(function(){
 		}
 	});
 
+	/* Update Badges Screen */
+	$("#panel_update_badges_process").keyup(function(event){
+		if (event.key == "Backspace"){
+			// only allow backspace if a scan is not in progress
+			$("#panel_update_badges").hide();
+			$("update_badges_preview").show();
+			menus["settings"].focus();
+		}
+	});
+
+	$("#badgeScanStartBtn").keyup(function(event){
+		if (event.key == "Enter"){
+			channel.objects.badgeScanMonitorThread.startThread();
+			$("#badgeScanStartBtn").hide();
+			$("#badgeScanStopBtn").show();
+			$("#badgeScanStopBtn").focus();
+		}
+	});
+
 	/* Update Games Screen */
 
 	$("#panel_update_games").keyup(function(event){
@@ -789,7 +836,7 @@ $(document).ready(function(){
 		else if (event.key == "Enter"){
 			$("#panel_update_games").hide();
 			$("#panel_update_games_process").show();
-			$("#scanProgressBarComplete").width(0);
+			$("#romScanProgressBarComplete").width(0);
 			var updateArray = [];
 			var chkboxes = $("#update_console_list").find("input");
 			for (var i = 0; i < chkboxes.length; i++){

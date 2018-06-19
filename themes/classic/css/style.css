@@ -44,6 +44,7 @@ body {
 	margin: 0px;
 	min-height: 100%;
 	min-width: 100%;
+  overflow: hidden;
 }
 
 ::-webkit-scrollbar {
@@ -88,7 +89,7 @@ select:focus {
 }
 
 #header {
-	position: absolute;
+	position: fixed;
 	top: 0;
 	left: 0;
 	background: rgb(19, 19, 19);
@@ -125,22 +126,20 @@ select:focus {
 }
 
 #container {
+	position: fixed;
+	top: 31px;
+	left: 271px;
+	right: 0px;
+	bottom: 0px;
+	padding: 20px;
 	display: block;
-	margin-left: 270px;
-	margin-top: 0px;
-	padding: 0px;
-}
-
-#content {
-	display: block;
-	margin: 0px;
-	padding: 30px;
+	overflow: auto;
 }
 
 #main {
 	display: none;
 	min-height: 100%;
-	overflow: hidden;
+	/*overflow: hidden;*/
 }
 
 #loadingProgressContainer {
@@ -332,11 +331,11 @@ select:focus {
 	width: 27px !important;
 }
 
-#romPreviewCell {
+#romScanPreviewCell, #badgeScanPreviewCell {
 	height: 300px;
 }
 
-#romPreviewImg {
+#romScanPreviewImg, #badgeScanPreviewImg {
 	width: 300px;
 	height: 300px;
 	object-fit: contain;
