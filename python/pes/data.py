@@ -1,7 +1,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2017 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2018 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ import logging
 import os
 import pes
 import time
+import sys
 
 from PyQt5.QtSql import QSqlDatabase, QSqlQuery
 
@@ -62,30 +63,32 @@ class BatchInsertQuery(BatchQuery):
 		logging.debug("BatchInsertQuery.__init__: object created")
 		self.__values = []
 		self.__query = None
+		self.__fieldNames = []
 
 	def addRecord(self, record):
 		logging.debug("BatchInsertQuery.addRecord: record added, %d cached" % len(self.__values))
-		values = []
-		for field, value in record.getProperties().items():
-			if isinstance(value, str):
-				values.append("'%s'" % value.replace("'", "''"))
-			else:
-				values.append(value)
-		self.__values.append("(%s)" % ",".join(str(x) for x in values))
 		if self.__query == None:
-			fieldNames = []
 			if record.isAutoIncrement():
 				for f in record.getWritableFields():
-					fieldNames.append("`%s`" % f)
+					self.__fieldNames.append(f)
 			else:
 				for f in record.getFields():
-					fieldNames.append("`%s`" % f)
-			self.__query = "INSERT INTO `%s` (%s) VALUES " % (record.getTableName(), ",".join(fieldNames))
+					self.__fieldNames.append(f)
+			self.__fieldNames.sort()
+			self.__query = "INSERT INTO `%s` (%s) VALUES " % (record.getTableName(), ",".join("`%s`" % i for i in self.__fieldNames))
+		values = []
+		properties = record.toDic()
+		for f in self.__fieldNames:
+			if isinstance(properties[f], str):
+				values.append("'%s'" % properties[f].replace("'", "''"))
+			else:
+				values.append(properties[f])
+		self.__values.append("(%s)" % ",".join(str(x) for x in values))
 		if len(self.__values) > self._BATCH_INTERVAL:
 			self.execute()
 
 	def execute(self):
-		logging.info("BatchInsertQuery.execute: executing query")
+		logging.debug("BatchInsertQuery.execute: executing query")
 		doQuery(self._db, "%s %s;" % (self.__query, ",".join(self.__values)))
 		self._db.commit()
 		self.__values = []
@@ -137,9 +140,6 @@ class Record(object):
 
 	def getFields(self):
 		return self.__fields
-
-	def getProperties(self):
-		return self.__properties
 
 	def getTableName(self):
 		return self.__table
@@ -217,6 +217,8 @@ class Record(object):
 		self.__dirtyFields = []
 
 	def _setProperty(self, field, value):
+		if field in self.__properties and self.__properties[field] == value:
+			return
 		self.__properties[field] = value
 		if not field in self.__dirtyFields:
 			self.__dirtyFields.append(field)

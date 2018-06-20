@@ -12,6 +12,7 @@ from PyQt5.QtSql import QSqlDatabase, QSqlQuery
 
 URL_TIMEOUT = 30
 RETRO_URL = "http://retroachievements.org/dorequest.php"
+RETRO_BADGE_URL = "http://i.retroachievements.org/Badge"
 
 logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -20,6 +21,7 @@ class BadgeScanWorkerThread(QThread):
 
 	__INSERT_CACHE = 100
 
+	badgeProcessedSignal = pyqtSignal(str, str) # name, path
 	romProcessedSignal = pyqtSignal()
 
 	def __init__(self, i, db, retroUser, queue, badgeDir):
@@ -32,6 +34,22 @@ class BadgeScanWorkerThread(QThread):
 		self.__added = 0
 		self.__updated = 0
 		logging.debug("BadgeScanWorkerThread.__init__: created with id %d" % self.__id)
+
+	def __downloadBadge(self, url, path):
+		logging.debug("BadgeScanWorkerThread(%d).__downloadBadge: downloading %s to %s" % (self.__id, url, path))
+		try:
+			response = requests.get(
+				url,
+				timeout=URL_TIMEOUT,
+				stream=True
+			)
+			if response.status_code == requests.codes.ok:
+				with open(path, 'wb') as f:
+					for chunk in response.iter_content(chunk_size=128):
+						f.write(chunk)
+		except Exception as e:
+			logging.error("BadgeScanWorkerThread(%d).__downloadBadge: failed to download %s to %s" % (url, path))
+			logging.error(e)
 
 	def getAdded(self):
 		return self.__added
@@ -51,13 +69,18 @@ class BadgeScanWorkerThread(QThread):
 			try:
 				result = self.__retroUser.getGameInfoAndProgress(gameId)
 			except Exception as e:
-				logging.error("BadgeScanWorkerThread(%d).run: could not get game data for %d" % gameId)
+				logging.error("BadgeScanWorkerThread(%d).run: could not get game data for %d" % (self.__id, gameId))
 				logging.error(e)
 				self.__queue.task_done()
 				continue
 
 			achievementTotal = 0
 			scoreTotal = 0
+
+			badgeRomDir = os.path.join(self.__badgeDir, str(gameId))
+			if not os.path.exists(badgeRomDir):
+				logging.debug("BadgeScanWorkerThread(%d).run: creating %s" % (self.__id, badgeRomDir))
+				os.mkdir(badgeRomDir)
 
 			if "Achievements" in result and result["Achievements"] != None:
 
@@ -67,8 +90,8 @@ class BadgeScanWorkerThread(QThread):
 					points = int(achievement["Points"])
 					scoreTotal += points
 					badgeId = int(achievement["ID"])
-					badgePath = os.path.join(self.__badgeDir, "%s.png" % badgeId)
-					badgeLockedPath = os.path.join(self.__badgeDir, "%s_locked.png" % badgeId)
+					badgePath = os.path.join(badgeRomDir, "%s.png" % badgeId)
+					badgeLockedPath = os.path.join(badgeRomDir, "%s_locked.png" % badgeId)
 					# does this badge exist in the db?
 					badge = pes.data.RetroAchievementBadgeRecord(self.__db, badgeId)
 					badge.setGameId(gameId)
@@ -77,10 +100,17 @@ class BadgeScanWorkerThread(QThread):
 					badge.setPoints(achievement["Points"])
 					badge.setPath(badgePath)
 					badge.setLockedPath(badgeLockedPath)
+
+					if not os.path.exists(badgePath):
+						self.__downloadBadge("%s/%s.png" % (RETRO_BADGE_URL, achievement["BadgeName"]), badgePath)
+					if not os.path.exists(badgeLockedPath):
+						self.__downloadBadge("%s/%s_lock.png" % (RETRO_BADGE_URL, achievement["BadgeName"]), badgeLockedPath)
+
 					if badge.isNew():
 						batchInsertQuery.addRecord(badge)
 						self.__added += 1
-					else:
+					elif badge.isDirty():
+						print(achievement)
 						self.__updated += 1
 			self.__queue.task_done()
 			self.romProcessedSignal.emit()
