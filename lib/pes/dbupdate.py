@@ -79,7 +79,7 @@ class ConsoleTask(object):
 		return row
 
 	def run(self):
-		url = 'http://thegamesdb.net/api/'
+		url = 'http://legacy.thegamesdb.net/api/'
 		headers = {'User-Agent': 'PES Scraper'}
 		imgExtensions = ['jpg', 'jpeg', 'png', 'gif']
 
@@ -221,7 +221,7 @@ class ConsoleTask(object):
 								if boxartElement != None:
 									imageSaved = False
 									try:
-										imgUrl = "http://thegamesdb.net/banners/%s" % boxartElement.text
+										imgUrl = "http://legacy.thegamesdb.net/banners/%s" % boxartElement.text
 										logging.debug("Downloading image from: %s" % imgUrl)
 										extension = imgUrl[imgUrl.rfind('.'):]
 										thumbPath =  console.getImgCacheDir() + os.sep + name.replace('/', '_') + extension
@@ -470,7 +470,7 @@ class UpdateDbThread(Thread):
 		#for w in consumers:
 		#	w.start()
 
-		url = 'http://thegamesdb.net/api/'
+		url = 'http://legacy.thegamesdb.net/api/'
 		headers = {'User-Agent': 'PES Scraper'}
 
 		con = None
