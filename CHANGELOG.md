@@ -1,6 +1,15 @@
 PES Changelog
 =============
 
+PES 2.4.1
+---------
+
+Date: 2018-07-17
+
+Changes:
+
+* Updated thegamesdb.net URL for downloading game meta data and cover art (issue #34)
+
 PES 2.4
 -------
 

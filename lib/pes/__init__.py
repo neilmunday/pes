@@ -25,8 +25,8 @@ import shutil
 import sys
 import logging
 
-VERSION_NUMBER = '2.4'
-VERSION_DATE = '2018-05-02'
+VERSION_NUMBER = '2.4.1'
+VERSION_DATE = '2018-07-17'
 VERSION_AUTHOR = 'Neil Munday'
 
 baseDir = os.path.abspath('%s%s../../' % (os.path.dirname(os.path.realpath(__file__)), os.sep))
