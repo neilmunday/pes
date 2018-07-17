@@ -326,7 +326,7 @@ class GamesDbRomTask(RomTask):
 							if boxartElement != None:
 								imageSaved = False
 								try:
-									imgUrl = "http://thegamesdb.net/banners/%s" % boxartElement.text
+									imgUrl = "http://legacy.thegamesdb.net/banners/%s" % boxartElement.text
 									extension = imgUrl[imgUrl.rfind('.'):]
 									thumbPath = os.path.join(self._covertArtDir, "%s%s" % (name.replace('/', '_'), extension))
 									response = requests.get(
@@ -444,7 +444,7 @@ class RomProcess(multiprocessing.Process):
 
 class RomScanThread(QThread):
 
-	GAMES_DB_URL = 'http://thegamesdb.net/api/'
+	GAMES_DB_URL = 'http://legacy.thegamesdb.net/api/'
 	HEADERS = {'User-Agent': 'PES Scraper'}
 
 	romsFoundSignal = pyqtSignal(int)
