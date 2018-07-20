@@ -113,7 +113,7 @@ class RomTask(object):
 		filename, extension = os.path.splitext(path)
 		logging.debug("RomTask._scaleImage: %s format is %s" % (path, imgFormat))
 		width, height = img.size
-		scaleWidth = ConsoleTask.SCALE_WIDTH
+		scaleWidth = RomTask.SCALE_WIDTH
 		ratio = min(float(scaleWidth / width), float(scaleWidth / height))
 		newWidth = width * ratio
 		newHeight = height * ratio
@@ -344,7 +344,7 @@ class GamesDbRomTask(RomTask):
 											newThumbPath = self._scaleImage(thumbPath)
 											thumbPath = newThumbPath
 										except Exception as e:
-											logging.error("GamesDbRomTask: failed to scale %s" % thumbPath)
+											logging.error("GamesDbRomTask: failed to scale %s, error: %s" % (thumbPath, e))
 											thumbPath = None
 									else:
 										logging.error("GamesDbRomTask: failed to get covert art for %d, status code: %s" % (gameApiId, response.status_code))
