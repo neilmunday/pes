@@ -55,15 +55,52 @@ class BatchQuery(object):
 
 	def __init__(self, db):
 		self._db = db
+		self.__queries = []
 
-class BatchInsertQuery(BatchQuery):
+	def addQuery(self, query):
+		self.__queries.append(query)
+		if len(self.__queries) > self._BATCH_INTERVAL:
+			self.execute()
 
-	def __init__(self, db):
-		super(BatchInsertQuery, self).__init__(db)
+	def execute(self):
+		logging.debug("BatchQuery.execute: executing queries")
+		doQuery(self._db, "%s" % ';'.join(self.__queries))
+		self._db.commit()
+		self.__queries = []
+
+	def finish(self):
+		if len(self.__queries) > 0:
+			logging.debug("BatchQuery: finishing...")
+			self.execute()
+
+class BatchInsertQuery(object):
+
+	_BATCH_INTERVAL = 100
+
+	def __init__(self, db, table=None, fieldNames=None):
 		logging.debug("BatchInsertQuery.__init__: object created")
+		self.__db = db
 		self.__values = []
 		self.__query = None
-		self.__fieldNames = []
+		self.__table = table
+		if fieldNames == None:
+			self.__fieldNames = []
+		else:
+			self.__fieldNames = fieldNames
+		if self.__table != None and len(self.__fieldNames) > 0:
+			self.__fieldNames.sort()
+			self.__query = "INSERT INTO `%s` (%s) VALUES " % (self.__table, ",".join("`%s`" % i for i in self.__fieldNames))
+
+	def add(self, properties):
+		values = []
+		for f in self.__fieldNames:
+			if isinstance(properties[f], str):
+				values.append("'%s'" % properties[f].replace("'", "''"))
+			else:
+				values.append(properties[f])
+		self.__values.append("(%s)" % ",".join(str(x) for x in values))
+		if len(self.__values) > self._BATCH_INTERVAL:
+			self.execute()
 
 	def addRecord(self, record):
 		logging.debug("BatchInsertQuery.addRecord: record added, %d cached" % len(self.__values))
@@ -76,27 +113,24 @@ class BatchInsertQuery(BatchQuery):
 					self.__fieldNames.append(f)
 			self.__fieldNames.sort()
 			self.__query = "INSERT INTO `%s` (%s) VALUES " % (record.getTableName(), ",".join("`%s`" % i for i in self.__fieldNames))
-		values = []
-		properties = record.toDic()
-		for f in self.__fieldNames:
-			if isinstance(properties[f], str):
-				values.append("'%s'" % properties[f].replace("'", "''"))
-			else:
-				values.append(properties[f])
-		self.__values.append("(%s)" % ",".join(str(x) for x in values))
-		if len(self.__values) > self._BATCH_INTERVAL:
-			self.execute()
+		self.add(record.toDic())
 
 	def execute(self):
 		logging.debug("BatchInsertQuery.execute: executing query")
-		doQuery(self._db, "%s %s;" % (self.__query, ",".join(self.__values)))
-		self._db.commit()
+		doQuery(self.__db, "%s %s;" % (self.__query, ",".join(self.__values)))
+		self.__db.commit()
 		self.__values = []
 
 	def finish(self):
 		if len(self.__values) > 0:
 			logging.debug("BatchInsertQuery: finishing...")
 			self.execute()
+
+class BatchUpdateQuery(BatchQuery):
+
+	def __init__(self, db):
+		super(BatchUpdateQuery, self).__init__(db)
+		logging.debug("BatchUpdateQuery.__init__: object created")
 
 class Record(object):
 
@@ -197,7 +231,7 @@ class Record(object):
 			total = len(self.__dirtyFields)
 			if total == 0:
 				logging.debug("Record.save: no need to update %s record %d" % (self.__table, self.__properties[self.__keyField]))
-				return
+				return False
 			logging.debug("Record.save: updating %s record %d" % (self.__table, self.__properties[self.__keyField]))
 			q = 'UPDATE `%s` SET ' % self.__table
 			for f in self.__dirtyFields:
@@ -215,6 +249,7 @@ class Record(object):
 			self.__isNew = False
 			self.__properties[self.__keyField] = query.lastInsertId()
 		self.__dirtyFields = []
+		return True
 
 	def _setProperty(self, field, value):
 		if field in self.__properties and self.__properties[field] == value:
@@ -298,9 +333,7 @@ class GameRecord(Record):
 				"play_count",
 				"size",
 				"rasum",
-				"retroachievement_id",
-				"achievement_total",
-				"score_total",
+				"retroachievement_game_id",
 				"exists"
 			],
 			"game_id",
@@ -340,16 +373,13 @@ class GameRecord(Record):
 		return self._getProperty("rasum")
 
 	def getRetroAchievementId(self):
-		return int(self._getProperty("retroachievement_id"))
+		return int(self._getProperty("retroachievement_game_id"))
 
 	def getSize(self):
 		return int(self._getProperty("size"))
 
 	def incrementPlayCount(self):
 		self.setPlayCount(self.getPlayCount() + 1)
-
-	def setAchievementTotal(self, total):
-		self._setProperty("achievement_total", int(total))
 
 	def setAdded(self, timestamp):
 		self._setProperty("added", int(timestamp))
@@ -393,10 +423,7 @@ class GameRecord(Record):
 		self._setProperty("released", int(timestamp))
 
 	def setRetroAchievementId(self, achievementId):
-		self._setProperty("retroachievement_id", achievementId)
-
-	def setScoreTotal(self, score):
-		self._setProperty("score_total", int(score))
+		self._setProperty("retroachievement_game_id", achievementId)
 
 	def setSize(self, size):
 		self._setProperty("size", int(size))
@@ -444,13 +471,13 @@ class GameTitleRecord(Record):
 class RetroAchievementBadgeRecord(Record):
 
 	def __init__(self, db, keyValue, row=None):
-		super(RetroAchievementBadgeRecord, self).__init__(db, "retroachievement_badge", ["badge_id", "title", "game_id", "description", "points", "badge_path", "badge_path_locked"], "badge_id", keyValue, False, row)
+		super(RetroAchievementBadgeRecord, self).__init__(db, "retroachievement_badge", ["badge_id", "title", "retroachievement_game_id", "description", "points", "badge_path", "badge_path_locked"], "badge_id", keyValue, False, row)
 
 	def getDescription(self):
 		return self._getProperty("description")
 
 	def getGameId(self):
-		return self._getProperty("game_id")
+		return self._getProperty("retroachievement_game_id")
 
 	def getLockedPath(self):
 		return self._getProperty("badge_path")
@@ -468,7 +495,7 @@ class RetroAchievementBadgeRecord(Record):
 		self._setProperty("description", txt)
 
 	def setGameId(self, i):
-		self._setProperty("game_id", int(i))
+		self._setProperty("retroachievement_game_id", int(i))
 
 	def setLockedPath(self, path):
 		self._setProperty("badge_path_locked", path)
@@ -502,6 +529,16 @@ class RetroAchievementUserRecord(Record):
 	def getUpdated(self):
 		return int(self._getProperty("updated"))
 
+	def hasEarnedBadge(self, badgeId):
+		query = self._doQuery("SELECT COUNT(*) AS `total` FROM `retroachievement_earned` WHERE `user_id` = :user_id AND `badge_id` = :badge_id AND `date_earned` > 0;", {"user_id": self.getId(), "badge_id": badgeId})
+		query.first()
+		return int(query.value(0))
+
+	def hasEarnedHardcoreBadge(self, badgeId):
+		query = self._doQuery("SELECT COUNT(*) AS `total` FROM `retroachievement_earned` WHERE `user_id` = :user_id AND `badge_id` = :badge_id AND `date_earned_hardcore` > 0;", {"user_id": self.getId(), "badge_id": badgeId})
+		query.first()
+		return int(query.value(0))
+
 	def save(self, commit=True):
 		if self.isNew():
 			logging.debug("RetroAchievementUserRecord.save: new record")
@@ -529,6 +566,23 @@ class RetroAchievementUserRecord(Record):
 
 	def setUpdated(self, ts):
 		self._setProperty("updated", int(ts))
+
+class RetroAchievementGameRecord(Record):
+
+	def __init__(self, db, keyValue, row=None):
+		super(RetroAchievementGameRecord, self).__init__(db, "retroachievement_game", ["retroachievement_game_id", "achievement_total", "score_total"], "retroachievement_game_id", keyValue, False, row)
+
+	def getAchievementTotal(self):
+		return int(self._getProperty("achievement_total"))
+
+	def getScoreTotal(self):
+		return int(self._getProperty("score_total"))
+
+	def setAchievementTotal(self, t):
+		self._setProperty("achievement_total", int(t))
+
+	def setScoreTotal(self, t):
+		self._setProperty("score_total", int(t))
 
 class Console(object):
 

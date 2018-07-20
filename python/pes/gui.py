@@ -138,7 +138,10 @@ def getRetroArchConfigButtonValue(param, controller, button):
 	return "%s = \"nul\"\n" % param
 
 def runCommand(command):
-	process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	if command.find("|"):
+		process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+	else:
+		process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 	stdout, stderr = process.communicate()
 	return (process.returncode, stdout.decode(), stderr.decode())
 
@@ -437,9 +440,7 @@ class LoadingThread(QThread):
 			`play_count` INTEGER, \
 			`size` INTEGER, \
 			`rasum` TEXT, \
-			`retroachievement_id` INTEGER, \
-			`achievement_total` INTEGER, \
-			`score_total` INTEGER, \
+			`retroachievement_game_id` INTEGER, \
 			`exists` INTEGER \
 		);")
 		doQuery(self.__window.db, "CREATE INDEX IF NOT EXISTS \"game_index\" on `game` (`game_id` ASC);")
@@ -464,13 +465,20 @@ class LoadingThread(QThread):
 		CREATE TABLE IF NOT EXISTS `retroachievement_badge` (\
 			`badge_id` INTEGER PRIMARY KEY, \
 			`title` TEXT, \
-			`game_id` INTEGER, \
+			`retroachievement_game_id` INTEGER, \
 			`description` TEXT, \
 			`points` INTEGER, \
 			`badge_path` TEXT, \
 			`badge_path_locked` TEXT \
 		);")
 		doQuery(self.__window.db, "CREATE INDEX IF NOT EXISTS \"retroachievement_badge_index\" on `retroachievement_badge` (`badge_id` ASC);")
+		doQuery(self.__window.db, "\
+		CREATE TABLE IF NOT EXISTS `retroachievement_game` (\
+			`retroachievement_game_id`,\
+			`achievement_total` INTEGER, \
+			`score_total` INTEGER \
+		);")
+		doQuery(self.__window.db, "CREATE INDEX IF NOT EXISTS \"retroachievement_game_index\" on `retroachievement_game` (`retroachievement_game_id` ASC);")
 		doQuery(self.__window.db, "\
 		CREATE TABLE IF NOT EXISTS `retroachievement_earned` (\
 			`user_id` INTEGER, \
@@ -581,8 +589,9 @@ class LoadingThread(QThread):
 
 class BadgeScanMonitorThread(QThread):
 
-	finishedSignal = pyqtSignal(int, int, int, int) # scanned, added, updated, time taken
-	progressSignal = pyqtSignal(int, int, int, str, str) # progress (%), unprocessed, time remaining, name, badge path
+	finishedSignal = pyqtSignal(int, int, int, int, int) # scanned, added, updated, achievements, time taken
+	romProcessedSignal = pyqtSignal(int, int, int) # progress (%), unprocessed, time remaining
+	badgeProcessedSignal = pyqtSignal(str, str) # name, path
 	romsFoundSignal = pyqtSignal(int) # badges found
 
 	def __init__(self, db, retroUser, badgeDir):
@@ -596,9 +605,13 @@ class BadgeScanMonitorThread(QThread):
 		self.__romsRemaining = 0
 		self.__startTime = 0
 		self.__threadTotal = multiprocessing.cpu_count() * 2
+		self.__threads = []
 
 	def __badgesFoundEvent(self, badgeTotal):
 		self.badgesFoundSignal.emit(badgeTotal)
+
+	def __badgeProcessedEvent(self, name, path):
+		self.badgeProcessedSignal.emit(name, path)
 
 	def __scanFinishedEvent(self):
 		self.__running = False
@@ -610,14 +623,14 @@ class BadgeScanMonitorThread(QThread):
 		self.__romsRemaining -= 1
 		eta = ((time.time() - self.__startTime) / (self.__romTotal - self.__romsRemaining)) * self.__romTotal
 		timeRemaining = eta - (time.time() - self.__startTime)
-		self.progressSignal.emit((float(self.__romTotal - self.__romsRemaining) / float(self.__romTotal)) * 100.0, self.__romsRemaining, timeRemaining, "", "")
+		self.romProcessedSignal.emit((float(self.__romTotal - self.__romsRemaining) / float(self.__romTotal)) * 100.0, self.__romsRemaining, timeRemaining)
 
 	def run(self):
 		logging.debug("BadgeScanMonitorThread.run: starting")
 		self.__startTime = time.time()
 		processQueue = queue.Queue()
 
-		query = doQuery(self.__db, "SELECT `retroachievement_id` FROM `game` WHERE `retroachievement_id` > 0;")
+		query = doQuery(self.__db, "SELECT DISTINCT(`retroachievement_game_id`) FROM `game` WHERE `retroachievement_game_id` > 0;")
 		self.__romTotal = 0
 		while query.next():
 			record = query.record()
@@ -626,48 +639,46 @@ class BadgeScanMonitorThread(QThread):
 		logging.debug("BadgeScanMonitorThread.run: found %d games to process" % self.__romTotal)
 		self.__romsRemaining = self.__romTotal
 		self.romsFoundSignal.emit(self.__romTotal)
-		threads = []
+		self.__threads = []
 
 		for i in range(0, self.__threadTotal):
 			t = BadgeScanWorkerThread(i, self.__db, self.__retroUser, processQueue, self.__badgeDir)
 			t.romProcessedSignal.connect(self.__romProcessedEvent)
-			threads.append(t)
+			t.badgeProcessedSignal.connect(self.__badgeProcessedEvent)
+			self.__threads.append(t)
 			t.start()
 
-		for t in threads:
+		for t in self.__threads:
 			t.wait()
 
 		timeTaken = time.time() - self.__startTime
 
 		added = 0
 		updated = 0
+		earned = 0
 
-		for t in threads:
+		for t in self.__threads:
 			added += t.getAdded()
 			updated += t.getUpdated()
+			earned += t.getEarned()
 
 		logging.info("BadgeScanMonitorThread: added %d and updated %d badges in %ds" % (added, updated, timeTaken))
 
-		self.progressSignal.emit(100, 0, 0, "", "0")
-		self.finishedSignal.emit(self.__romTotal, added, updated, timeTaken)
+		self.romProcessedSignal.emit(100, 0, 0)
+		self.finishedSignal.emit(self.__romTotal, added, updated, earned, timeTaken)
 
 		logging.debug("BadgeScanMonitorThread.run: finished")
 
 	@pyqtSlot()
 	def startThread(self):
 		logging.debug("BadgeScanMonitorThread.startThread: starting thread")
-		#if self.__scanThread != None:
-		#	self.__scanThread.badgesFoundSignal.disconnect()
-		#	self.__scanThread.finishedSignal.disconnect()
-		#self.__scanThread = BadgeScanThread(self.__db, self.__retroUser)
-		#self.__scanThread.badgesFoundSignal.connect(self.__badgesFoundEvent)
-		#self.__scanThread.finishedSignal.connect(self.__scanFinishedEvent)
 		self.start()
 
 	@pyqtSlot()
 	def stop(self):
-		if self.__scanThread:
-			self.__scanThread.stop()
+		for t in self.__threads:
+			logging.debug("BadgeScanMonitorThread.stop: stopping thread %d" % t.getId())
+			t.stop()
 
 class RomScanMonitorThread(QThread):
 
@@ -845,7 +856,10 @@ class CallHandler(QObject):
 		if self.__timezone == None:
 			rtn, stdout, stderr = runCommand(self.__window.getTimezoneCommand)
 			if rtn != 0:
-				logging.error("Handler.getTimezone: could not get current timezone!")
+				logging.error("Handler.getTimezone: could not get current timezone from: %s" % self.__window.getTimezoneCommand)
+				logging.error("stdout:")
+				logging.error(stdout)
+				logging.error("stderr:")
 				logging.error(stderr)
 			else:
 				self.__timezone = stdout[:-1]
@@ -857,7 +871,10 @@ class CallHandler(QObject):
 		if self.__timezones == None:
 			rtn, stdout, stderr = runCommand(self.__window.listTimezoneCommand)
 			if rtn != 0:
-				logging.error("Handler.getTimezones: could not get timezones")
+				logging.error("Handler.getTimezones: could not get timezones from: %s" % self.__window.listTimezoneCommand)
+				logging.error("stdout:")
+				logging.error(stdout)
+				logging.error("stderr:")
 				logging.error(stderr)
 			else:
 				self.__timezones = stdout.split("\n")[:-1]

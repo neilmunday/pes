@@ -41,6 +41,49 @@ jQuery.extend(jQuery.expr[':'], {
 
 /* Functions */
 
+function addConsoleMenuItems(consoleArray){
+	var gamesFound = false;
+	$.each(consoleArray, function(i, c)
+	{
+		if (c.gameTotal > 0){
+			gamesFound = true;
+			menus["main"].insertMenuItem(
+				c.name, i + 1,
+				function(){
+					// @TODO: load console screen here - need to write that too!
+				},
+				"console_preview",
+				function(){
+					$("#console_preview_header").html(c.name);
+					$("#console_bg").attr("src", c.image);
+
+					handler.getLatestAdditions(10, c.id, function(gamesArray){
+						$("#panel_console_additions").empty();
+						if (!consoleAdditionsPanels.hasOwnProperty(c.name)){
+							consoleAdditionsPanels[c.name] = new RomPanel("panel_console_additions", gamesArray, "No ROMs found", function(rom){
+								showGameScreen(rom);
+							});
+						}
+						consoleAdditionsPanels[c.name].draw();
+					});
+					handler.getLastPlayed(10, c.id, function(gamesArray){
+						$("#panel_console_last_played").empty();
+						if (!consoleLastPlayedPanels.hasOwnProperty(c.name)){
+							consoleLastPlayedPanels[c.name] = new RomPanel("panel_console_last_played", gamesArray, "No ROMs found", function(rom){
+								showGameScreen(rom);
+							});
+						}
+						consoleLastPlayedPanels[c.name].draw();
+					});
+				}
+			);
+		}
+		consoles.push(c);
+		consoleMap[c.name] = c;
+	});
+	return gamesFound;
+}
+
 function addLeadingZero(i){
 	if (i < 10){
 		return '0' + i;
@@ -239,7 +282,7 @@ function Menu(el){
 	};
 	this.insertMenuItem = function(text, pos, fn, previewEl, previewFn){
 		if (pos >= me.items.length){
-				me.addMenuItem(text, fn, previewEl, previewFn);
+			me.addMenuItem(text, fn, previewEl, previewFn);
 		}
 		else{
 			var m = new MenuItem(text, fn);
@@ -424,45 +467,7 @@ $(document).ready(function(){
 
 		channel.objects.loadingThread.finishedSignal.connect(function(){
 			handler.getConsoles(function(consoleArray){
-				var gamesFound = false;
-				$.each(consoleArray, function(i, c)
-				{
-					if (c.gameTotal > 0){
-						gamesFound = true;
-						menus["main"].insertMenuItem(
-							c.name, i + 1,
-							function(){
-								// @TODO: load console screen here - need to write that too!
-							},
-							"console_preview",
-							function(){
-								$("#console_preview_header").html(c.name);
-								$("#console_bg").attr("src", c.image);
-
-								handler.getLatestAdditions(10, c.id, function(gamesArray){
-									$("#panel_console_additions").empty();
-									if (!consoleAdditionsPanels.hasOwnProperty(c.name)){
-										consoleAdditionsPanels[c.name] = new RomPanel("panel_console_additions", gamesArray, "No ROMs found", function(rom){
-											showGameScreen(rom);
-										});
-									}
-									consoleAdditionsPanels[c.name].draw();
-								});
-								handler.getLastPlayed(10, c.id, function(gamesArray){
-									$("#panel_console_last_played").empty();
-									if (!consoleLastPlayedPanels.hasOwnProperty(c.name)){
-										consoleLastPlayedPanels[c.name] = new RomPanel("panel_console_last_played", gamesArray, "No ROMs found", function(rom){
-											showGameScreen(rom);
-										});
-									}
-									consoleLastPlayedPanels[c.name].draw();
-								});
-							}
-						);
-					}
-					consoles.push(c);
-					consoleMap[c.name] = c;
-				});
+				var gamesFound = addConsoleMenuItems(consoleArray);
 
 				menus["main"].draw();
 				menus["main"].setSelected(0);
@@ -490,26 +495,30 @@ $(document).ready(function(){
 			menus["main"].setSelected(0);
 		});
 
-		channel.objects.badgeScanMonitorThread.progressSignal.connect(function(percent, badgesRemaining, timeRemaining, badgeName, badgePath){
+		channel.objects.badgeScanMonitorThread.romProcessedSignal.connect(function(percent, badgesRemaining, timeRemaining){
 			$("#badgeScanProgressBarComplete").width(percent + "%");
 			$("#badgeScanRemainingCell").html(badgesRemaining);
 			$("#badgeScanTimeRemainingCell").html(formatTime(timeRemaining));
-			//if (badgePath != "0"){
-			//	$("#badgeScanPreviewImg").attr("src", "file://" + coverArtPath);
-			//}
+		});
+
+		channel.objects.badgeScanMonitorThread.badgeProcessedSignal.connect(function(name, path){
+			$("#badgeScanPreviewImg").show();
+			$("#badgeScanPreviewImg").attr("src", "file://" + path);
 		});
 
 		channel.objects.badgeScanMonitorThread.romsFoundSignal.connect(function(badgeTotal){
 			$("#badgeScanRomsFoundCell").html(badgeTotal);
 		});
 
-		channel.objects.badgeScanMonitorThread.finishedSignal.connect(function(processed, added, updated, timeTaken){
+		channel.objects.badgeScanMonitorThread.finishedSignal.connect(function(processed, added, updated, earned, timeTaken){
 			$("#panel_update_badges_process").hide();
 			$("#panel_update_badges_finished").show();
 			$("#badgesRomsProcessedCell").html(processed);
 			$("#badgesAddedCell").html(added);
 			$("#badgesUpdatedCell").html(updated);
+			$("#badgesEarnedCell").html(earned);
 			$("#badgesTimeTakenCell").html(formatTime(timeTaken));
+			$("#updateBadgesFinishedDoneBtn").focus();
 		});
 
 		channel.objects.romScanMonitorThread.progressSignal.connect(function(percent, romsRemaining, timeRemaining, romName, coverArtPath){
@@ -533,6 +542,11 @@ $(document).ready(function(){
 			$("#romsUpdatedCell").html(updated);
 			$("#timeTakenCell").html(formatTime(timeTaken));
 			$("#updateGamesFinishedDoneBtn").focus();
+			//@TODO: fix updating console menu when new consoles are added
+			/*handler.getConsoles(function(consoleArray){
+				addConsoleMenuItems(consoleArray);
+				menus["main"].draw();
+			});*/
 		});
 
 		channel.objects.handler.joysticksConnectedSignal.connect(function(total){
@@ -800,8 +814,8 @@ $(document).ready(function(){
 	$("#panel_update_badges_process").keyup(function(event){
 		if (event.key == "Backspace"){
 			// only allow backspace if a scan is not in progress
-			$("#panel_update_badges").hide();
-			$("update_badges_preview").show();
+			$("#panel_update_badges_process").hide();
+			$("#update_badges_preview").show();
 			menus["settings"].focus();
 		}
 	});
@@ -812,6 +826,22 @@ $(document).ready(function(){
 			$("#badgeScanStartBtn").hide();
 			$("#badgeScanStopBtn").show();
 			$("#badgeScanStopBtn").focus();
+		}
+	});
+
+	$("#badgeScanStopBtn").keyup(function(event){
+		if (event.key == "Enter"){
+			channel.objects.badgeScanMonitorThread.stop();
+			/*$("#badgeScanStartBtn").hide();
+			$("#badgeScanStopBtn").show();
+			$("#badgeScanStopBtn").focus();*/
+		}
+	});
+
+	/* Update Badges Finished Screen */
+	$("#updateBadgesFinishedDoneBtn").keyup(function(event){
+		if (event.key == "Enter"){
+			showScreen("main");
 		}
 	});
 

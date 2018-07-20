@@ -1,3 +1,4 @@
+import datetime
 import logging
 import json
 import multiprocessing
@@ -33,6 +34,8 @@ class BadgeScanWorkerThread(QThread):
 		self.__badgeDir = badgeDir
 		self.__added = 0
 		self.__updated = 0
+		self.__earned = 0
+		self.__stop = False
 		logging.debug("BadgeScanWorkerThread.__init__: created with id %d" % self.__id)
 
 	def __downloadBadge(self, url, path):
@@ -54,22 +57,33 @@ class BadgeScanWorkerThread(QThread):
 	def getAdded(self):
 		return self.__added
 
+	def getEarned(self):
+		return self.__earned
+
+	def getId(self):
+		return self.__id
+
 	def getUpdated(self):
 		return self.__updated
 
 	def run(self):
 		logging.debug("BadgeScanWorkerThread(%d).run: run started" % self.__id)
-
-		batchInsertQuery = pes.data.BatchInsertQuery(self.__db)
+		self.__stop = False
+		batchEarnedInsertQuery = pes.data.BatchInsertQuery(self.__db, "retroachievement_earned", ["user_id", "badge_id", "date_earned", "date_earned_hardcore"])
+		batchUpdateQuery = pes.data.BatchQuery(self.__db)
+		batchBadgeInsertQuery = pes.data.BatchInsertQuery(self.__db)
+		userId = self.__retroUser.getId()
 
 		while not self.__queue.empty():
-			gameId = self.__queue.get()
-			logging.debug("BadgeScanWorkerThread(%d).run: processing retro game id %d" % (self.__id, gameId))
+			retroGameId = self.__queue.get()
+			if self.__stop:
+				break
+			logging.debug("BadgeScanWorkerThread(%d).run: processing retro game id %d" % (self.__id, retroGameId))
 
 			try:
-				result = self.__retroUser.getGameInfoAndProgress(gameId)
+				result = self.__retroUser.getGameInfoAndProgress(retroGameId)
 			except Exception as e:
-				logging.error("BadgeScanWorkerThread(%d).run: could not get game data for %d" % (self.__id, gameId))
+				logging.error("BadgeScanWorkerThread(%d).run: could not get game data for %d" % (self.__id, retroGameId))
 				logging.error(e)
 				self.__queue.task_done()
 				continue
@@ -77,7 +91,7 @@ class BadgeScanWorkerThread(QThread):
 			achievementTotal = 0
 			scoreTotal = 0
 
-			badgeRomDir = os.path.join(self.__badgeDir, str(gameId))
+			badgeRomDir = os.path.join(self.__badgeDir, str(retroGameId))
 			if not os.path.exists(badgeRomDir):
 				logging.debug("BadgeScanWorkerThread(%d).run: creating %s" % (self.__id, badgeRomDir))
 				os.mkdir(badgeRomDir)
@@ -89,12 +103,13 @@ class BadgeScanWorkerThread(QThread):
 					achievementTotal += 1
 					points = int(achievement["Points"])
 					scoreTotal += points
+
 					badgeId = int(achievement["ID"])
 					badgePath = os.path.join(badgeRomDir, "%s.png" % badgeId)
 					badgeLockedPath = os.path.join(badgeRomDir, "%s_locked.png" % badgeId)
 					# does this badge exist in the db?
 					badge = pes.data.RetroAchievementBadgeRecord(self.__db, badgeId)
-					badge.setGameId(gameId)
+					badge.setGameId(retroGameId)
 					badge.setTitle(achievement["Title"])
 					badge.setDescription(achievement["Description"])
 					badge.setPoints(achievement["Points"])
@@ -106,18 +121,59 @@ class BadgeScanWorkerThread(QThread):
 					if not os.path.exists(badgeLockedPath):
 						self.__downloadBadge("%s/%s_lock.png" % (RETRO_BADGE_URL, achievement["BadgeName"]), badgeLockedPath)
 
+					self.badgeProcessedSignal.emit(achievement["BadgeName"], badgePath)
+
 					if badge.isNew():
-						batchInsertQuery.addRecord(badge)
+						batchBadgeInsertQuery.addRecord(badge)
 						self.__added += 1
-					elif badge.isDirty():
-						print(achievement)
-						self.__updated += 1
+					else:
+						if badge.save():
+							self.__updated += 1
+
+					# has the user earned this achievement?
+					if 'DateEarned' in achievement or 'DateEarnedHardcore' in achievement:
+						earnedTs = 0
+						earnedHardcoreTs = 0
+						if 'DateEarned' in achievement:
+							earnedTs = time.mktime(datetime.datetime.strptime(achievement['DateEarned'], '%Y-%m-%d %H:%M:%S').timetuple())
+						if 'DateEarnedHardcore' in achievement:
+							earnedHardcoreTs = time.mktime(datetime.datetime.strptime(achievement['DateEarnedHardcore'], '%Y-%m-%d %H:%M:%S').timetuple())
+						query = pes.data.doQuery(self.__db, "SELECT `date_earned`, `date_earned_hardcore` FROM `retroachievement_earned` WHERE `user_id` = :user_id AND `badge_id` = :badge_id;", {"user_id": userId, "badge_id": badgeId})
+						query.first()
+						if query.first():
+							dbEarnedTs = int(query.value(0))
+							dbEarnedHardcoreTs = int(query.value(1))
+							if dbEarnedTs != earnedTs and dbEarnedHardcoreTs != earnedHardcoreTs:
+								query = "UPDATE `retroachievement_earned` SET "
+								if dbEarnedTs != earnedTs:
+									query += " `date_earned` = %d " % earnedTs
+								if dbEarnedHardcoreTs != earnedHardcoreTs:
+									query += " `date_earned_hardcore` = %d " % earnedHardcoreTs
+								query += " WHERE `user_id` = %d AND `badge_id` = %d" % (userId, badgeId)
+								batchUpdateQuery.addQuery(query)
+								self.__earned += 1
+						else:
+							# new entry
+							batchEarnedInsertQuery.add({"user_id": userId, "badge_id": badgeId, "date_earned": earnedTs, "date_earned_hardcore": earnedHardcoreTs})
+							self.__earned += 1
+
+				retroGame = pes.data.RetroAchievementGameRecord(self.__db, retroGameId)
+				retroGame.setAchievementTotal(achievementTotal)
+				retroGame.setScoreTotal(scoreTotal)
+				retroGame.save()
+
 			self.__queue.task_done()
 			self.romProcessedSignal.emit()
 
-		batchInsertQuery.finish()
+		batchBadgeInsertQuery.finish()
+		batchEarnedInsertQuery.finish()
+		batchUpdateQuery.finish()
 
 		logging.debug("BadgeScanWorkerThread(%d).run: finished" % self.__id)
+
+	def stop(self):
+		logging.info("BadgeScanThread(%d).stop: stoppping..." % self.__id)
+		self.__stop = True
 
 #class BadgeScanThread(QThread):
 #
@@ -379,11 +435,28 @@ class RetroAchievementUser(QObject):
 			logging.error(e)
 		return None
 
+	def getId(self):
+		if self.__userId == -1:
+			self.login()
+		return self.__userId
+
 	def getUserSummary(self, user=None, recentGames=0):
 		if user == None:
 			user = self.__username
 		logging.debug("RetroAchievementUser.getUserSummary: getting user %s and games %s" % (user, recentGames))
 		return self.__doRequest('API_GetUserSummary.php', {'u': user, 'g': recentGames, 'a': 5})
+
+	def hasEarnedBadge(self, badgeId):
+		# has the user earned this badge?
+		if self.__db == None:
+			self.login()
+		return self.__retroAchievementUserRecord.hasEarnedBadge(badgeId)
+
+	def hasEarnedHardcoreBadge(self, badgeId):
+		# has the user earned this hardcore badge?
+		if self.__db == None:
+			self.login()
+		return self.__retroAchievementUserRecord.hasEarnedHardcoreBadge(badgeId)
 
 	def isLoggedIn(self):
 		return self.__token != None
@@ -404,7 +477,8 @@ class RetroAchievementUser(QObject):
 
 							if self.__db:
 								data = self.getUserSummary()
-								self.__retroAchievementUserRecord = pes.data.RetroAchievementUserRecord(self.__db, int(data["ID"]))
+								self.__userId = int(data["ID"])
+								self.__retroAchievementUserRecord = pes.data.RetroAchievementUserRecord(self.__db, self.__userId)
 								self.__retroAchievementUserRecord.setName(self.__username)
 								self.__retroAchievementUserRecord.setRank(int(data["Rank"]))
 								self.__retroAchievementUserRecord.setTotalPoints(int(data["TotalPoints"]))
