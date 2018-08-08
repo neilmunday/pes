@@ -1071,7 +1071,7 @@ class WebPage(QWebEnginePage):
 		if level == 0:
 			logging.debug("JS console: %s %d: %s" % (source_id, linenumber, msg))
 		elif level == 1:
-			logging.Warning("JS console: %s %d: %s" % (source_id, linenumber, msg))
+			logging.warning("JS console: %s %d: %s" % (source_id, linenumber, msg))
 		else:
 			logging.error("JS console: %s %d: %s" % (source_id, linenumber, msg))
 
