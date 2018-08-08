@@ -536,7 +536,6 @@ class RomScanThread(QThread):
 		self.__started = True
 		self.__startTime = time.time()
 		self.__romTotal = 0
-		query = QSqlQuery()
 
 		lock = multiprocessing.Lock()
 		self.__tasks = multiprocessing.JoinableQueue()
@@ -562,7 +561,7 @@ class RomScanThread(QThread):
 			noCoverArt = console.getNoCoverArt()
 			logging.debug("RomScanThread.run: pre-processing %s" % consoleName)
 
-			query.exec_("UPDATE `game` SET `exists` = 0 WHERE `console_id` = %d;" % consoleId)
+			doQuery(self.__db, "UPDATE `game` SET `exists` = 0 WHERE `console_id` = %d;" % consoleId)
 			self.__db.commit()
 
 			files = glob.glob(os.path.join(console.getRomDir(), "*"))
@@ -628,9 +627,7 @@ class RomScanThread(QThread):
 		if not self.__exitEvent.is_set():
 			# delete missing games
 			logging.debug("RomScanThread.run: purging missing ROMs...")
-			for c in consoles:
-				logging.debug("RomScanThread.run: deleting missing ROMs")
-				query.exec_("DELETE FROM `game` WHERE `exists` = 0 AND `console_id` = %d;" % console.getId())
+			doQuery(self.__db, "DELETE FROM `game` WHERE `exists` = 0;")
 			self.__db.commit()
 
 		self.__endTime = time.time()
