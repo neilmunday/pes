@@ -580,13 +580,9 @@ $(document).ready(function(){
 
 	menus["main"] = new Menu('menu_main');
 	menus["main"].addMenuItem('Home', function(){
-		mainPanelAdditionsPanel.setSelected(0);
-		if (mainPanelLastPlayedPanel.isEmpty()){
+		if (!mainPanelAdditionsPanel.isEmpty()){
+			mainPanelAdditionsPanel.setSelected(0);
 			mainPanelAdditionsPanel.focus();
-		}
-		else{
-			mainPanelLastPlayedPanel.setSelected(0);
-			mainPanelLastPlayedPanel.focus();
 		}
 	}, "screen_main");
 
