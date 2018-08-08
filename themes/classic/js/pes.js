@@ -47,36 +47,7 @@ function addConsoleMenuItems(consoleArray){
 	{
 		if (c.gameTotal > 0){
 			gamesFound = true;
-			menus["main"].insertMenuItem(
-				c.name, i + 1,
-				function(){
-					// @TODO: load console screen here - need to write that too!
-				},
-				"console_preview",
-				function(){
-					$("#console_preview_header").html(c.name);
-					$("#console_bg").attr("src", c.image);
-
-					handler.getLatestAdditions(10, c.id, function(gamesArray){
-						$("#panel_console_additions").empty();
-						if (!consoleAdditionsPanels.hasOwnProperty(c.name)){
-							consoleAdditionsPanels[c.name] = new RomPanel("panel_console_additions", gamesArray, "No ROMs found", function(rom){
-								showGameScreen(rom);
-							});
-						}
-						consoleAdditionsPanels[c.name].draw();
-					});
-					handler.getLastPlayed(10, c.id, function(gamesArray){
-						$("#panel_console_last_played").empty();
-						if (!consoleLastPlayedPanels.hasOwnProperty(c.name)){
-							consoleLastPlayedPanels[c.name] = new RomPanel("panel_console_last_played", gamesArray, "No ROMs found", function(rom){
-								showGameScreen(rom);
-							});
-						}
-						consoleLastPlayedPanels[c.name].draw();
-					});
-				}
-			);
+			insertConsoleMenuItem(c, i);
 		}
 		consoles.push(c);
 		consoleMap[c.name] = c;
@@ -115,6 +86,39 @@ function formatTime(s){
 	var mins = Math.floor((s % 3600) / 60);
 	var secs = s % 60;
 	return hours + ':' + addLeadingZero(mins) + ':' + addLeadingZero(secs);
+}
+
+function insertConsoleMenuItem(c, i){
+	menus["main"].insertMenuItem(
+		c.name, i + 1,
+		function(){
+			// @TODO: load console screen here - need to write that too!
+		},
+		"console_preview",
+		function(){
+			$("#console_preview_header").html(c.name);
+			$("#console_bg").attr("src", c.image);
+			// @TODO: do we really need to call these handlers every time?
+			handler.getLatestAdditions(10, c.id, function(gamesArray){
+				$("#panel_console_additions").empty();
+				if (!consoleAdditionsPanels.hasOwnProperty(c.name)){
+					consoleAdditionsPanels[c.name] = new RomPanel("panel_console_additions", gamesArray, "No ROMs found", function(rom){
+						showGameScreen(rom);
+					});
+				}
+				consoleAdditionsPanels[c.name].draw();
+			});
+			handler.getLastPlayed(10, c.id, function(gamesArray){
+				$("#panel_console_last_played").empty();
+				if (!consoleLastPlayedPanels.hasOwnProperty(c.name)){
+					consoleLastPlayedPanels[c.name] = new RomPanel("panel_console_last_played", gamesArray, "No ROMs found", function(rom){
+						showGameScreen(rom);
+					});
+				}
+				consoleLastPlayedPanels[c.name].draw();
+			});
+		}
+	);
 }
 
 function setIconVisible(icon, visible){
@@ -289,6 +293,14 @@ function Menu(el){
 			me.items.splice(pos, 0, m);
 		}
 	};
+	this.findMenuItem = function(text){
+		for (var i = 0; i < me.items.length; i++){
+			if (me.items[i].text == text){
+				return i;
+			}
+		}
+		return -1;
+	};
 	this.focus = function(){
 		$("#" + me.el + "_" + me.selected + "_btn").focus();
 	};
@@ -297,6 +309,17 @@ function Menu(el){
 			me.items[me.selected].fn();
 		}
 	});
+	this.removeMenuItem = function(pos){
+		if (pos < 0){
+			console.error("removeMenuItem: pos is less than zero");
+			return;
+		}
+		if (pos > me.items.length - 1){
+			console.error("removeMenuItem: " + pos + " > " + (me.items.length - 1));
+			return;
+		}
+		me.items.splice(pos, 1);
+	};
 	this.setSelected = function(i){
 		//console.log("selecting: " + i);
 		if (i > me.items.length - 1){
@@ -542,11 +565,33 @@ $(document).ready(function(){
 			$("#romsUpdatedCell").html(updated);
 			$("#timeTakenCell").html(formatTime(timeTaken));
 			$("#updateGamesFinishedDoneBtn").focus();
-			//@TODO: fix updating console menu when new consoles are added
-			/*handler.getConsoles(function(consoleArray){
-				addConsoleMenuItems(consoleArray);
+			handler.getConsoles(function(consoleArray){
+				$.each(consoleArray, function(i, c){
+					var pos = menus["main"].findMenuItem(c.name);
+					if (pos == -1){
+						if (c.gameTotal > 0){
+							// new console found, need to create panels and insert
+							// at the correct position
+							var insertPos = 2;
+							for (var i = insertPos; i < menus["main"].items.length; i++){
+								if (menus["main"].items[i].text < c){
+									insertPos = i;
+								}
+								else{
+									break;
+								}
+							}
+							// @BUG: test preview function gets defined and run properly
+							insertConsoleMenuItem(c, insertPos - 1);
+						}
+					}
+					else if (c.gameTotal == 0){
+						// remove menu item
+						menus["main"].removeMenuItem(pos);
+					}
+				});
 				menus["main"].draw();
-			});*/
+			});
 		});
 
 		channel.objects.handler.joysticksConnectedSignal.connect(function(total){
