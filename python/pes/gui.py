@@ -545,11 +545,10 @@ class LoadingThread(QThread):
 				if consoleParser.has_option(c, "achievement_id"):
 					retroAchievementId = consoleParser.getint(c, "achievement_id")
 
+				requiredFiles = []
 				if consoleParser.has_option(c, "require"):
 					for f in consoleParser.get(c, "require").split(","):
 						requiredFiles.append(f.strip().replace("%%USERBIOSDIR%%", pes.userBiosDir))
-				else:
-					requiredFiles = []
 
 				console = Console(
 					self.__window.db,
