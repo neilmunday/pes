@@ -253,6 +253,30 @@ function updateClock(){
 	$('#clock').html(s);
 }
 
+function updateHomeScreen(){
+
+	handler.getLatestAdditions(10, 0, function(gamesArray){
+		if (gamesArray.length > 0){
+			handler.getLastPlayed(10, 0, function(gamesArray){
+				mainPanelLastPlayedPanel = new RomPanel("panel_main_last_played", gamesArray, "No ROMS found", function(rom){
+					showGameScreen(rom);
+				});
+				mainPanelLastPlayedPanel.draw();
+			});
+			$("#panel_main_no_roms").hide();
+			$("#panel_main").show();
+			mainPanelAdditionsPanel = new RomPanel("panel_main_additions", gamesArray, "No ROMs found", function(rom){
+				showGameScreen(rom);
+			});
+			mainPanelAdditionsPanel.draw();
+		}
+		else{
+			$("#panel_main_no_roms").show();
+			$("#panel_main").hide();
+		}
+	});
+}
+
 function updateIcons(){
 	if (channelLoaded){
 		window.handler.getIpAddress(function(ip){
@@ -289,8 +313,7 @@ function Menu(el){
 			me.addMenuItem(text, fn, previewEl, previewFn);
 		}
 		else{
-			var m = new MenuItem(text, fn);
-			me.items.splice(pos, 0, m);
+			me.items.splice(pos, 0, new MenuItem(text, fn, previewEl, previewFn));
 		}
 	};
 	this.findMenuItem = function(text){
@@ -496,21 +519,10 @@ $(document).ready(function(){
 				menus["main"].setSelected(0);
 
 				if (!gamesFound){
-					$("#panel_main").html("<p>You have not added any ROMs yet to the PES database.</p><p>To perform a ROM scan, please press Home/Guide to access the Settings menu.</p>")
+					$("#panel_main").hide();
 				}
 				else{
-					handler.getLatestAdditions(10, 0, function(gamesArray){
-						mainPanelAdditionsPanel = new RomPanel("panel_main_additions", gamesArray, "No ROMs found", function(rom){
-							showGameScreen(rom);
-						});
-						mainPanelAdditionsPanel.draw();
-					});
-					handler.getLastPlayed(10, 0, function(gamesArray){
-						mainPanelLastPlayedPanel = new RomPanel("panel_main_last_played", gamesArray, "No ROMS found", function(rom){
-							showGameScreen(rom);
-						});
-						mainPanelLastPlayedPanel.draw();
-					});
+					updateHomeScreen();
 				}
 			});
 			$("#startUp").hide();
@@ -565,6 +577,7 @@ $(document).ready(function(){
 			$("#romsUpdatedCell").html(updated);
 			$("#timeTakenCell").html(formatTime(timeTaken));
 			$("#updateGamesFinishedDoneBtn").focus();
+			updateHomeScreen();
 			handler.getConsoles(function(consoleArray){
 				$.each(consoleArray, function(i, c){
 					var pos = menus["main"].findMenuItem(c.name);
@@ -581,7 +594,6 @@ $(document).ready(function(){
 									break;
 								}
 							}
-							// @BUG: test preview function gets defined and run properly
 							insertConsoleMenuItem(c, insertPos - 1);
 						}
 					}
