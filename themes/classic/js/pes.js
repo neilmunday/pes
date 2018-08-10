@@ -93,6 +93,20 @@ function insertConsoleMenuItem(c, i){
 		c.name, i + 1,
 		function(){
 			// @TODO: load console screen here - need to write that too!
+			for (var j = 0; j < consoleLastPlayedPanels.length; j++){
+				consoleAdditionsPanels[i].setActive(false);
+				consoleLastPlayedPanels[i].setActive(false);
+			}
+			if (!consoleLastPlayedPanels[c.name].isEmpty()){
+				consoleLastPlayedPanels[c.name].setSelected(0);
+				consoleLastPlayedPanels[c.name].focus();
+			}
+			else{
+				consoleAdditionsPanels[c.name].setSelected(0);
+				consoleAdditionsPanels[c.name].focus();
+			}
+			consoleAdditionsPanels[c.name].setActive(true);
+			consoleLastPlayedPanels[c.name].setActive(true);
 		},
 		"console_preview",
 		function(){
@@ -106,6 +120,9 @@ function insertConsoleMenuItem(c, i){
 						showGameScreen(rom);
 					});
 				}
+				else{
+					// @TODO: panel already exists, update
+				}
 				consoleAdditionsPanels[c.name].draw();
 			});
 			handler.getLastPlayed(10, c.id, function(gamesArray){
@@ -114,6 +131,9 @@ function insertConsoleMenuItem(c, i){
 					consoleLastPlayedPanels[c.name] = new RomPanel("panel_console_last_played", gamesArray, "No ROMs found", function(rom){
 						showGameScreen(rom);
 					});
+				}
+				else{
+					// @TODO: panel already exists, update
 				}
 				consoleLastPlayedPanels[c.name].draw();
 			});
@@ -262,6 +282,7 @@ function updateHomeScreen(){
 					showGameScreen(rom);
 				});
 				mainPanelLastPlayedPanel.draw();
+				mainPanelLastPlayedPanel.setActive(true);
 			});
 			$("#panel_main_no_roms").hide();
 			$("#panel_main").show();
@@ -269,6 +290,7 @@ function updateHomeScreen(){
 				showGameScreen(rom);
 			});
 			mainPanelAdditionsPanel.draw();
+			mainPanelAdditionsPanel.setActive(true);
 		}
 		else{
 			$("#panel_main_no_roms").show();
@@ -443,7 +465,8 @@ function HorizontalSelect(el, options, selected){
 
 function RomPanel(el, roms, emptyText, callback){
 	var me = this;
-	me.el = el;
+	me.active = false;
+	me.el = el; // @NOTE some panels share the same element - be careful!
 	me.roms = roms;
 	me.emptyText = emptyText;
 	me.selected = 0;
@@ -464,20 +487,22 @@ function RomPanel(el, roms, emptyText, callback){
 		$("#" + me.el + "_" + me.selected + "_btn").focus();
 	};
 	$("#" + this.el).on("keyup", "button", function(event){
-		if (event.key == "Enter"){
-			me.callback(me.roms[me.selected]);
-		}
-		else if (event.key == "ArrowRight"){
-			if (++me.selected == me.roms.length){
-				me.selected = 0;
+		if (me.active){
+			if (event.key == "Enter"){
+				me.callback(me.roms[me.selected]);
 			}
-			me.focus();
-		}
-		else if (event.key == "ArrowLeft"){
-			if (--me.selected == -1){
-				me.selected = me.roms.length - 1;
+			else if (event.key == "ArrowRight"){
+				if (++me.selected == me.roms.length){
+					me.selected = 0;
+				}
+				me.focus();
 			}
-			me.focus();
+			else if (event.key == "ArrowLeft"){
+				if (--me.selected == -1){
+					me.selected = me.roms.length - 1;
+				}
+				me.focus();
+			}
 		}
 	});
 	this.isEmpty = function(){
@@ -485,6 +510,9 @@ function RomPanel(el, roms, emptyText, callback){
 	};
 	this.scroll = function(x){
 		$("#" + me.el).scrollLeft(x);
+	};
+	this.setActive = function(a){
+		this.active = a;
 	};
 	this.setSelected = function(i){
 		if (i >= 0 && i < me.roms.length){
