@@ -30,6 +30,9 @@ source $functions || exit 1
 # Note: as of PES 2.3, bluez and bluez-plugins are provided by the
 # bluez-ps3 package from the AUR - see install-bluez-ps.sh
 
+# initialise pacman keyring
+run sudo  pacman-key --populate archlinuxarm
+
 run sudo pacman -S bluez-libs bluez-utils \
 	bison byacc flex gcc git cmake make patch pkg-config scons swig vim wget \
 	libusb-compat linuxconsole libplatform \
@@ -44,7 +47,7 @@ run sudo pacman -S bluez-libs bluez-utils \
 	sdl \
 	mkinitcpio \
 	kodi-rbp kodi-rbp-eventclients kodi-rbp-tools-texturepacker kodi-rbp-dev kodi-platform \
-	fakeroot 
+	fakeroot
 
 run sudo pip2 install --upgrade pip
 run sudo pip2 install reparted
