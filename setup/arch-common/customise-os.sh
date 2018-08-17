@@ -56,7 +56,13 @@ KERNEL=="event*", NAME="input/%k", MODE="666"
 EOF
 
 header "Fixing systemd udev service for Bluetooth"
-run sudo sed -r -i "s/^(RestrictAddressFamilies=)(.*?)/\1AF_UNIX AF_NETLINK AF_INET AF_INET6 AF_BLUETOOTH/" /usr/lib/systemd/system/systemd-udevd.service
+run sudo mkdir -p /etc/systemd/system/systemd-udevd.service.d
+run sudo bach -c "cat > /etc/systemd/system/systemd-udevd.service.d/override.conf" << 'EOF'
+[Service]
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6 AF_BLUETOOTH
+EOF
+
+run sudo systemctl daemon-reload
 
 header "Auto enable Bluetooth (when using Bluez)"
 run sudo sed -r -i "s/AutoEnable=false/AutoEnable=true/" /etc/bluetooth/main.conf
@@ -80,7 +86,7 @@ else
 	else
 		echo "Updating /etc/systemd/journald.conf"
 		run sudo bash -c "echo \"SystemMaxUse=50M\" >> /etc/systemd/journald.conf"
-	fi	
+	fi
 fi
 
 header "Setting up swap"
