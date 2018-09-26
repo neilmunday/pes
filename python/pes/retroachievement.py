@@ -493,7 +493,6 @@ class RetroAchievementUser(QObject):
 						logging.error("RetroAchievementUser.login: could not log in - %s" % data["Error"])
 					else:
 						logging.error("RetroAchievementUser.login: could not log in")
-						print(data)
 			else:
 				logging.error("RetroAchievementUser.login: could not log in, response code - %s" % response.status_code)
 		except Exception as e:
