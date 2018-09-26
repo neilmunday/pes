@@ -688,7 +688,10 @@ class Settings(object):
 			logging.warning("No property \"[%s]:%s\" in \"%s\"" % (section, prop, pes.userPesConfigFile))
 			return None
 		if propType == "string":
-			return self.__configparser.get(section, prop).replace("%%USERDIR%%", pes.userDir)
+			value = self.__configparser.get(section, prop)
+			if value == None or len(value) == 0:
+				return None
+			return value.replace("%%USERDIR%%", pes.userDir)
 		logging.error("Settings.getValue: unsupported type \"%s\"" % propType)
 
 	def set(self, section, prop, value):
