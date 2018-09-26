@@ -581,7 +581,10 @@ class LoadingThread(QThread):
 				return
 
 		if self.__window.retroUser:
-			self.__window.retroUser.login()
+			self.__progress = 95
+			self.progressSignal.emit(self.__progress, "Logging into RetroAchievements.org")
+			if not self.__window.retroUser.login():
+				self.progressSignal.emit(self.__progress, "Failed to log into RetroAchievements.org!")
 
 		self.__progress = 100
 		self.finishedSignal.emit()
@@ -762,7 +765,8 @@ class CallHandler(QObject):
 		self.__keyboardLayouts = None
 		self.__timezones = None
 		self.__timezone = None
-		self.__window.retroUser.loggedInSignal.connect(self.__retroUserLoggedIn)
+		if self.__window.retroUser:
+			self.__window.retroUser.loggedInSignal.connect(self.__retroUserLoggedIn)
 
 	@pyqtSlot(result=bool)
 	def controllerConnected(self):
