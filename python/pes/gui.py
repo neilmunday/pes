@@ -45,8 +45,8 @@ import sdl2.ext
 import sdl2.joystick
 
 import pes
+import pes.common
 from pes.data import doQuery, Console, ConsoleRecord, GameRecord, Settings
-from pes.common import checkDir, checkFile, getIpAddress, mkdir, pesExit
 from pes.retroachievement import BadgeScanWorkerThread
 from pes.romscan import RomScanThread
 import pes.gamecontroller
@@ -168,47 +168,47 @@ class PESWindow(QMainWindow):
 		self.setWindowTitle("PES")
 
 		if sdl2.SDL_Init(sdl2.SDL_INIT_JOYSTICK | sdl2.SDL_INIT_GAMECONTROLLER) != 0:
-			pesExit("failed to initialise SDL2!", True)
+			pes.common.pesExit("failed to initialise SDL2!", True)
 		logging.debug("SDL2 joystick and gamecontroller APIs initialised")
 
 		# load joystick database
 		logging.debug("loading SDL2 control pad mappings from: %s" % pes.userGameControllerFile)
 		mappingsLoaded = sdl2.SDL_GameControllerAddMappingsFromFile(pes.userGameControllerFile.encode())
 		if mappingsLoaded == -1:
-			pesExit("failed to load SDL2 control pad mappings from: %s" % pes.userGameControllerFile)
+			pes.common.pesExit("failed to load SDL2 control pad mappings from: %s" % pes.userGameControllerFile)
 		logging.debug("loaded %d control pad mappings" % mappingsLoaded)
 
 		self.listKeyboardLayoutsCommand = settings.get("commands", "listKeyboards")
 		if self.listKeyboardLayoutsCommand == None:
-			pesExit("listKeyboards setting is missing in %s" % pes.userPesConfigFile)
+			pes.common.pesExit("listKeyboards setting is missing in %s" % pes.userPesConfigFile)
 		self.getKeyboardLayoutCommand = settings.get("commands", "getKeyboard")
 		if self.getKeyboardLayoutCommand == None:
-			pesExit("getKeyboard setting is missing in %s" % pes.userPesConfigFile)
+			pes.common.pesExit("getKeyboard setting is missing in %s" % pes.userPesConfigFile)
 		self.setKeyboardLayoutCommand = settings.get("commands", "setKeyboard")
 		if self.setKeyboardLayoutCommand == None:
-			pesExit("setKeyboard setting is missing in %s" % pes.userPesConfigFile)
+			pes.common.pesExit("setKeyboard setting is missing in %s" % pes.userPesConfigFile)
 
 		self.listTimezoneCommand = settings.get("commands", "listTimezones")
 		if self.listTimezoneCommand == None:
-			pesExit("listTimezones setting missing in %s" % pes.userPesConfigFile)
+			pes.common.pesExit("listTimezones setting missing in %s" % pes.userPesConfigFile)
 
 		self.getTimezoneCommand = settings.get("commands", "getTimezone")
 		if self.getTimezoneCommand == None:
-			pesExit("getTimezone setting missing in %s" % pes.userPesConfigFile)
+			pes.common.pesExit("getTimezone setting missing in %s" % pes.userPesConfigFile)
 
 		self.setTimezoneCommand = settings.get("commands", "setTimezone")
 		if self.setTimezoneCommand == None:
-			pesExit("setTimezone setting missing in %s" % pes.userPesConfigFile)
+			pes.common.pesExit("setTimezone setting missing in %s" % pes.userPesConfigFile)
 
 		self.__theme = settings.get("settings", "theme")
 		if self.__theme == None:
 			# use classic
 			self.__theme = "classic"
 		self.__themeDir = os.path.join(pes.themeDir, self.__theme)
-		checkDir(self.__themeDir)
+		pes.common.checkDir(self.__themeDir)
 
 		mainPage = os.path.join(self.__themeDir, "html", "main.html")
-		checkFile(mainPage)
+		pes.common.checkFile(mainPage)
 
 		self.db = QSqlDatabase.addDatabase("QSQLITE")
 		self.db.setDatabaseName(pes.userDb)
@@ -531,10 +531,10 @@ class LoadingThread(QThread):
 			try:
 				romDir = os.path.join(self.__window.settings.get("settings", "romsDir"), c)
 				# make ROMs dir for console
-				mkdir(romDir)
+				pes.common.mkdir(romDir)
 				# make cover art dir for console
 				coverArtDir = os.path.join(self.__window.settings.get("settings", "coverartDir"), c)
-				mkdir(coverArtDir)
+				pes.common.mkdir(coverArtDir)
 
 				if consoleParser.has_option(c, "ignore_roms"):
 					ignoreRoms = consoleParser.get(c, "ignore_roms").split(",")
@@ -791,9 +791,9 @@ class CallHandler(QObject):
 			consoles.append({"gameTotal": c.getGameTotal(), "name": c.getName(), "id": c.getId(), "image": c.getImage()})
 		return consoles
 
-	@pyqtSlot(str)
+	@pyqtSlot(result=str)
 	def getIpAddress(self):
-		return getIpAddress()
+		return pes.common.getIpAddress()
 
 	@pyqtSlot(result=str)
 	def getKeyboardLayout(self):

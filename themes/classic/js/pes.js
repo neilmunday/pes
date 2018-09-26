@@ -302,7 +302,7 @@ function updateHomeScreen(){
 function updateIcons(){
 	if (channelLoaded){
 		window.handler.getIpAddress(function(ip){
-			setIconVisible('networkIcon', ip != '127.0.0.1');
+			setIconVisible('networkIcon', ip != null && ip != '127.0.0.1');
 		});
 	}
 }
@@ -534,6 +534,13 @@ $(document).ready(function(){
 			$("#versionDateCell").html(info.date);
 		});
 
+		handler.getIpAddress(function(ip){
+			if (ip == null){
+				ip = "Not connected";
+			}
+			$("#ipCell").html(ip);
+		});
+
 		channel.objects.loadingThread.progressSignal.connect(function(percent, status){
 			$("#loadingProgressBarComplete").width(percent + "%");
 			$("#loadingProgressBarTxt").html("Loading: " + status);
@@ -665,9 +672,13 @@ $(document).ready(function(){
 
 	menus["main"] = new Menu('menu_main');
 	menus["main"].addMenuItem('Home', function(){
-		if (!mainPanelAdditionsPanel.isEmpty()){
+		if (mainPanelLastPlayedPanel.isEmpty()){
 			mainPanelAdditionsPanel.setSelected(0);
 			mainPanelAdditionsPanel.focus();
+		}
+		else{
+			mainPanelLastPlayedPanel.setSelected(0);
+			mainPanelLastPlayedPanel.focus();
 		}
 	}, "screen_main");
 
