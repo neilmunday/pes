@@ -161,7 +161,7 @@ if __name__ == '__main__':
 		retroApiKey = settings.get("RetroAchievements", "apikey")
 
 		retroUser = None
-		if retroUsername != None and retroPassword != None:
+		if retroUsername and retroPassword and retroApi:
 			retroUser = RetroAchievementUser(retroUsername, retroPassword, retroApiKey)
 			#print(retroUser.getUserSummary())
 
