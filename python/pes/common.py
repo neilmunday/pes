@@ -38,29 +38,30 @@ def checkFile(file):
 		pesExit("Error: %s does not exist!" % file, True)
 	if not os.path.isfile(file):
 		pesExit("Error: %s is not a file!" % file, True)
-		
-def getDefaultInterface(): 
-	f = open('/proc/net/route') 
-	for i in csv.DictReader(f, delimiter="\t"): 
-		if long(i['Destination'], 16) == 0: 
-			return i['Iface'] 
-	f.close()
+
+def getDefaultInterface():
+	with open('/proc/net/route', 'r') as f:
+		for i in csv.DictReader(f, delimiter="\t"):
+			if int(i['Destination'], 16) == 0:
+				return i['Iface']
 	return None
 
-def getIpAddress(ifname): 
-	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-	return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s', ifname[:15]))[20:24])
+def getIpAddress(ifname=None):
+	if not ifname:
+		ifname = getDefaultInterface()
+	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s', ifname[:15].encode()))[20:24])
 
 def initConfig():
 	logging.debug("initialising config...")
 	checkDir(userConfDir)
-	for root, dirs, files in os.walk(confDir):		
+	for root, dirs, files in os.walk(confDir):
 		userRoot = root.replace(baseDir, userDir)
 		for d in dirs:
 			dest = userRoot + os.sep + d
 			if not os.path.exists(dest):
 				mkdir(dest)
-				
+
 		for f in files:
 			dest = userRoot + os.sep + f
 			source = root + os.sep + f
@@ -80,7 +81,7 @@ def mkdir(path):
 	# did not have to make directory so return false
 	logging.debug("mkdir: %s already exists" % path)
 	return False
-		
+
 def pesExit(msg = None, error = False):
 	if error:
 		if msg:
@@ -93,7 +94,7 @@ def pesExit(msg = None, error = False):
 	else:
 		logging.info("Exiting...")
 	sys.exit(0)
-	
+
 def scaleImage(ix, iy, bx, by):
 	"""
 	Original author: Frank Raiser (crashchaos@gmx.net)
