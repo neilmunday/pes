@@ -219,7 +219,10 @@ class PESWindow(QMainWindow):
 
 		self.__loadingThread = LoadingThread(self)
 		self.__romScanMonitorThread = RomScanMonitorThread(self.db, self.settings.get("settings", "romScraper"))
-		self.__badgeScanMonitorThread = BadgeScanMonitorThread(self.db, self.retroUser, self.settings.get("settings", "badgeDir"))
+		if self.retroUser:
+			self.__badgeScanMonitorThread = BadgeScanMonitorThread(self.db, self.retroUser, self.settings.get("settings", "badgeDir"))
+		else:
+			self.__badgeScanMonitorThread = None
 
 		self.__page = WebPage()
 		self.__webview = WebView()
@@ -230,7 +233,8 @@ class PESWindow(QMainWindow):
 		self.__channel.registerObject('handler', self.__handler)
 		self.__channel.registerObject('loadingThread', self.__loadingThread)
 		self.__channel.registerObject('romScanMonitorThread', self.__romScanMonitorThread)
-		self.__channel.registerObject('badgeScanMonitorThread', self.__badgeScanMonitorThread)
+		if self.__badgeScanMonitorThread:
+			self.__channel.registerObject('badgeScanMonitorThread', self.__badgeScanMonitorThread)
 		self.__handler.exitSignal.connect(self.__handleExit)
 		self.__loadingThread.finishedSignal.connect(self.__loadingFinished)
 		self.setCentralWidget(self.__webview)
@@ -250,7 +254,7 @@ class PESWindow(QMainWindow):
 		if self.__romScanMonitorThread.isRunning():
 			logging.debug("stopping rom scan thread")
 			self.__romScanMonitorThread.stop()
-		if self.__badgeScanMonitorThread.isRunning():
+		if self.__badgeScanMonitorThread and self.__badgeScanMonitorThread.isRunning():
 			logging.debug("stopping badge scan thread")
 			self.__badgeScanMonitorThread.stop()
 		logging.debug("stopping event loop")

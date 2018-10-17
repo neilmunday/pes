@@ -565,31 +565,33 @@ $(document).ready(function(){
 			menus["main"].setSelected(0);
 		});
 
-		channel.objects.badgeScanMonitorThread.romProcessedSignal.connect(function(percent, badgesRemaining, timeRemaining){
-			$("#badgeScanProgressBarComplete").width(percent + "%");
-			$("#badgeScanRemainingCell").html(badgesRemaining);
-			$("#badgeScanTimeRemainingCell").html(formatTime(timeRemaining));
-		});
+		if (channel.objects.badgeScanMonitorThread){
+			channel.objects.badgeScanMonitorThread.romProcessedSignal.connect(function(percent, badgesRemaining, timeRemaining){
+				$("#badgeScanProgressBarComplete").width(percent + "%");
+				$("#badgeScanRemainingCell").html(badgesRemaining);
+				$("#badgeScanTimeRemainingCell").html(formatTime(timeRemaining));
+			});
 
-		channel.objects.badgeScanMonitorThread.badgeProcessedSignal.connect(function(name, path){
-			$("#badgeScanPreviewImg").show();
-			$("#badgeScanPreviewImg").attr("src", "file://" + path);
-		});
+			channel.objects.badgeScanMonitorThread.badgeProcessedSignal.connect(function(name, path){
+				$("#badgeScanPreviewImg").show();
+				$("#badgeScanPreviewImg").attr("src", "file://" + path);
+			});
 
-		channel.objects.badgeScanMonitorThread.romsFoundSignal.connect(function(badgeTotal){
-			$("#badgeScanRomsFoundCell").html(badgeTotal);
-		});
+			channel.objects.badgeScanMonitorThread.romsFoundSignal.connect(function(badgeTotal){
+				$("#badgeScanRomsFoundCell").html(badgeTotal);
+			});
 
-		channel.objects.badgeScanMonitorThread.finishedSignal.connect(function(processed, added, updated, earned, timeTaken){
-			$("#panel_update_badges_process").hide();
-			$("#panel_update_badges_finished").show();
-			$("#badgesRomsProcessedCell").html(processed);
-			$("#badgesAddedCell").html(added);
-			$("#badgesUpdatedCell").html(updated);
-			$("#badgesEarnedCell").html(earned);
-			$("#badgesTimeTakenCell").html(formatTime(timeTaken));
-			$("#updateBadgesFinishedDoneBtn").focus();
-		});
+			channel.objects.badgeScanMonitorThread.finishedSignal.connect(function(processed, added, updated, earned, timeTaken){
+				$("#panel_update_badges_process").hide();
+				$("#panel_update_badges_finished").show();
+				$("#badgesRomsProcessedCell").html(processed);
+				$("#badgesAddedCell").html(added);
+				$("#badgesUpdatedCell").html(updated);
+				$("#badgesEarnedCell").html(earned);
+				$("#badgesTimeTakenCell").html(formatTime(timeTaken));
+				$("#updateBadgesFinishedDoneBtn").focus();
+			});
+		}
 
 		channel.objects.romScanMonitorThread.progressSignal.connect(function(percent, romsRemaining, timeRemaining, romName, coverArtPath){
 			$("#romScanProgressBarComplete").width(percent + "%");
@@ -697,15 +699,17 @@ $(document).ready(function(){
 		}
 		$("#updateConsolesBtn").focus();
 	}, "update_games_preview");
-	menus["settings"].addMenuItem("Update Badges", function(){
-		$("#update_badges_preview").hide();
-		$("#badgeScanPreviewImg").hide();
-		$("#badgeScanProgressBarComplete").width(0);
-		$("#panel_update_badges_process").show();
-		$("#badgeScanStartBtn").show();
-		$("#badgeScanStopBtn").hide();
-		$("#badgeScanStartBtn").focus();
-	}, "update_badges_preview");
+	if (channel.objects.badgeScanMonitorThread){
+		menus["settings"].addMenuItem("Update Badges", function(){
+			$("#update_badges_preview").hide();
+			$("#badgeScanPreviewImg").hide();
+			$("#badgeScanProgressBarComplete").width(0);
+			$("#panel_update_badges_process").show();
+			$("#badgeScanStartBtn").show();
+			$("#badgeScanStopBtn").hide();
+			$("#badgeScanStartBtn").focus();
+		}, "update_badges_preview");
+	}
 	menus["settings"].addMenuItem("Control Pad", function(){
 
 	});
