@@ -120,6 +120,7 @@ for p in $patchDir/*.patch; do
 	patch < $p
 done
 
+./autogen.sh
 ./configure --prefix=$prefix --host=arm-raspberry-linux-gnueabihf --with-sdl-prefix=$prefix
 run make
 run sudo make install
