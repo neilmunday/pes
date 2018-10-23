@@ -8,11 +8,17 @@ pkgdesc='SDL2 TTF library'
 depends=('pes-sdl2' 'freetype2')
 makedepends=('make')
 groups=('pes')
-source=("https://www.libsdl.org/projects/SDL_ttf/release/SDL2_ttf-${pkgver}.tar.gz")
-sha256sums=('34db5e20bcf64e7071fe9ae25acaa7d72bdc4f11ab3ce59acc768ab62fe39276')
+source=(configure.in.patch
+	"https://www.libsdl.org/projects/SDL_ttf/release/SDL2_ttf-${pkgver}.tar.gz")
+sha256sums=('80411cc3897053de751ddc455940bf3f3b581c12819c8eb8e7d3894bf9dfa101'
+	'34db5e20bcf64e7071fe9ae25acaa7d72bdc4f11ab3ce59acc768ab62fe39276')
 
 prepare() {
   mkdir -p build
+
+  cd ${srcdir}/SDL2_ttf-${pkgver}
+  patch -i "${srcdir}/configure.in.patch"
+  ./autogen.sh  
 }
 
 build() {
@@ -22,8 +28,8 @@ build() {
   export CXXFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
 
   ../SDL2_ttf-${pkgver}/configure --prefix=/opt/pes \
-	--host=arm-raspberry-linux-gnueabihf \
-	--with-sdl-prefix=/opt/pes
+  	--host=arm-raspberry-linux-gnueabihf \
+  	--with-sdl-prefix=/opt/pes
 }
 
 package() {
