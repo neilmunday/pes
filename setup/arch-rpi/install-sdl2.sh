@@ -111,6 +111,15 @@ run cd $buildDir
 run tar xvfz $sdl2TTFTar
 checkDir $sdl2TTFDir
 run cd $sdl2TTFDir
+
+# apply patches
+patchDir="$rootDir/src/sdl2_ttf-patches"
+checkDir $patchDir
+for p in $patchDir/*.patch; do
+	echo "Applying patch ${p}..."
+	patch < $p
+done
+
 ./configure --prefix=$prefix --host=arm-raspberry-linux-gnueabihf --with-sdl-prefix=$prefix
 run make
 run sudo make install
