@@ -342,9 +342,6 @@ class GameRecord(Record):
 			row
 		)
 
-	def getAchievementTotal(self):
-		return int(self._getProperty("achievement_total"))
-
 	def getAdded(self):
 		return int(self._getProperty("added"))
 
