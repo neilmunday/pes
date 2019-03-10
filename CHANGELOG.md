@@ -1,6 +1,15 @@
 PES Changelog
 =============
 
+PES 2.5
+-------
+
+Date: 2019-03-10
+
+Changes:
+
+* Updated consoles.ini to include support for missing Mupen64 ROM extensions thanks to Albert Schmalzried
+
 PES 2.4.1
 ---------
 
