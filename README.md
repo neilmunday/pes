@@ -43,7 +43,7 @@ The PES Raspberry Pi image has the following features:
   * Sony PSP
   * Turbo Grafx 16 (aka PC Engine)
   * ZX Spectrum
-  
+
 The documentation and Raspberry Pi image for PES can be found at: http://pes.mundayweb.com
 
 Starting PES
@@ -54,7 +54,7 @@ From the command line run:
 ```bash
 /opt/pes/bin/pes
 ```
- 
+
 By default PES will start in fullscreen mode. To start in windowed mode, please use the `-w` command line option.
 
 To enable debug messages, use the `-v` command line option.
@@ -106,6 +106,7 @@ I would like to thank the following people/groups as without them PES would not 
 * Paul Panther for testing and suggesting features for PES
 * Fredrik for testing and suggesting features for PES
 * nwildner for testing and suggesting features for PES
+* Albert Schmalzried for helping test PES
 
 BerryBoot Images
 ----------------
