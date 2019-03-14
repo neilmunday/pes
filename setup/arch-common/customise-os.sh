@@ -57,7 +57,7 @@ EOF
 
 header "Fixing systemd udev service for Bluetooth"
 run sudo mkdir -p /etc/systemd/system/systemd-udevd.service.d
-run sudo bach -c "cat > /etc/systemd/system/systemd-udevd.service.d/override.conf" << 'EOF'
+run sudo bash -c "cat > /etc/systemd/system/systemd-udevd.service.d/override.conf" << 'EOF'
 [Service]
 RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6 AF_BLUETOOTH
 EOF
