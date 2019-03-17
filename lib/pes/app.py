@@ -756,7 +756,7 @@ class PESApp(object):
 								sdl2.SDL_PushEvent(e)
 					elif event.type == sdl2.SDL_CONTROLLERAXISMOTION and self.__controlPad and event.cbutton.which == self.__controlPadIndex:
 						if event.caxis.value < JOYSTICK_AXIS_MIN or event.caxis.value > JOYSTICK_AXIS_MAX:
-							logging.debug("PESApp.run: player 1 axis \"%s\" activated" % sdl2.SDL_GameControllerGetStringForAxis(event.caxis.axis))
+							logging.debug("PESApp.run: player 1 axis \"%s\" activated: %d" % (sdl2.SDL_GameControllerGetStringForAxis(event.caxis.axis), event.caxis.value))
 							downTick = sdl2.timer.SDL_GetTicks() + (self.__CONTROL_PAD_BUTTON_REPEAT * 2)
 							e = mapControlPadAxisEvent(event, sdl2.SDL_KEYDOWN)
 							if e:
