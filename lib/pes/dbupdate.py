@@ -28,8 +28,6 @@ from pes.data import *
 from pes.util import *
 from subprocess import Popen, PIPE
 from threading import Thread
-from xml.etree import ElementTree
-from xml.etree.ElementTree import Element, ParseError, SubElement
 import glob
 import json
 import logging
@@ -44,15 +42,17 @@ import multiprocessing
 URL_TIMEOUT = 30
 logging.getLogger("PIL").setLevel(logging.WARNING)
 
+# my theGamesDbApi public key - rate limited per IP per month
+API_KEY = "d12fb5ce1f84c6cb3cec2b89861551905540c0ab564a5a21b3e06e34b2206928"
+API_URL = "https://api.thegamesdb.net"
+
 class ConsoleTask(object):
 
 	SCALE_WIDTH = 200.0
 
-	def __init__(self, rom, consoleApiName, console):
+	def __init__(self, rom, console):
 		self.rom = rom
-		self.consoleApiName = consoleApiName
 		self.console = console
-		self.consoleName = console.getName()
 
 	def __repr__(self):
 		return self.rom
@@ -79,15 +79,14 @@ class ConsoleTask(object):
 		return row
 
 	def run(self):
-		url = 'http://legacy.thegamesdb.net/api/'
-		headers = {'User-Agent': 'PES Scraper'}
+		headers = { "accept": "application/json", 'User-Agent': 'PES Scraper'}
 		imgExtensions = ['jpg', 'jpeg', 'png', 'gif']
 
 		rom = self.rom
-		consoleApiName = self.consoleApiName
-		console = self.console
-		cacheDir = console.getImgCacheDir()
+		cacheDir = self.console.getImgCacheDir()
 		consoleId = self.console.getId()
+		consoleName = self.console.getName()
+		consoleApiId = self.console.getTheGamesDbApiId()
 
 		added = 0
 		updated = 0
@@ -97,10 +96,10 @@ class ConsoleTask(object):
 		logging.debug("ConsoleTask: processing -> %s" % filename)
 		name = filename
 		fileSize = os.path.getsize(rom)
-		for e in console.getExtensions():
+		for e in self.console.getExtensions():
 			name = name.replace(e, '')
 
-		if not console.ignoreRom(name):
+		if not self.console.ignoreRom(name):
 
 			row = self.__execute("SELECT `full_name` FROM `games_catalogue` WHERE `short_name` = \"%s\"" % name, True)
 			if row:
@@ -108,8 +107,7 @@ class ConsoleTask(object):
 
 			row = self.__execute("SELECT `game_id`, `name`, `cover_art`, `game_path`, `thegamesdb_id` FROM `games` WHERE `game_path` = \"%s\";" % rom, True)
 			if row == None or (row['cover_art'] == "0" and row['thegamesdb_id'] == -1) or (row['cover_art'] != "0" and not os.path.exists(row['cover_art'])):
-				gameApiId = None
-				bestName = name
+				gameApiId = -1
 				thumbPath = '0'
 
 				# has cover art already been provided by the user or downloaded previously?
@@ -138,145 +136,130 @@ class ConsoleTask(object):
 
 				overview = ''
 				released = -1
-				if consoleApiName != None:
-					# now grab thumbnail
-					obj = { 'name': '%s' % name, 'platform': consoleApiName }
-					urlLoaded = False
-					nameLower = name.lower()
 
+				# now grab thumbnail
+				obj = {
+					'apikey': '%s' % API_KEY,
+					'name': name,
+					'fields': 'overview',
+					'filter[platform]': consoleApiId,
+					'include': 'boxart'
+				}
+				urlLoaded = False
+				nameLower = name.lower()
+
+				try:
+					request = urllib2.Request("%s/Games/ByGameName?%s" % (API_URL, urllib.urlencode(obj)), headers=headers)
+					response = urllib2.urlopen(request, timeout=URL_TIMEOUT)
+					logging.debug("ConsoleTask: %s" % response.geturl())
+					urlLoaded = True
+				except Exception as e:
+					logging.error(e)
+					logging.error("Failed to process: %s" % filename)
+
+				if urlLoaded:
+					bestResultDistance = -1
+					dataOk = False
 					try:
-						request = urllib2.Request("%sGetGamesList.php" % url, urllib.urlencode(obj), headers=headers)
-						response = urllib2.urlopen(request, timeout=URL_TIMEOUT)
-						urlLoaded = True
-					#except (urllib2.HTTPError, urllib2.URLError) as e:
-					except Exception as e:
-						logging.error(e)
-						logging.error("Failed to process: %s" % filename)
-
-					if urlLoaded:
-						bestResultDistance = -1
-						dataOk = False
-						try:
-							xmlData = ElementTree.parse(response)
+						data = json.load(response)
+						logging.debug(data)
+						if "code" not in data or data["code"] != 200:
+							raise Exception("Query not successful")
+						if data["data"]["count"] == 0:
+							# no results!
+							logging.warning("No search results found for %s from theGamesDb.net" % filename)
+						else:
 							dataOk = True
-						except ParseError, e:
-							logging.error(e)
-							logging.error("Failed response for console %s was: %s" % (name, response))
-
-						if dataOk:
-							for x in xmlData.findall("Game"):
-								xname = x.find("GameTitle").text.encode('ascii', 'ignore')
-								xid = int(x.find("id").text)
-
-								if xname.lower() == nameLower:
-									gameApiId = xid
-									break
-
-								stringMatcher = StringMatcher(str(nameLower), xname.lower())
-								distance = stringMatcher.distance()
-
-								if bestResultDistance == -1 or distance < bestResultDistance:
-									bestResultDistance = distance
-									bestName = xname
-									gameApiId = xid
-
-				if gameApiId != None:
-					urlLoaded = False
-					gameUrl = "%sGetGame.php" % url
-					try:
-						request = urllib2.Request(gameUrl, urllib.urlencode({"id": gameApiId}), headers=headers)
-						response = urllib2.urlopen(request, timeout=URL_TIMEOUT)
-						urlLoaded = True
-					#except (urllib2.HTTPError, urllib2.URLError) as e:
-					except Exception as e:
+					except Exception, e:
 						logging.error(e)
-						logging.error("Failed URL was: %s" % gameUrl)
 
-					if urlLoaded:
-						dataOk = False
-						try:
-							xmlData = ElementTree.parse(response)
-							dataOk = True
-						except ParseError, e:
-							logging.error(e)
-							logging.error("Failed URL was: %s" % gameUrl)
-							logging.error("Failed content was: %s" % response)
+					if dataOk:
+						for game in data["data"]["games"]:
+							gameNameLower = game["game_title"].lower()
+							if gameNameLower == nameLower:
+								gameApiId = game["id"]
+								overview = game["overview"].encode('ascii', 'ignore').strip()
+								if game["release_date"] != None:
+									released = game["release_date"].encode('ascii', 'ignore').strip()
+								break
 
-						if dataOk:
-							overviewElement = xmlData.find("Game/Overview")
-							if overviewElement != None:
-								overview = overviewElement.text.encode('ascii', 'ignore')
-							releasedElement = xmlData.find("Game/ReleaseDate")
-							if releasedElement != None:
-								released = releasedElement.text.encode('ascii', 'ignore')
-								# convert to Unix time stamp
-								try:
-									released = int(time.mktime(datetime.strptime(released, "%m/%d/%Y").timetuple()))
-								except ValueError, e:
-									# thrown if date is not valid
-									released = -1
+							stringMatcher = StringMatcher(str(nameLower), str(gameNameLower))
+							distance = stringMatcher.distance()
 
-							if thumbPath == "0":
-								boxartElement = xmlData.find("Game/Images/boxart[@side='front']")
-								if boxartElement != None:
-									imageSaved = False
-									try:
-										imgUrl = "http://legacy.thegamesdb.net/banners/%s" % boxartElement.text
+							if bestResultDistance == -1 or distance < bestResultDistance:
+								bestResultDistance = distance
+								gameApiId = game["id"]
+								overview = game["overview"].encode('ascii', 'ignore').strip()
+								if game["release_date"] != None:
+									released = game["release_date"].encode('ascii', 'ignore').strip()
+
+						# try to convert released str into a Unix timestamp
+						if released != -1:
+							try:
+								released = int(time.mktime(datetime.strptime(released, "%Y-%m-%d").timetuple()))
+							except ValueError, e:
+								# thrown if date is not valid
+								released = -1
+
+						# get cover art
+						gameApiIdStr = str(gameApiId)
+						if thumbPath == "0" and gameApiIdStr in data["include"]["boxart"]["data"]:
+							#mediumUrl = data["include"]["boxart"]["base_url"]["medium"]
+							#origUrl =
+							for image in data["include"]["boxart"]["data"][gameApiIdStr]:
+								if image["side"] == "front":
+									for i in ["medium", "large", "original"]:
+										imgUrl = "%s%s" % (data["include"]["boxart"]["base_url"][i], image["filename"])
 										logging.debug("Downloading image from: %s" % imgUrl)
 										extension = imgUrl[imgUrl.rfind('.'):]
-										thumbPath =  console.getImgCacheDir() + os.sep + name.replace('/', '_') + extension
-										request = urllib2.Request(imgUrl, headers=headers)
-										response = urllib2.urlopen(request, timeout=URL_TIMEOUT).read()
-										output = open(thumbPath, 'wb')
-										output.write(response)
-										output.close()
-										imageSaved = True
-									#except (urllib2.HTTPError, urllib2.URLError) as e:
-									except Exception as e:
-										logging.error(e)
-										logging.error("Failed to process url: %s" % imgUrl)
-
-									if imageSaved:
-										# resize the image if it is too big
+										thumbPath =  self.console.getImgCacheDir() + os.sep + name.replace('/', '_') + extension
+										imgSaved = False
+										urlLoaded = False
 										try:
-											thumbPathNew = self.__scaleImage(thumbPath)
-											thumbPath = thumbPathNew
+											request = urllib2.Request(imgUrl, headers={'User-Agent': 'PES Scraper'})
+											response = urllib2.urlopen(request, timeout=URL_TIMEOUT).read()
+											urlLoaded = True
 										except Exception as e:
-											logging.error("Failed to scale %s" % thumbPath)
+											logging.error("Failed to load URL: %s" % imgUrl)
 											logging.error(e)
-											thumbPath = '0'
-							else:
-								# does the provided image need to be scaled?
-								try:
-									thumbPathNew = self.__scaleImage(thumbPath)
-									thumbPath = thumbPathNew
-								except Exception as e:
-									logging.error("Failed to scale %s" % thumbPath)
-									logging.error(e)
-									thumbPath = '0'
-						else:
-							if thumbPath != "0":
-								# does the provided image need to be scaled?
-								try:
-									thumbPathNew = self.__scaleImage(thumbPath)
-									thumbPath = thumbPathNew
-								except Exception as e:
-									logging.error("Failed to scale %s" % thumbPath)
-									logging.error(e)
-									thumbPath = '0'
-				else:
-					gameApiId = -1
+										if urlLoaded:
+											try:
+												with open(thumbPath, 'wb') as f:
+													f.write(response)
+											except Exception as e:
+												logging.error("Failed to save: %s")
+												logging.error(e)
+												thumbPath = '0'
+											if thumbPath != '0':
+												# can we open the image
+												try:
+													img = Image.open(thumbPath)
+													img.close()
+													# opened ok
+													break
+												except Exception as e:
+													logging.warning("Could not open saved image from: %s" % imgUrl)
+									break
+
+				if thumbPath != '0':
+					try:
+						thumbPathNew = self.__scaleImage(thumbPath)
+						thumbPath = thumbPathNew
+					except Exception as e:
+						logging.error("Failed to scale %s" % thumbPath)
+						logging.error(e)
+						thumbPath = '0'
 
 				if row == None:
 					rasum = "NULL"
 					achievementApiId = -1
 					if self.console.getAchievementApiId() != "NULL":
 						# work out rasum (if applicable)
-						if self.consoleName == "MegaDrive" or self.consoleName == "Genesis":
+						if consoleName == "MegaDrive" or consoleName == "Genesis":
 							command = "%s -t genesis \"%s\"" % (rasumExe, rom)
-						elif self.consoleName == "NES":
+						elif consoleName == "NES":
 							command = "%s -t nes \"%s\"" % (rasumExe, rom)
-						elif self.consoleName == "SNES":
+						elif consoleName == "SNES":
 							command = "%s -t snes \"%s\"" % (rasumExe, rom)
 						else:
 							command = "%s \"%s\"" % (rasumExe, rom)
@@ -301,10 +284,10 @@ class ConsoleTask(object):
 								logging.error("The following error occurred when processing: %s" % rom)
 								logging.error(e)
 
-					self.__execute("INSERT INTO `games`(`exists`, `console_id`, `name`, `game_path`, `thegamesdb_id`, `cover_art`, `overview`, `released`, `added`, `favourite`, `last_played`, `play_count`, `size`, `rasum`, `achievement_api_id`) VALUES (1, %d, '%s', '%s', %d, '%s', '%s', %d, %d, 0, -1, 0, %d, '%s', %d);" % (consoleId, name.replace("'", "''"), rom.replace("'", "''"), gameApiId, thumbPath.replace("'", "''"), overview.replace("'", "''"), released, time.time(), fileSize, rasum, achievementApiId))
+					self.__execute("INSERT INTO `games`(`exists`, `console_id`, `name`, `game_path`, `thegamesdb_id`, `cover_art`, `overview`, `released`, `added`, `favourite`, `last_played`, `play_count`, `size`, `rasum`, `achievement_api_id`) VALUES (1, %d, '%s', '%s', %d, '%s', '%s', %d, %d, 0, -1, 0, %d, '%s', %d);" % (consoleId, name.replace("'", "''"), rom.replace("'", "''"), int(gameApiId), thumbPath.replace("'", "''"), overview.replace("'", "''"), released, time.time(), fileSize, rasum, achievementApiId))
 					added += 1
 				elif gameApiId != -1:
-					self.__execute("UPDATE `games` SET `thegamesdb_id` = %d, `cover_art` = '%s', `overview` = '%s', `exists` = 1 WHERE `game_id` = %d;" % (gameApiId, thumbPath.replace("'", "''"), overview.replace("'", "''"), row['game_id']))
+					self.__execute("UPDATE `games` SET `thegamesdb_id` = %d, `cover_art` = '%s', `overview` = '%s', `released` = %d, `exists` = 1 WHERE `game_id` = %d;" % (int(gameApiId), thumbPath.replace("'", "''"), overview.replace("'", "''"), released, row['game_id']))
 					updated += 1
 				else:
 					self.__execute("UPDATE `games` SET `exists` = 1 WHERE `game_id` = %d;" % row["game_id"])
@@ -467,11 +450,8 @@ class UpdateDbThread(Thread):
 		self.consumerTotal = multiprocessing.cpu_count() * 2
 		logging.debug("UpdateDbThread.run: creating %d consumers" % self.consumerTotal)
 		consumers = [Consumer(self.__tasks, results, self.__exitEvent, lock) for i in xrange(self.consumerTotal)]
-		#for w in consumers:
-		#	w.start()
 
-		url = 'http://legacy.thegamesdb.net/api/'
-		headers = {'User-Agent': 'PES Scraper'}
+		headers = { "accept": "application/json"}
 
 		con = None
 		cur = None
@@ -482,7 +462,6 @@ class UpdateDbThread(Thread):
 			cacheDir = c.getImgCacheDir()
 
 			urlLoaded = False
-			consoleApiName = None
 
 			try:
 				con = sqlite3.connect(userPesDb)
@@ -511,23 +490,8 @@ class UpdateDbThread(Thread):
 					self.romTotal += 1
 
 			if len(romFiles) > 0:
-				try:
-					# get API name for this console
-					request = urllib2.Request("%sGetPlatform.php" % url, urllib.urlencode({ 'id':  c.getTheGamesDbApiId() }), headers=headers)
-					response = urllib2.urlopen(request, timeout=URL_TIMEOUT)
-					urlLoaded = True
-					xmlData = ElementTree.parse(response)
-					consoleApiName = xmlData.find('Platform/Platform').text
-				#except (urllib2.HTTPError, urllib2.URLError) as e:
-				except Exception as e:
-					logging.error(e)
-					logging.error("UpdateDbThread.run: not get console API name for: %s" % consoleName)
-
-				if not urlLoaded:
-					logging.warning("UpdateDbThread.run: Could not get console API name for: %s" % consoleName)
-
 				for f in romFiles:
-					self.__tasks.put(ConsoleTask(f, consoleApiName, c))
+					self.__tasks.put(ConsoleTask(f, c))
 
 		logging.debug("UpdateDbThread.run: added %d ROMs to the queue" % self.romTotal)
 
