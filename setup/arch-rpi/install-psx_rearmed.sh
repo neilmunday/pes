@@ -32,13 +32,6 @@ header "Downloading PSX emulator - pcsx_rearmed"
 run git clone https://github.com/libretro/pcsx_rearmed
 checkDir "pcsx_rearmed"
 cd pcsx_rearmed
-run git submodule
-run git submodule update
-
-export CFLAGS="-mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
-export CXXFLAGS=$CFLAGS
-
 run ./configure --platform=libretro --disable-neon
-run make
-run sudo cp libretro.so $retroArchCoresDir/pcsx_libretro.so
-
+run make -j -f Makefile.libretro platform=rpi
+run sudo cp pcsx_rearmed_libretro.so $retroArchCoresDir/
