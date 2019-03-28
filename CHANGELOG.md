@@ -9,6 +9,11 @@ Date: 2019-03-10
 Changes:
 
 * Updated consoles.ini to include support for missing Mupen64 ROM extensions thanks to Albert Schmalzried
+* Updated dbupdate.py to use the new API for thegamesdb.net
+* Updated SDL2 to version 2.0.9
+* Updated to RetroArch 1.7.6
+* Updated emulators to latest versions
+* Added patches for PPSSPP to fix build process
 
 PES 2.4.1
 ---------
