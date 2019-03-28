@@ -34,16 +34,37 @@ header "Downloading Sony PSP emulator - ppsspp (standalone)"
 installDir="$emulatorInstallDir/ppsspp"
 run sudo mkdir -pv $installDir
 run git clone git://github.com/hrydgard/ppsspp
-#run git clone git://github.com/neilmunday/ppsspp
 checkDir "ppsspp"
 cd ppsspp
 run git submodule init
 run git submodule update
-checkFile b.sh
-export CMAKE_ARGS="-D SDL2_LIBRARY:PATH=/opt/sdl2/default/lib/libSDL2.so -D SDL2_INCLUDE_DIR:PATH=/opt/sdl2/default/include/SDL2 -D CMAKE_INSTALL_PREFIX:PATH=$installDir"
-export CFLAGS="-ffast-math -march=armv7-a -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
-run ./b.sh
-checkDir build
+# re-build ffmpeg libs
+cd ffmpeg
+patchDir="$rootDir/src/ppsspp-patches/ffmpeg"
+checkDir $patchDir
+for p in $patchDir/*.patch; do
+	echo "Applying patch ${p}..."
+	patch < $p
+done
+run ./linux_rpi.sh
+cd ..
+# apply SDL patches
+cd SDL
+patchDir="$rootDir/src/ppsspp-patches/SDL"
+checkDir $patchDir
+for p in $patchDir/*.patch; do
+	echo "Applying patch ${p}..."
+	patch < $p
+done
+cd ..
+run mkdir build
+cmake -D SDL2_LIBRARY:PATH=/opt/sdl2/default/lib/libSDL2.so \
+-D SDL2_INCLUDE_DIR:PATH=/opt/sdl2/default/include/SDL2 \
+-D CMAKE_INSTALL_PREFIX:PATH=$installDir \
+-D CMAKE_TOOLCHAIN_FILE=../cmake/Toolchains/raspberry.armv7.cmake \
+-D USING_X11_VULKAN=0 \
+..
+make -j 4
 checkFile build/PPSSPPSDL
 checkDir build/assets
 run sudo cp -rv build/assets $installDir
