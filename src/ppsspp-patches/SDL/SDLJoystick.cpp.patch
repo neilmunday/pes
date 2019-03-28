@@ -1,0 +1,34 @@
+--- SDLJoystick.cpp.orig	2019-03-27 21:38:01.000000000 +0000
++++ SDLJoystick.cpp	2019-03-27 21:39:20.000000000 +0000
+@@ -20,6 +20,22 @@
+ 		SDL_Init(SDL_INIT_JOYSTICK | SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER);
+ 	}
+ 
++	char* dbEnvPath = getenv("PPSSPP_GAME_CONTROLLER_DB_PATH");
++	if (dbEnvPath != NULL) {
++		if (!File::Exists(dbEnvPath)) {
++			cout << "WARNING! " << dbEnvPath << " does not exist!" << endl;
++		} else {
++			cout << "loading control pad mappings from " << dbEnvPath << ": ";
++			if (SDL_GameControllerAddMappingsFromFile(dbEnvPath) == -1) {
++				cout << "FAILED! Will try load from your assests directory instead..." << endl;
++			} else {
++				cout << "SUCCESS!" << endl;
++				setUpControllers();
++				return;
++			}
++		}
++	}
++
+ 	const char *dbPath = "gamecontrollerdb.txt";
+ 	cout << "loading control pad mappings from " << dbPath << ": ";
+ 
+@@ -174,7 +190,7 @@
+ 		NativeAxis(axis);
+ 		break;
+ 	case SDL_CONTROLLERDEVICEREMOVED:
+-		// for removal events, "which" is the instance ID for SDL_CONTROLLERDEVICEREMOVED		
++		// for removal events, "which" is the instance ID for SDL_CONTROLLERDEVICEREMOVED
+ 		for (auto it = controllers.begin(); it != controllers.end(); ++it) {
+ 			if (SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(*it)) == event.cdevice.which) {
+ 				SDL_GameControllerClose(*it);
