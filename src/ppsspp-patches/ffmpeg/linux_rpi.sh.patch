@@ -1,0 +1,36 @@
+--- linux_rpi.sh.orig	2019-03-27 22:53:34.000000000 +0000
++++ linux_rpi.sh	2019-03-27 22:20:01.000000000 +0000
+@@ -1,23 +1,9 @@
+ #!/bin/bash
+ echo "Building Raspberry Pi 2 - ARMv7 ffmpeg"
+-echo "For right build u must have installed CrossTool-ng tools"
+-echo "WARNING! CrossTool must be compiled for hard float!!!"
+-ARCH=$(uname -m)
+-
+-set -e
+-
+-if [ "$ARCH" == "armv7l" ]; then
+-	echo "U cant compile FFMPEG on Raspberry! I must compile on any Linux distr."
+-	exit
+-fi
+ 
+ GENERAL="\
+-   --enable-cross-compile \
+    --extra-libs="-lgcc" \
+-   --arch=arm \
+-   --cc=/opt/cross/x-tools/arm-unknown-linux-gnueabi/bin/arm-unknown-linux-gnueabi-gcc \
+-   --cross-prefix=/opt/cross/x-tools/arm-unknown-linux-gnueabi/bin/arm-unknown-linux-gnueabi- \
+-   --nm=/opt/cross/x-tools/arm-unknown-linux-gnueabi/bin/arm-unknown-linux-gnueabi-nm"
++   --arch=arm" 
+ MODULES="\
+    --disable-avdevice \
+    --disable-filters \
+@@ -99,7 +85,7 @@
+     ${MUXERS} \
+     ${PARSERS}
+ make clean
+-make install
++make -j 4 install
+ }
+ 
+ build_ARMv7
