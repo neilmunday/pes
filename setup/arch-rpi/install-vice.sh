@@ -25,11 +25,7 @@
 functions=`realpath $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../common/functions.sh`
 source $functions || exit 1
 
-version=3.1
-
-SDL2_CONFIG=/opt/sdl2/default/bin/sdl2-config
-SDL_CFLAGS="-I/opt/sdl2/default/include -I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host/linux -D_REENTRANT -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s "
-SDL_LDLIBS=`$SDL2_CONFIG --libs`
+version=3.3
 
 cd $buildDir
 
@@ -48,10 +44,10 @@ run tar xvfz $tarFile
 checkDir vice-${version}
 cd vice-${version}
 
-export CFLAGS="$SDL_CFLAGS"
-export LDFLAGS="$SDL_LDLIBS"
+export CFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host/linux -D_REENTRANT -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
+export PATH=/opt/sdl2/default/bin:$PATH
 
-run ./configure --prefix=$PREFIX --enable-sdlui2 --disable-sdlui --enable-fullscreen
+run ./configure --prefix=$PREFIX --enable-sdlui2 --disable-sdlui --without-pulse --without-oss
 run make V=1
 run sudo make install
 
