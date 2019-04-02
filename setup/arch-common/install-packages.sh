@@ -34,7 +34,7 @@ source $functions || exit 1
 run sudo  pacman-key --populate archlinuxarm
 
 run sudo pacman -S bluez-libs bluez-utils \
-	autoconf automake bison byacc flex gcc git cmake make patch pkg-config scons swig vim wget \
+	autoconf automake bison byacc flex gcc git cmake make patch pkg-config scons swig vim wget xa \
 	libusb-compat linuxconsole libplatform \
 	python2 python2-levenshtein python2-pip python2-imaging \
 	freetype2 \
