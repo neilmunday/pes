@@ -574,7 +574,7 @@ class PESApp(object):
 
 	def processCecEvent(self, btn, dur):
 		if dur > 0:
-			logging.debug("PESApp.processCecEvent")
+			logging.debug("PESApp.processCecEvent: button %s" % btn)
 			e = mapRemoteButtonEvent(btn)
 			if e:
 				sdl2.SDL_PushEvent(e)
