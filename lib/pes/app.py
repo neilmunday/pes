@@ -112,7 +112,7 @@ def mapRemoteButtonEvent(button):
 		key = sdl2.SDLK_RETURN
 	elif button == cec.CEC_USER_CONTROL_CODE_UP:
 		key = sdl2.SDLK_UP
-	elif button == cec.CEC_USER_CONTROL_CODE_AN_RETURN:
+	elif button == cec.CEC_USER_CONTROL_CODE_AN_RETURN or button == cec.CECDEVICE_RESERVED2:
 		key = sdl2.SDLK_BACKSPACE
 	else:
 		return
