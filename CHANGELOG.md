@@ -4,7 +4,7 @@ PES Changelog
 PES 2.5
 -------
 
-Date: 2019-03-10
+Date: 2019-04-30
 
 Changes:
 
@@ -14,6 +14,7 @@ Changes:
 * Updated to RetroArch 1.7.6
 * Updated emulators to latest versions
 * Added patches for PPSSPP to fix build process
+* Updated libcec version to 4.0.4
 
 PES 2.4.1
 ---------
