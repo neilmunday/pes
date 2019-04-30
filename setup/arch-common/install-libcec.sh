@@ -28,17 +28,19 @@ source $functions || exit 1
 cd $buildDir
 rmSourceDir "libcec"
 
-version=4.0.0
+version=4.0.4
 
 header "Downloading libcec"
 
 run git clone https://github.com/Pulse-Eight/libcec
-run git checkout tags/libcec-$version
 checkDir libcec
 cd libcec
+run git checkout tags/libcec-${version}
 run mkdir build
 cd build
 run cmake -DRPI_INCLUDE_DIR=/opt/vc/include -DRPI_LIB_DIR=/opt/vc/lib -DCMAKE_INSTALL_PREFIX=/opt/libcec/$version -DPYTHON_INCLUDE_DIR=/usr/include/python2.7 -DPYTHON_LIBRARY=/usr/lib/libpython2.7.so ..
 run make
 run sudo make install
-run sudo "rm -f /opt/libcec/current; ln -s /opt/libcec/$version /opt/libcec/current"
+run sudo rm -f /opt/libcec/current
+run sudo ln -s /opt/libcec/$version /opt/libcec/current
+run sudo mv /opt/libcec/${version}/lib/python2.7/site-packages/cec.py  /opt/libcec/${version}/lib/python2.7/site-packages/cec/__init__.py
