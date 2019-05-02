@@ -32,6 +32,7 @@ header "Downloading PSX emulator - pcsx_rearmed"
 run git clone https://github.com/libretro/pcsx_rearmed
 checkDir "pcsx_rearmed"
 cd pcsx_rearmed
-run ./configure --platform=libretro --disable-neon
-run make -j -f Makefile.libretro platform=rpi
+export CFLAGS="-mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
+export CXXFLAGS=$CFLAGS
+run make -f Makefile.libretro HAVE_NEON=0 BUILTIN_GPU=peops ARCH=arm USE_DYNAREC=1
 run sudo cp pcsx_rearmed_libretro.so $retroArchCoresDir/
