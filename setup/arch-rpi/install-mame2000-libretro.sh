@@ -28,15 +28,15 @@ source $functions || exit 1
 cd $buildDir
 
 rmSourceDir "imame4all-libretro"
-header "Downloading MAME emulator - imame4all"
+header "Downloading MAME emulator - mame2000"
 
-run git clone https://github.com/libretro/imame4all-libretro
-checkDir imame4all-libretro
-cd imame4all-libretro
+run git clone https://github.com/libretro/mame2000-libretro
+checkDir mame2000-libretro
+cd mame2000-libretro
 
 export CFLAGS="-O3 -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
 export CXXFLAGS=$CFLAGS
 
 run make ARM=1
 checkFile mame2000_libretro.so
-run sudo cp -v mame2000_libretro.so $retroArchCoresDir/imame4all_libretro.so
+run sudo cp -v mame2000_libretro.so $retroArchCoresDir/mame2000_libretro.so

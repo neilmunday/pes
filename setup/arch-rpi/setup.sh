@@ -73,7 +73,7 @@ run $setupDir/install-gpsp.sh
 run $setupDir/install-mupen64plus.sh
 run $setupDir/install-fuse-libretro.sh
 run $setupDir/install-fba-libretro.sh
-run $setupDir/install-imame4all.sh
+run $setupDir/install-mame2000-libretro.sh
 run $setupDir/install-stella-libretro.sh
 run $setupDir/install-blueMSX-libretro.sh
 run $setupDir/install-vice.sh
