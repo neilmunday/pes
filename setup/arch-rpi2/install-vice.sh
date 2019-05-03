@@ -45,6 +45,7 @@ checkDir vice-${version}
 cd vice-${version}
 
 export CFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host/linux -D_REENTRANT -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
+export CXXFLAGS=$CFLAGS
 export PATH=/opt/sdl2/default/bin:$PATH
 
 run ./configure --prefix=$PREFIX --enable-sdlui2 --disable-sdlui --without-pulse --without-oss
