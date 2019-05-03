@@ -37,6 +37,6 @@ cd mame2000-libretro
 export CFLAGS="-O3 -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
 export CXXFLAGS=$CFLAGS
 
-run make ARM=1
+run make ARM=1 USE_CYCLONE=1
 checkFile mame2000_libretro.so
 run sudo cp -v mame2000_libretro.so $retroArchCoresDir/mame2000_libretro.so
