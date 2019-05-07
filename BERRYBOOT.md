@@ -54,7 +54,7 @@ Therefore **remove** the following lines from */mnt/home/pi/.bash_pes* and save 
 if [ ! -d /data/pes ]; then
 	echo "Setting up /data partition - this will use all available space on your SD card!"
 	sudo /opt/sbin/make_rom_partition.py -v -d /dev/mmcblk0
-	sudo systemctl restart smbd.service
+	sudo systemctl restart smb.service
 fi
 ```
 
