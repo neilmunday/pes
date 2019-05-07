@@ -27,7 +27,9 @@ source $functions || exit 1
 
 # remove packages to reduce the size of the root partition
 
-packages="gcc
+packages="
+autoconf
+gcc
 vim
 vim-runtime
 ruby
@@ -35,7 +37,6 @@ binutils
 cmake
 gcc
 gcc54
-libxml2
 libyaml
 lua
 jsoncpp
@@ -44,7 +45,6 @@ patch
 pkg-config
 python2-pip
 scons
-shared-mime-info
 wget
 bison
 byacc
