@@ -58,11 +58,11 @@ if [ "$response" == "y" ]; then
 	run sudo rm -rfv $buildDir
 	echo ""
 	echo "Deleting RetroArch config for pi user..."
-	run rm -rfv $userDir/.config/retroarch
+	run rm -rfv ~/.config/retroarch
 	echo "Deleting PPSSPP config for pi user..."
-	run rm -rfv $userDir/.config/ppsspp
+	run rm -rfv ~/.config/ppsspp
 	echo "Deleting Kodi config files for pi user..."
-	run rm -rfv $userDir/.kodi
+	run rm -rfv ~/.kodi
 	echo ""
 	echo "Removing unnecessary packages..."
 	run $setupDir/remove-packages.sh
