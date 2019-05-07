@@ -35,6 +35,6 @@ checkDir mame2000-libretro
 cd mame2000-libretro
 export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -O3"
 export CXXFLAGS=$CFLAGS
-run make ARM=1
+run make -j 4 ARM=1
 checkFile mame2000_libretro.so
 run sudo cp -v mame2000_libretro.so $retroArchCoresDir/mame2000_libretro.so
