@@ -57,12 +57,14 @@ if [ "$response" == "y" ]; then
 	echo "Deleting PES build dir contents..."
 	run sudo rm -rfv $buildDir
 	echo ""
-	echo "Deleting RetroArch config for pi user..."
+	echo "Deleting RetroArch config..."
 	run rm -rfv ~/.config/retroarch
-	echo "Deleting PPSSPP config for pi user..."
+	echo "Deleting PPSSPP config..."
 	run rm -rfv ~/.config/ppsspp
-	echo "Deleting Kodi config files for pi user..."
+	echo "Deleting Kodi config files..."
 	run rm -rfv ~/.kodi
+	echo "Deleting Vice config files..."
+	run rm -rfv ~/.config/vice
 	echo ""
 	echo "Removing unnecessary packages..."
 	run $setupDir/remove-packages.sh
