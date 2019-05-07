@@ -43,7 +43,7 @@ if [ ! -e ~/.bash_pes ]; then
 	echo -e "\tif [ ! -d /data/pes ]; then" >> ~/.bash_pes
 	echo -e "\t\techo \"Setting up /data partition - this will use all available space on your SD card!\"" >> ~/.bash_pes
 	echo -e "\t\tsudo /opt/sbin/make_rom_partition.py -v -d /dev/mmcblk0" >> ~/.bash_pes
-	echo -e "\t\tsudo systemctl restart smbd.service" >> ~/.bash_pes
+	echo -e "\t\tsudo systemctl restart smb.service" >> ~/.bash_pes
 	echo -e "\tfi" >> ~/.bash_pes
 	echo -e "\techo \"Truncating log file...\"" >> ~/.bash_pes
 	echo -e "\t> ~/pes/log/pes.log" >> ~/.bash_pes
