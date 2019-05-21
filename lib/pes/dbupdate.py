@@ -178,7 +178,10 @@ class ConsoleTask(object):
 							gameNameLower = game["game_title"].lower()
 							if gameNameLower == nameLower:
 								gameApiId = game["id"]
-								overview = game["overview"].encode('ascii', 'ignore').strip()
+								if game["overview"] == None:
+									overview = ""
+								else:
+									overview = game["overview"].encode('ascii', 'ignore').strip()
 								if game["release_date"] != None:
 									released = game["release_date"].encode('ascii', 'ignore').strip()
 								break
@@ -189,7 +192,10 @@ class ConsoleTask(object):
 							if bestResultDistance == -1 or distance < bestResultDistance:
 								bestResultDistance = distance
 								gameApiId = game["id"]
-								overview = game["overview"].encode('ascii', 'ignore').strip()
+								if game["overview"] == None:
+									overview = ""
+								else:
+									overview = game["overview"].encode('ascii', 'ignore').strip()
 								if game["release_date"] != None:
 									released = game["release_date"].encode('ascii', 'ignore').strip()
 
