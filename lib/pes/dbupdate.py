@@ -261,12 +261,8 @@ class ConsoleTask(object):
 					achievementApiId = -1
 					if self.console.getAchievementApiId() != "NULL":
 						# work out rasum (if applicable)
-						if consoleName == "MegaDrive" or consoleName == "Genesis":
-							command = "%s -t genesis \"%s\"" % (rasumExe, rom)
-						elif consoleName == "NES":
+						if consoleName == "NES":
 							command = "%s -t nes \"%s\"" % (rasumExe, rom)
-						elif consoleName == "SNES":
-							command = "%s -t snes \"%s\"" % (rasumExe, rom)
 						else:
 							command = "%s \"%s\"" % (rasumExe, rom)
 						process = Popen(command, stdout=PIPE, stderr=PIPE, shell=True)
