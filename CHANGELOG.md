@@ -1,6 +1,16 @@
 PES Changelog
 =============
 
+PES 2.6
+-------
+
+Date: 2019-05-25
+
+Changes:
+
+* Fix for issue #37 - Handle when game overview is null from theGamesDb.net
+* Fix for issue #39 - RetroAchievements not found for SNES and MegaDrive/Genesis games
+
 PES 2.5
 -------
 
