@@ -2,6 +2,10 @@
 *.pyc
 *__pycache__
 
+# Ignore QML byte code
+*.qmlc
+*.jsc
+
 # Ignore commands.sh as it dynamically created
 bin/commands.sh
 bin/rasum
