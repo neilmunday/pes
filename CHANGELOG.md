@@ -1,6 +1,18 @@
 PES Changelog
 =============
 
+PES 2.6
+-------
+
+Date: 2019-07-19
+
+Changes:
+
+* Fix for issue #37 - Handle when game overview is null from theGamesDb.net
+* Fix for issue #38 - Add support for six button control pad support for MegaDive/Genesis games
+* Fix for issue #39 - RetroAchievements not found for SNES and MegaDrive/Genesis games
+* Added midnight commander package
+
 PES 2.5
 -------
 
