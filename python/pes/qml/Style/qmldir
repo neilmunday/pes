@@ -1,0 +1,3 @@
+module Style
+singleton FontStyle 1.0 FontStyle.qml
+singleton Colour 1.0 Colour.qml
