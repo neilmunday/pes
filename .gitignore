@@ -1,5 +1,6 @@
 # Ignore Python byte code
 *.pyc
+*__pycache__
 
 # Ignore commands.sh as it dynamically created
 bin/commands.sh
