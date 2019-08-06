@@ -103,7 +103,7 @@ class ConsoleTask(object):
 
 			row = self.__execute("SELECT `full_name` FROM `games_catalogue` WHERE `short_name` = \"%s\"" % name, True)
 			if row:
-				name = row['full_name']
+				name = row['full_name'].encode('ascii', 'ignore').strip()
 
 			row = self.__execute("SELECT `game_id`, `name`, `cover_art`, `game_path`, `thegamesdb_id` FROM `games` WHERE `game_path` = \"%s\";" % rom, True)
 			if row == None or (row['cover_art'] == "0" and row['thegamesdb_id'] == -1) or (row['cover_art'] != "0" and not os.path.exists(row['cover_art'])):
@@ -175,7 +175,7 @@ class ConsoleTask(object):
 
 					if dataOk:
 						for game in data["data"]["games"]:
-							gameNameLower = game["game_title"].lower()
+							gameNameLower = game["game_title"].lower().encode('ascii', 'ignore').strip()
 							if gameNameLower == nameLower:
 								gameApiId = game["id"]
 								if game["overview"] == None:
