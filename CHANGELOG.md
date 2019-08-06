@@ -1,6 +1,15 @@
 PES Changelog
 =============
 
+PES 2.7
+-------
+
+Date: 2019-08-06
+
+Changes:
+
+* Fix for issue #40 - Fix string encoding error in dbupdate.py
+
 PES 2.6
 -------
 
