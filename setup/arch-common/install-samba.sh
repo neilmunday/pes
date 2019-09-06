@@ -31,7 +31,7 @@ checkFile $setupDir/smb.conf
 
 run sudo rm -vf /etc/samba/smb.conf.default
 run sudo cp -v $setupDir/smb.conf /etc/samba/smb.conf
-run sudo systemctl start smbd.service
-run sudo systemctl start nmbd.service
-run sudo systemctl enable smbd.service
-run sudo systemctl enable nmbd.service
+run sudo systemctl start smb.service
+run sudo systemctl start nmb.service
+run sudo systemctl enable smb.service
+run sudo systemctl enable nmb.service
