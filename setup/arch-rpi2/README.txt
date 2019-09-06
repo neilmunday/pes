@@ -76,6 +76,8 @@ Set password (use "raspberry" by default):
 
 Update packages:
 
+	pacman-key --init
+	pacman-key --populate archlinuxarm
 	pacman -Syu
 
 Install git and sudo:
