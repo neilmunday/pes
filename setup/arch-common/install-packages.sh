@@ -35,8 +35,8 @@ run sudo  pacman-key --populate archlinuxarm
 
 run sudo pacman -S bluez-libs bluez-utils \
 	autoconf automake bison byacc flex gcc git cmake make patch pkg-config scons swig vim wget xa \
-	libusb-compat linuxconsole libplatform \
-	python2 python2-levenshtein python2-pip python2-imaging \
+	libusb-compat linuxconsole \
+	python2 python2-pip python2-imaging \
 	freetype2 \
 	dosfstools parted \
 	mc \
@@ -51,5 +51,6 @@ run sudo pacman -S bluez-libs bluez-utils \
 	fakeroot
 
 run sudo pip2 install --upgrade pip
+run sudo pip2 install python-Levenshtein
 run sudo pip2 install reparted
 run sudo pip2 install fstab
