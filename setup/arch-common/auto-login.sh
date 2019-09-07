@@ -48,7 +48,7 @@ if [ ! -e ~/.bash_pes ]; then
 	echo -e "\techo \"Truncating log file...\"" >> ~/.bash_pes
 	echo -e "\t> ~/pes/log/pes.log" >> ~/.bash_pes
     echo -e "\techo \"Starting PES...\"" >> ~/.bash_pes
-	echo -e "\t~/pes/bin/pes.sh -l ~/pes/log/pes.log" >> ~/.bash_pes
+	echo -e "\t/opt/pes/bin/pes -l ~/pes/log/pes.log" >> ~/.bash_pes
 	echo "fi" >> ~/.bash_pes
 fi
 
