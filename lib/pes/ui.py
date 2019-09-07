@@ -1241,7 +1241,9 @@ class MessageBox(UIObject):
 		# renderer, x, y, text, font, colour, bgColour=None, fixedWidth=0, fixedHeight=0, autoScroll=False, bgAlpha=255):
 		rendererWidth = c_int()
 		rendererHeight = c_int()
-		sdl2.SDL_GetRendererOutputSize(renderer, byref(rendererWidth), byref(rendererHeight))
+		sdl2.SDL_RenderGetLogicalSize(renderer, byref(rendererWidth), byref(rendererHeight))
+		if rendererWidth == 0 and rendererHeight == 0:	
+			sdl2.SDL_GetRendererOutputSize(renderer, byref(rendererWidth), byref(rendererHeight))
 		self.__labelMargin = 20
 		width = int(rendererWidth.value) - 100
 		labelWidth = width - (self.__labelMargin * 2)
