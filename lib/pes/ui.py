@@ -42,77 +42,77 @@ def getTextureDimensions(texture):
 	return (w.value, h.value)
 
 class Menu(object):
-	
+
 	# listen events
 	LISTEN_ITEM_ADDED = 1
 	LISTEN_ITEM_REMOVED = 2
 	LISTEN_ITEM_SELECTED = 3
 	LISTEN_ITEM_INSERTED = 4
 	LISTEN_ITEM_TOGGLED = 5
-	
+
 	def __init__(self, items):
 		super(Menu, self).__init__()
 		self.__selected = 0
 		self.__items = items
 		self.__listeners = []
 		logging.debug("Menu.init: Menu initialised")
-	
+
 	def addItem(self, item):
 		self.__items.append(item)
 		self.__fireListenEvent(Menu.LISTEN_ITEM_ADDED, item)
-		
+
 	def addListener(self, l):
 		if l not in self.__listeners:
 			self.__listeners.append(l)
-			
+
 	def __fireListenEvent(self, eventType, item):
 		for l in self.__listeners:
 			l.processMenuEvent(self, eventType, item)
-		
+
 	def getItem(self, i):
 		maxIndex = len(self.__items) - 1
 		if i < 0 or i > maxIndex:
 			raise IndexError("Menu.getItem: List index %d out of range, max: %d" % (i, maxIndex))
 		return self.__items[i]
-		
+
 	def getItems(self):
 		return list(self.__items)
-	
+
 	def getSelectedIndex(self):
 		return self.__selected
-	
+
 	def getSelectedItem(self):
 		return self.__items[self.__selected]
-	
+
 	def getCount(self):
 		return len(self.__items)
-	
+
 	def getToggled(self):
 		toggled = []
 		for i in self.__items:
 			if i.isToggled():
 				toggled.append(i)
 		return toggled
-	
+
 	def getToggledCount(self):
 		toggled = 0
 		for i in self.__items:
 			if i.isToggled():
 				toggled += 1
 		return toggled
-	
+
 	def insertItem(self, i, item):
 		self.__items.insert(i, item)
 		self.__fireListenEvent(Menu.LISTEN_ITEM_INSERTED, item)
-	
+
 	def removeItem(self, item):
 		self.__items.remove(item)
 		self.__fireListenEvent(Menu.LISTEN_ITEM_REMOVED, item)
-		
+
 	def removeListener(self, l):
 		if l in self.__listeners:
 			self.__listeners.remove(l)
-		
+
 	def setSelected(self, i, deselectAll=False, fireEvent=True):
 		if i >= 0 and i < len(self.__items):
 			if deselectAll:
@@ -126,16 +126,16 @@ class Menu(object):
 				self.__fireListenEvent(Menu.LISTEN_ITEM_SELECTED, self.__items[self.__selected])
 			return
 		raise ValueError("Menu.setSelected: invalid value for i: %s" % i)
-	
+
 	def sort(self):
 		self.__items = sorted(self.__items, key=lambda item: item.getText())
-	
+
 	def toggleAll(self, toggle):
 		for i in self.__items:
 			if i.isToggable():
 				i.toggle(toggle)
 				self.__fireListenEvent(Menu.LISTEN_ITEM_TOGGLED, i)
-				
+
 	def toggle(self, i, t):
 		if i >= 0 and i < len(self.__items):
 			if self.__items[i].isToggable():
@@ -143,9 +143,9 @@ class Menu(object):
 				self.__fireListenEvent(Menu.LISTEN_ITEM_TOGGLED, self.__items[i])
 			return
 		raise ValueError("Menu.toggle: invalid value for i: %s" % i)
-	
+
 class MenuItem(object):
-	
+
 	def __init__(self, text, selected = False, toggable = False, callback = None, *callbackArgs):
 		super(MenuItem, self).__init__()
 		self.__text = text
@@ -154,28 +154,28 @@ class MenuItem(object):
 		self.__toggled = False
 		self.__toggable = toggable
 		self.__callbackArgs = callbackArgs
-	
+
 	def getText(self):
 		return self.__text
-	
+
 	def isSelected(self):
 		return self.__selected
-	
+
 	def isToggled(self):
 		return self.__toggled
-		
+
 	def isToggable(self):
 		return self.__toggable
-	
+
 	def setSelected(self, selected):
 		self.__selected = selected
-	
+
 	def setText(self, text):
 		self.__text = text
-		
+
 	def toggle(self, t):
 		self.__toggled = t
-		
+
 	def trigger(self):
 		if self.__callback:
 			logging.debug("MenuItem.trigger: calling function for %s menu item" % self.__text)
@@ -185,63 +185,63 @@ class MenuItem(object):
 				self.__callback()
 		else:
 			logging.debug("MenuItem.trigger: no callback defined for %s menu item" % self.__text)
-		
+
 	def __repr__(self):
 		return "<MenuItem: text: %s >" % self.__text
-	
+
 class AchievementGameMenuItem(MenuItem):
-	
+
 	def __init__(self, game, callback=None, *callbackArgs):
 		super(AchievementGameMenuItem, self).__init__("%s (%s) %dpts %.1f%%" % (game.getName(), game.getConsoleName(), game.getUserPointsTotal(), game.getPercentComplete()), False, False, callback, *callbackArgs)
-		
+
 	def __repr__(self):
 		return "<AchievementGameMenuItem>"
-		
+
 class ConsoleMenuItem(MenuItem):
-	
+
 	def __init__(self, console, selected = False, toggable = False, callback = None, *callbackArgs):
 		super(ConsoleMenuItem, self).__init__(console.getName(), selected, toggable, callback, *callbackArgs)
 		self.__console = console
-		
+
 	def getConsole(self):
 		return self.__console
-	
+
 	def __repr__(self):
 		return "<ConsoleMenuItem: text: %s >" % self.__console.getName()
-	
+
 class DataMenuItem(MenuItem):
-	
+
 	def __init__(self, dataObj, selected = False, toggable = False, callback = None, *callbackArgs):
 		super(DataMenuItem, self).__init__(dataObj.getTitle(), selected, toggable, callback, *callbackArgs)
 		self.__dataObj = dataObj
-		
+
 	def getDataObject(self):
 		return self.__dataObj
-	
+
 	def __repr__(self):
 		return "<DataMenuItem: text: %s >" % self.__dataObj.getTitle()
-	
+
 class GameMenuItem(MenuItem):
-	
+
 	def __init__(self, game, selected = False, toggable = False, callback = None, *callbackArgs):
 		super(GameMenuItem, self).__init__(game.getName(), selected, toggable, callback, *callbackArgs)
 		self.__game = game
-		
+
 	def getGame(self):
 		return self.__game
-	
+
 	def toggle(self, t):
 		super(GameMenuItem, self).toggle(t)
 		self.__game.setFavourite(t)
-	
+
 	def isToggled(self):
 		return self.__game.isFavourite()
-	
+
 	def __repr__(self):
 		return "<GameMenuItem: text: %s >" % self.__game.getName()
 
 class UIObject(object):
-	
+
 	def __init__(self, renderer, x, y, width, height):
 		self.renderer = renderer
 		self.x = x
@@ -252,31 +252,31 @@ class UIObject(object):
 		self.__focus = False
 		self.__borderColour = None
 		self.__drawBorder = False
-	
+
 	def destroy(self):
 		pass
-	
+
 	def draw(self):
 		if self.visible and self.__drawBorder:
 			drawBorder()
-			
+
 	def drawBorder(self):
 		sdl2.sdlgfx.rectangleRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__borderColour.r, self.__borderColour.g, self.__borderColour.b, 255)
-	
+
 	def hasBorder(self):
 		return self.__drawBorder
-	
+
 	def hasFocus(self):
 		return self.__focus
-	
+
 	def isVisible(self):
 		return self.visible
-	
+
 	def setAlpha(self, alpha):
 		if alpha < 0 or alpha > 255:
 			raise ValueError("Invalid alpha value!")
 		self.alpha = alpha
-	
+
 	def setBorderColour(self, colour):
 		# crap hack as the PySDL2 authors have overridden the __ne__ operator for colours and can't handle None
 		self.__borderColour = colour
@@ -286,23 +286,23 @@ class UIObject(object):
 			self.__drawBorder = False
 		except AttributeError:
 			self.__drawBorder = True
-	
+
 	def setCoords(self, x, y):
 		self.x = x
 		self.y = y
-		
+
 	def setFocus(self, focus):
 		self.__focus = focus
-		
+
 	def setSize(self, w, h):
 		self.width = w
 		self.height = h
-		
+
 	def setVisible(self, visible):
 		self.visible = visible
-		
+
 class IconPanel(UIObject):
-	
+
 	def __init__(self, renderer, x, y, width, font, smallFont, colour, bgColour, selectedBgColour, title, description, icon, dataObj):
 		self.__margin = 5
 		self.__iconGap = 10
@@ -319,13 +319,13 @@ class IconPanel(UIObject):
 		labelHeight = height - (self.__icon.y)
 		self.__descriptionLabel = Label(renderer, self.__icon.x + self.__icon.width + self.__iconGap, self.__icon.y, self.__description, smallFont, colour, fixedWidth=labelWidth, fixedHeight=labelHeight)
 		self.__dataObj = dataObj
-		
+
 	def destroy(self):
 		logging.debug("IconPanel.destroy: destroying icon panel: \"%s\"" % self.__title)
 		self.__titleLabel.destroy()
 		self.__icon.destroy()
 		self.__descriptionLabel.destroy()
-		
+
 	def draw(self):
 		if self.visible:
 			if self.__bgColour:
@@ -335,37 +335,37 @@ class IconPanel(UIObject):
 			self.__icon.draw()
 			if self.hasBorder():
 				self.drawBorder()
-			
+
 	def setCoords(self, x, y):
 		super(IconPanel, self).setCoords(x, y)
 		self.__titleLabel.setCoords(self.x + self.__margin, y)
 		if self.__icon:
 			self.__icon.setCoords(self.x + self.__margin, self.__titleLabel.y + self.__titleLabel.height)
 			self.__descriptionLabel.setCoords(self.__icon.x + self.__icon.width + self.__iconGap, self.__icon.y)
-			
+
 	def getDataObject(self):
 		return self.__dataObj
-			
+
 	def setDataObject(self, obj):
 		self.__dataObj = obj
-		
+
 	def setDescription(self, txt):
 		self.__descriptionLabel.setText(txt, True)
-		
+
 	def setIcon(self, icon):
 		self.__icon.setImage(icon)
-		
+
 	#def setSize(self, w, h):
 	#	super(IconPanel, self).setSize(w, h)
-		
+
 	def setTitle(self, txt):
 		self.__titleLabel.setText(txt, True)
-		
+
 class BadgePanel(IconPanel):
-	
+
 	def __init__(self, renderer, x, y, width, font, smallFont, colour, bgColour, selectedBgColour, badge):
 		super(BadgePanel, self).__init__(renderer, x, y, width, font, smallFont, colour, bgColour, selectedBgColour, badge.getTitle(), self.__createDescription(badge), badge.getPath(), badge)
-		
+
 	def __createDescription(self, badge):
 		dateEarned = badge.getDateEarned(fmt="%d/%m/%Y")
 		if dateEarned == None:
@@ -374,20 +374,20 @@ class BadgePanel(IconPanel):
 		if dateEarnedHardcore == None:
 			dateEarnedHardcore = "N/A"
 		return "%s\nPoints: %d\nEarned: %s     Earned Hardcore: %s" % (badge.getDescription(), badge.getPoints(), dateEarned, dateEarnedHardcore)
-		
+
 	def setDataObject(self, badge):
 		super(BadgePanel, self).setDataObject(badge)
 		self.setTitle(badge.getTitle())
 		self.setDescription(self.__createDescription(badge))
 		self.setIcon(badge.getPath())
-		
+
 #class GameAchievementPanel(IconPanel):
-	
+
 #	def __init__(self, renderer, x, y, width, font, smallFont, colour, bgColour, selectedBgColour, game):
 #		super(BadgePanel, self).__init__(renderer, x, y, width, font, smallFont, colour, bgColour, selectedBgColour, badge.getTitle(), self.__createDescription(badge), badge.getPath(), badge)
 
 class Button(UIObject):
-	
+
 	def __init__(self, renderer, x, y, width, height, text, font, colour, selectedBgColour, callback = None, *callbackArgs):
 		super(Button, self).__init__(renderer, x, y, width, height)
 		txtWidth = c_int()
@@ -406,13 +406,13 @@ class Button(UIObject):
 		self.__text = text
 		self.__callback = callback
 		self.__callbackArgs = callbackArgs
-		
+
 	def destroy(self):
 		logging.debug("Button.destroy: destroying button \"%s\"" % self.__text)
 		if self.__texture:
 			sdl2.SDL_DestroyTexture(self.__texture)
 			self.__texture = None
-	
+
 	def draw(self):
 		if self.visible:
 			if self.__texture == None:
@@ -424,7 +424,7 @@ class Button(UIObject):
 			else:
 				sdl2.sdlgfx.rectangleRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__selectedBgColour.r, self.__selectedBgColour.g, self.__selectedBgColour.b, 255)
 			sdl2.SDL_RenderCopy(self.renderer, self.__texture, sdl2.SDL_Rect(0, 0, self.__labelWidth, self.__labelHeight), sdl2.SDL_Rect(self.__labelX, self.__labelY, self.__labelWidth, self.__labelHeight))
-			
+
 	def processEvent(self, event):
 		if self.visible and self.hasFocus():
 			if event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER):
@@ -436,20 +436,20 @@ class Button(UIObject):
 						self.__callback()
 				else:
 					logging.debug("Button.processEvent: no callback for button \"%s\"" % self.__text)
-			
+
 class Icon(UIObject):
-	
+
 	CACHE_LEN = 200
 	__cache = {} # shared texture cache
 	__queue = deque()
-	
+
 	def __init__(self, renderer, x, y, width, height, image, useCache=True):
 		super(Icon, self).__init__(renderer, x, y, width, height)
 		self.__image = image
 		self.__texture = None
 		self.__useCache = useCache
 		logging.debug("Icon.init: initialised for \"%s\", using cache: %s" % (self.__image, self.__useCache))
-		
+
 	@staticmethod
 	def __addToCache(path, texture):
 		Icon.__cache[path] = texture
@@ -462,13 +462,13 @@ class Icon(UIObject):
 			del Icon.__cache[path]
 		else:
 			logging.debug("Icon.__addToCache: cache length: %d" % cacheLength)
-		
+
 	def destroy(self):
 		if not self.__useCache and self.__texture:
 			logging.debug("Icon.destroy: destroying texture for %s" % self.__image)
 			sdl2.SDL_DestroyTexture(self.__texture)
 			self.__texture = None
-			
+
 	@staticmethod
 	def destroyTextures():
 		logging.debug("Icon.destroyTextures: purging %d textures..." % len(Icon.__cache))
@@ -479,7 +479,7 @@ class Icon(UIObject):
 		for k in keys:
 			del Icon.__cache[k]
 		Icon.__queue.clear()
-		
+
 	def draw(self):
 		if self.visible:
 			if self.__useCache:
@@ -493,12 +493,12 @@ class Icon(UIObject):
 					self.__texture = sdl2.sdlimage.IMG_LoadTexture(self.renderer, self.__image)
 				texture = self.__texture
 			sdl2.SDL_RenderCopy(self.renderer, texture, None, sdl2.SDL_Rect(self.x, self.y, self.width, self.height))
-			
+
 	def setImage(self, image):
 		self.__image = image
-			
+
 class Label(UIObject):
-	
+
 	def __init__(self, renderer, x, y, text, font, colour, bgColour=None, fixedWidth=0, fixedHeight=0, autoScroll=False, bgAlpha=255, pack=False):
 		self.__text = text
 		self.__colour = colour
@@ -532,7 +532,7 @@ class Label(UIObject):
 		self.__firstDraw = True
 		self.__bgAlpha = bgAlpha
 		self.setBackgroundColour(bgColour)
-		
+
 	def destroy(self):
 		logging.debug("Label.destroy: destroying label \"%s\"" % self.__text)
 		self.setVisible(False)
@@ -542,7 +542,7 @@ class Label(UIObject):
 		if self.__texture:
 			sdl2.SDL_DestroyTexture(self.__texture)
 			self.__texture = None
-			
+
 	def draw(self):
 		if self.visible:
 			super(Label, self).draw()
@@ -575,15 +575,15 @@ class Label(UIObject):
 				if self.__scrollY > self.__textHeight - self.height:
 					self.__scrollY = 0
 			sdl2.SDL_RenderCopy(self.renderer, self.__texture, sdl2.SDL_Rect(0, self.__scrollY, w, h), sdl2.SDL_Rect(self.x, self.y, w, h))
-		
+
 	def getText(self):
 		return self.__text
-	
+
 	def setAlpha(self, alpha):
 		super(Label, self).setAlpha(alpha)
 		if self.__texture:
 			sdl2.SDL_SetTextureAlphaMod(self.__texture, alpha)
-		
+
 	def setBackgroundColour(self, colour):
 		# crap hack as the PySDL2 authors have overridden the __ne__ operator for colours and can't handle None
 		self.__bgColour = colour
@@ -593,7 +593,7 @@ class Label(UIObject):
 			self.__drawBackground = False
 		except AttributeError:
 			self.__drawBackground = True
-			
+
 	def setColour(self, colour):
 		self.__colour = colour
 		if self.__texture:
@@ -601,7 +601,7 @@ class Label(UIObject):
 			surface = sdl2.sdlttf.TTF_RenderText_Blended_Wrapped(self.__font, self.__text, self.__colour, self.width)
 			self.__texture = sdl2.SDL_CreateTextureFromSurface(self.renderer, surface)
 			sdl2.SDL_FreeSurface(surface)
-			
+
 	def setText(self, text, pack=False):
 		if text == self.__text:
 			return False
@@ -626,18 +626,18 @@ class Label(UIObject):
 		return True
 
 class List(UIObject):
-	
+
 	# listen events
 	LISTEN_ITEM_ADDED = 1
 	LISTEN_ITEM_REMOVED = 2
 	LISTEN_ITEM_SELECTED = 3
 	LISTEN_ITEM_INSERTED = 4
 	LISTEN_ITEM_TOGGLED = 5
-	
+
 	SCROLLBAR_AUTO = 1
 	SCROLLBAR_DISABLED = 2
 	SCROLLBAR_ENABLED = 3
-	
+
 	def __init__(self, renderer, x, y, width, height, menu, font, colour, selectedColour, selectedBgColour, selectedBgColourNoFocus, showScrollbarPref=1, drawBackground=False, allowSelectAll=True, labelMargin=12, graphicalToggle=True):
 		super(List, self).__init__(renderer,x, y, width, height)
 		self.__drawBackground = drawBackground
@@ -658,17 +658,17 @@ class List(UIObject):
 		self.__toggleCenterY = self.__fontHeight / 2
 		self.__listeners = []
 		logging.debug("List.init: created List with %d labels for %d menu items, width: %d, height: %d" % (len(self.__labels), self.__menuCount, self.width, self.height))
-	
+
 	def addListener(self, l):
 		if l not in self.__listeners:
 			self.__listeners.append(l)
-	
+
 	def destroy(self):
 		self.__menu.removeListener(self)
 		logging.debug("List.destroy: destroying %d labels..." % len(self.__labels))
 		for l in self.__labels:
 			l.destroy()
-		
+
 	def draw(self):
 		if self.visible:
 			super(List, self).draw()
@@ -688,22 +688,22 @@ class List(UIObject):
 						l.draw()
 				else:
 						l.draw()
-				
-				
+
+
 				#l.draw()
 				#if self.__menu.getItem(i).isToggled():
 				#	sdl2.sdlgfx.filledCircleRGBA(self.renderer, l.x - 7, self.__toggleCenterY + l.y, self.__toggleRad, self.__colour.r, self.__colour.g, self.__colour.b, 255)
-						
+
 				i += 1
 			if self.__drawBackground:
 				sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__selectedBgColourNoFocus.r, self.__selectedBgColourNoFocus.g, self.__selectedBgColourNoFocus.b, 50)
 			if self.__showScrollbar:
 				sdl2.sdlgfx.boxRGBA(self.renderer, self.__sliderX, self.__sliderY, self.__sliderX + self.__sliderWidth, self.__sliderY + self.__sliderHeight, self.__selectedColour.r, self.__selectedColour.g, self.__selectedColour.b, 50)
-	
+
 	def __fireListenEvent(self, eventType, item):
 		for l in self.__listeners:
 			l.processListEvent(self, eventType, item)
-	
+
 	def processEvent(self, event):
 		if self.visible and self.hasFocus():
 			if event.type == sdl2.SDL_KEYUP:
@@ -766,7 +766,7 @@ class List(UIObject):
 								self.__labels.appendleft(lbl)
 								for l in self.__labels:
 									l.y = labelY
-									labelY += self.__fontHeight						
+									labelY += self.__fontHeight
 					else:
 						self.__labelIndex -= 1
 						menuIndex -= 1
@@ -798,7 +798,7 @@ class List(UIObject):
 						else:
 							menuIndex = self.__menuCount - self.__visibleMenuItems
 					self.__menu.setSelected(menuIndex)
-					
+
 	def processMenuEvent(self, menu, eventType, item):
 		if eventType == Menu.LISTEN_ITEM_ADDED:
 			logging.debug("List.processMenuEvent: item added: %s" % item.getText())
@@ -856,11 +856,11 @@ class List(UIObject):
 		elif eventType == Menu.LISTEN_ITEM_TOGGLED:
 			logging.debug("List.processMenuEvent: item toggled")
 			self.__fireListenEvent(List.LISTEN_ITEM_TOGGLED, item)
-			
+
 	def removeListener(self, l):
 		if l in self.__listeners:
 			self.__listeners.remove(l)
-		
+
 	def __selectLabel(self, menuIndex):
 		logging.debug("List.__selectLabel: selecting index %d (%s)" % (menuIndex, self.__menu.getItem(menuIndex).getText()))
 		self.__labels[self.__labelIndex].setBackgroundColour(None)
@@ -887,7 +887,7 @@ class List(UIObject):
 		self.__labels[self.__labelIndex].setBackgroundColour(self.__selectedBgColour)
 		self.__labels[self.__labelIndex].setColour(self.__selectedColour)
 		self.__updateScrollbar()
-		
+
 	def setFocus(self, focus):
 		color = None
 		if focus:
@@ -896,7 +896,7 @@ class List(UIObject):
 			colour = self.__selectedBgColourNoFocus
 		self.__labels[self.__labelIndex].setBackgroundColour(colour)
 		super(List, self).setFocus(focus)
-		
+
 	def setMenu(self, menu):
 		if self.__menu:
 			self.__menu.removeListener(self)
@@ -926,7 +926,7 @@ class List(UIObject):
 		self.__firstMenuItem = 0
 		self.__labelIndex = 0
 		self.__menu.addListener(self)
-		
+
 	def __setupScrollbar(self):
 		self.__scrollbarWidth = 20
 		self.__scrollbarHeight = self.height
@@ -941,24 +941,24 @@ class List(UIObject):
 		self.__sliderWidth = self.__scrollbarWidth - (self.__sliderGap * 2)
 		self.__showScrollbar = True
 		self.__updateScrollbar()
-		
+
 	def __updateScrollbar(self):
 		if self.__showScrollbar:
 				self.__sliderY = int(((float(self.__menu.getSelectedIndex()) / float(self.__menuCount)) * float(self.__scrollbarHeight - self.__sliderHeight)) + self.__scrollbarY) + self.__sliderGap
 
 class IconPanelList(UIObject):
-	
+
 	# listen events
 	LISTEN_ITEM_ADDED = 1
 	LISTEN_ITEM_REMOVED = 2
 	LISTEN_ITEM_SELECTED = 3
 	LISTEN_ITEM_INSERTED = 4
 	LISTEN_ITEM_TOGGLED = 5
-	
+
 	SCROLLBAR_AUTO = 1
 	SCROLLBAR_DISABLED = 2
 	SCROLLBAR_ENABLED = 3
-	
+
 	def __init__(self, renderer, x, y, width, height, menu, font, smallFont, colour, selectedColour, bgColour, selectedBgColour, selectedBgColourNoFocus, showScrollbarPref=1, drawBackground=False, allowSelectAll=True, panelMargin=12):
 		super(IconPanelList, self).__init__(renderer,x, y, width, height)
 		self.__drawBackground = drawBackground
@@ -979,17 +979,17 @@ class IconPanelList(UIObject):
 		self.__listeners = []
 		self.setMenu(menu)
 		logging.debug("IconPanelList.init: created List with %d panels for %d menu items, width: %d, height: %d" % (len(self.__panels), self.__menuCount, self.width, self.height))
-	
+
 	def addListener(self, l):
 		if l not in self.__listeners:
 			self.__listeners.append(l)
-	
+
 	def destroy(self):
 		self.__menu.removeListener(self)
 		logging.debug("List.destroy: destroying %d panels..." % len(self.__panels))
 		for p in self.__panels:
 			p.destroy()
-		
+
 	def draw(self):
 		if self.visible:
 			super(IconPanelList, self).draw()
@@ -1001,11 +1001,11 @@ class IconPanelList(UIObject):
 				sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__selectedBgColourNoFocus.r, self.__selectedBgColourNoFocus.g, self.__selectedBgColourNoFocus.b, 50)
 			if self.__showScrollbar:
 				sdl2.sdlgfx.boxRGBA(self.renderer, self.__sliderX, self.__sliderY, self.__sliderX + self.__sliderWidth, self.__sliderY + self.__sliderHeight, self.__selectedColour.r, self.__selectedColour.g, self.__selectedColour.b, 50)
-	
+
 	def __fireListenEvent(self, eventType, item):
 		for l in self.__listeners:
 			l.processListEvent(self, eventType, item)
-	
+
 	def processEvent(self, event):
 		if self.visible and self.hasFocus():
 			if event.type == sdl2.SDL_KEYUP:
@@ -1096,7 +1096,7 @@ class IconPanelList(UIObject):
 						else:
 							menuIndex = self.__menuCount - self.__visibleMenuItems
 					self.__menu.setSelected(menuIndex)
-					
+
 	def processMenuEvent(self, menu, eventType, item):
 		if eventType == Menu.LISTEN_ITEM_ADDED:
 			logging.debug("IconPanelList.processMenuEvent: item added: %s" % item.getText())
@@ -1138,11 +1138,11 @@ class IconPanelList(UIObject):
 		elif eventType == Menu.LISTEN_ITEM_TOGGLED:
 			logging.debug("IconPanelList.processMenuEvent: item toggled")
 			self.__fireListenEvent(IconPanelList.LISTEN_ITEM_TOGGLED, item)
-			
+
 	def removeListener(self, l):
 		if l in self.__listeners:
 			self.__listeners.remove(l)
-		
+
 	def __selectLabel(self, menuIndex):
 		logging.debug("IconPanelList.__selectLabel: selecting index %d (%s)" % (menuIndex, self.__menu.getSelectedItem().getText()))
 		self.__panels[self.__panelIndex].setBorderColour(None)
@@ -1168,7 +1168,7 @@ class IconPanelList(UIObject):
 		if self.hasFocus():
 			self.__panels[self.__panelIndex].setBorderColour(self.__selectedBgColour)
 		self.__updateScrollbar()
-		
+
 	def setFocus(self, focus):
 		color = None
 		if focus:
@@ -1178,7 +1178,7 @@ class IconPanelList(UIObject):
 			colour = self.__selectedBgColourNoFocus
 			self.__panels[self.__panelIndex].setBorderColour(None)
 		super(IconPanelList, self).setFocus(focus)
-		
+
 	def setMenu(self, menu):
 		if self.__menu:
 			self.__menu.removeListener(self)
@@ -1192,7 +1192,7 @@ class IconPanelList(UIObject):
 		else:
 			self.__panels = deque()
 		p = BadgePanel(self.renderer, 0, self.y, self.width, self.__font, self.__smallFont, self.__colour, self.__bgColour, self.__selectedBgColour, self.__menu.getItem(0).getDataObject())
-		
+
 		self.__visibleMenuItems = int(self.height / p.height)
 		if self.__visibleMenuItems > self.__menuCount:
 			self.__visibleMenuItems = self.__menuCount
@@ -1202,7 +1202,7 @@ class IconPanelList(UIObject):
 			self.__panelX = self.x + self.__panelMargin
 			self.__panelWidth = self.width - self.__panelMargin
 			self.__showScrollbar = False
-		
+
 		p.setCoords(self.__panelX, p.y)
 		p.setSize(self.__panelWidth, p.height)
 		self.__panels.append(p)
@@ -1215,7 +1215,7 @@ class IconPanelList(UIObject):
 		self.__panelIndex = 0
 		self.__menu.addListener(self)
 		self.__menu.setSelected(0, fireEvent=True)
-		
+
 	def __setupScrollbar(self):
 		self.__scrollbarWidth = 20
 		self.__scrollbarHeight = self.height
@@ -1230,20 +1230,23 @@ class IconPanelList(UIObject):
 		self.__sliderWidth = self.__scrollbarWidth - (self.__sliderGap * 2)
 		self.__showScrollbar = True
 		self.__updateScrollbar()
-		
+
 	def __updateScrollbar(self):
 		if self.__showScrollbar:
 				self.__sliderY = int(((float(self.__menu.getSelectedIndex()) / float(self.__menuCount)) * float(self.__scrollbarHeight - self.__sliderHeight)) + self.__scrollbarY) + self.__sliderGap
 
 class MessageBox(UIObject):
-	
+
 	def __init__(self, renderer, text, font, colour, bgColour, borderColour, callback, *callbackArgs):
 		# renderer, x, y, text, font, colour, bgColour=None, fixedWidth=0, fixedHeight=0, autoScroll=False, bgAlpha=255):
 		rendererWidth = c_int()
 		rendererHeight = c_int()
 		sdl2.SDL_RenderGetLogicalSize(renderer, byref(rendererWidth), byref(rendererHeight))
-		if rendererWidth == 0 and rendererHeight == 0:	
+		if rendererWidth.value == 0 and rendererHeight.value == 0:
+			logging.debug("MessageBox:__init__: renderer logical size not set")
 			sdl2.SDL_GetRendererOutputSize(renderer, byref(rendererWidth), byref(rendererHeight))
+		else:
+			logging.debug("MessageBox:__init__: renderer logical size set to: %d x %d" % (rendererWidth.value, rendererHeight.value))
 		self.__labelMargin = 20
 		width = int(rendererWidth.value) - 100
 		labelWidth = width - (self.__labelMargin * 2)
@@ -1262,18 +1265,18 @@ class MessageBox(UIObject):
 		self.__callback = callback
 		self.__callbackArgs = callbackArgs
 		logging.debug("MessageBox.init: initialised")
-		
+
 	def destroy(self):
 		logging.debug("MessageBox.destroy: destroying...")
 		self.__label.destroy()
-		
+
 	def draw(self):
 		if self.visible:
 			sdl2.sdlgfx.boxRGBA(self.renderer, 0, 0, self.__rendererWidth, self.__rendererHeight, self.__bgColour.r, self.__bgColour.g, self.__bgColour.b, 200)
 			sdl2.sdlgfx.boxRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__bgColour.r, self.__bgColour.g, self.__bgColour.b, 255)
 			self.__label.draw()
 			sdl2.sdlgfx.rectangleRGBA(self.renderer, self.x, self.y, self.x + self.width, self.y + self.height, self.__borderColour.r, self.__borderColour.g, self.__borderColour.b, 255) # border
-			
+
 	def processEvent(self, event):
 		if self.visible and event.type == sdl2.SDL_KEYDOWN and (event.key.keysym.sym == sdl2.SDLK_RETURN or event.key.keysym.sym == sdl2.SDLK_KP_ENTER):
 			if self.__callback:
@@ -1284,14 +1287,14 @@ class MessageBox(UIObject):
 			self.visible = False
 
 class ProgressBar(UIObject):
-	
+
 	def __init__(self, renderer, x, y, width, height, colour, backgroundColour):
 		super(ProgressBar, self).__init__(renderer, x, y, width, height)
 		self.__progress = 0.0 # percent complete
 		self.__colour = colour
 		self.__backgroundColour = backgroundColour
 		logging.debug("ProgressBar.init: initialised")
-	
+
 	def draw(self):
 		if self.visible:
 			margin = 3
@@ -1299,20 +1302,20 @@ class ProgressBar(UIObject):
 			if self.__progress > 0:
 				w = int(self.width * (self.__progress / 100.0))
 				sdl2.sdlgfx.boxRGBA(self.renderer, self.x + margin, self.y + margin, self.x + w - margin, self.y + self.height - margin, self.__colour.r, self.__colour.g, self.__colour.b, 255)
-	
+
 	def setProgress(self, p):
 		if p > 100:
 			raise ValueError("%d is greater than 100" % p)
 		if p < 0:
 			raise ValueError("%d is less than 0" % p)
 		self.__progress = p
-		
+
 class Thumbnail(UIObject):
-	
+
 	CACHE_LEN = 100
 	__cache = {} # shared texture cache
 	__queue = deque()
-	
+
 	def __init__(self, renderer, x, y, width, height, game, font, txtColour, drawLabel=True):
 		self.__font = font
 		self.__fontHeight = sdl2.sdlttf.TTF_FontHeight(self.__font)
@@ -1334,7 +1337,7 @@ class Thumbnail(UIObject):
 		else:
 			self.__label = None
 		logging.debug("Thumbnail.init: initialised for %s" % game.getName())
-		
+
 	@staticmethod
 	def __addToCache(gameId, texture):
 		Thumbnail.__cache[gameId] = texture
@@ -1347,7 +1350,7 @@ class Thumbnail(UIObject):
 			del Thumbnail.__cache[gameId]
 		else:
 			logging.debug("Thumbnail.__addToCache: cache length: %d" % cacheLength)
-	
+
 	def draw(self):
 		if self.visible:
 			super(Thumbnail, self).draw()
@@ -1356,11 +1359,11 @@ class Thumbnail(UIObject):
 			# render text underneath
 			if self.__label:
 				self.__label.draw()
-			
+
 	def destroy(self):
 		if self.__label:
 			self.__label.destroy()
-		
+
 	@staticmethod
 	def destroyTextures():
 		logging.debug("Thumbnail.destroyTextures: purging %d textures..." % len(Thumbnail.__cache))
@@ -1371,7 +1374,7 @@ class Thumbnail(UIObject):
 		for k in keys:
 			del Thumbnail.__cache[k]
 		Thumbnail.__queue.clear()
-		
+
 	def loadTexture(self):
 		if self.__gameId not in Thumbnail.__cache:
 			logging.debug("Thumbnail.draw: loading texture for %s" % self.__game.getName())
@@ -1379,11 +1382,11 @@ class Thumbnail(UIObject):
 			self.__addToCache(self.__gameId, self.__coverartTexture)
 		else:
 			self.__coverartTexture = Thumbnail.__cache[self.__gameId]
-		
+
 	def setCoords(self, x, y):
 		super(Thumbnail, self).setCoords(x, y)
 		self.__label.setCoords(self.x, self.y + self.__thumbHeight + 1)
-			
+
 	def setGame(self, game):
 		if self.__gameId == game.getId():
 			return
@@ -1395,9 +1398,9 @@ class Thumbnail(UIObject):
 		if self.__coverart == None:
 			self.__coverart = game.getConsole().getNoCoverArtImg()
 		self.__coverartTexture = None
-		
+
 class ThumbnailPanel(UIObject):
-	
+
 	def __init__(self, renderer, x, y, width, games, font, txtColour, selectedColour, gap=10, drawLabels=True, maxThumbs=0):
 		super(ThumbnailPanel, self).__init__(renderer, x, y, width, 1) # height is overridden later
 		self.__gap = gap
@@ -1408,29 +1411,29 @@ class ThumbnailPanel(UIObject):
 		self.__drawLabels = drawLabels
 		self.__maxThumbs = maxThumbs
 		self.setGames(games)
-			
+
 	def draw(self):
 		if self.visible:
 			for t in self.__thumbnails:
 				t.draw()
-			
+
 	def destroy(self):
 		logging.debug("ThumbnailPanel.destroy: destroying...")
 		for t in self.__thumbnails:
 			t.destroy()
-			
+
 	def loadTextures(self):
 		logging.debug("ThumbnailPanel.loadTextures: loading %d textures..."  % len(self.__thumbnails))
 		for t in self.__thumbnails:
 			t.loadTexture()
-			
+
 	def setCoords(self, x, y):
 		super(ThumbnailPanel, self).setCoords(x, y)
 		currentX = self.x
 		for t in self.__thumbnails:
 			t.setCoords(currentX, self.y)
 			currentX += self.__thumbWidth + self.__gap
-			
+
 	def setGames(self, games):
 		self.__games = games
 		if self.__maxThumbs > 0:
