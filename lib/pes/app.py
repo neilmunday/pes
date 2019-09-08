@@ -643,10 +643,16 @@ class PESApp(object):
 			logging.error("PESApp.run: could not register PES event type in SDL2!")
 			self.exit(1)
 
+		setLogicalSize = False
+
 		if self.__dimensions[0] == 0 or self.__dimensions == 0:
 			# assume full screen
 			logging.debug("PESApp.run: running fullscreen")
-			self.__dimensions = (videoMode.w, videoMode.h)
+			if videoMode.w > self.config.desiredResolution[0] and videoMode.h > self.config.desiredResolution[1]:
+				self.__dimensions = (self.config.desiredResolution[0], self.config.desiredResolution[1])
+				setLogicalSize = True
+			else:
+				self.__dimensions = (videoMode.w, videoMode.h)
 			self.__window = sdl2.video.SDL_CreateWindow('PES', sdl2.video.SDL_WINDOWPOS_UNDEFINED, sdl2.video.SDL_WINDOWPOS_UNDEFINED, self.__dimensions[0], self.__dimensions[1], sdl2.video.SDL_WINDOW_FULLSCREEN_DESKTOP)
 		else:
 			# windowed
@@ -667,6 +673,10 @@ class PESApp(object):
 		self.smallBodyFont = sdl2.sdlttf.TTF_OpenFont(self.config.fontFile, self.__fontSizes['smallBody'])
 
 		self.renderer = sdl2.SDL_CreateRenderer(self.__window, -1, sdl2.render.SDL_RENDERER_ACCELERATED)
+
+		if setLogicalSize:
+			logging.debug("PESApp.run: setting logical resolution to: (%d, %d)" % (self.__dimensions[0], self.__dimensions[1]))
+			sdl2.SDL_RenderSetLogicalSize(self.renderer, self.__dimensions[0], self.__dimensions[1])
 
 		# pre-initialise screens
 		self.screens = {}
