@@ -26,5 +26,5 @@ functions=`realpath $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../common/
 source $functions || exit 1
 
 # add Raspberry Pi 3 Bluetooth support
-run yaourt -S pi-bluetooth
+run yaourt --m-arg --skippgpcheck -S pi-bluetooth
 sudo systemctl enable brcm43438.service
