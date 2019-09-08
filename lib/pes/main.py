@@ -42,7 +42,7 @@ from pes.util import *
 
 def exitHandler():
 	global profile, profileObj
-	
+
 	if profile and profileObj != None:
 		profileObj.disable()
 		# dump stats
@@ -54,7 +54,7 @@ def exitHandler():
 
 def signalHandler(sig, frame):
 	global app, profile, profileObj
-	
+
 	if sig == signal.SIGINT:
 		logging.debug("signalHandler: SIGINT")
 		app.exit()
@@ -78,7 +78,7 @@ def signalHandler(sig, frame):
 				profileObj = cProfile.Profile()
 			profileObj.enable()
 			profile = True
-	
+
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Launch the Pi Entertainment System (PES)', add_help=True)
@@ -87,15 +87,15 @@ if __name__ == '__main__':
 	parser.add_argument('-l', '--log', help='File to log messages to', type=str, dest='logfile')
 	parser.add_argument('-p', '--profile', help='Turn on profiling', dest='profile', action='store_true')
 	args = parser.parse_args()
-	
+
 	profile = args.profile
-	
+
 	profileObj = None
-	
+
 	if profile:
 		profileObj = cProfile.Profile()
 		profileObj.enable()
-	
+
 	logLevel = logging.INFO
 	if args.verbose:
 		logLevel = logging.DEBUG
@@ -104,13 +104,13 @@ if __name__ == '__main__':
 		logging.basicConfig(format='%(asctime)s:%(levelname)s: %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logLevel, filename=args.logfile)
 	else:
 		logging.basicConfig(format='%(asctime)s:%(levelname)s: %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logLevel)
-		
+
 	dimensions = (0, 0)
 	if args.window:
-		dimensions = (900, 600)
-	
+		dimensions = (1024, 768)
+
 	logging.debug("PES %s, date: %s, author: %s" % (VERSION_NUMBER, VERSION_DATE, VERSION_AUTHOR))
-	
+
 	try:
 		logging.debug("PES base dir: %s" % baseDir)
 		checkDir(baseDir)
@@ -123,7 +123,7 @@ if __name__ == '__main__':
 		mkdir(userRetroArchJoysticksConfDir)
 		mkdir(userViceConfDir)
 		initConfig()
-		
+
 		checkFile(userPesConfigFile)
 		checkFile(userGamesCatalogueFile)
 		checkFile(userConsolesConfigFile)
@@ -132,35 +132,35 @@ if __name__ == '__main__':
 		checkFile(networkImageFile)
 		checkFile(remoteImageFile)
 		checkFile(rasumExe)
-		
+
 		logging.info("loading settings...")
 		checkFile(userPesConfigFile)
-		
+
 		try:
 			pesConfig = PESConfig(userPesConfigFile)
 		except ConfigParser.NoOptionError as e:
 			pesExit("Error parsing config file %s: %s" % (userPesConfigFile, e.message), True)
 		except ValueError as e:
 			pesExit("Error parsing config file %s: %s" % (userPesConfigFile, e.message), True)
-		
+
 		mkdir(pesConfig.romsDir)
 		mkdir(pesConfig.coverartDir)
 		mkdir(pesConfig.badgeDir)
 		mkdir(pesConfig.biosDir)
 		mkdir(userKodiConfDir)
 		mkdir(pesConfig.kodiDir)
-		
+
 		# now make kodi sub dirs
 		for d in ['Music', 'Movies', 'TV']:
 			mkdir(os.path.join(pesConfig.kodiDir, d))
-			
+
 		# create kodi sources file (if it does not already exist)
 		kodiUserDataDir = os.path.join(userKodiConfDir, 'userdata')
 		mkdir(kodiUserDataDir)
 		kodiSourceFile = os.path.join(kodiUserDataDir, 'sources.xml')
 		if not os.path.exists(kodiSourceFile):
 			logging.info("creating kodi sources file: %s" % kodiSourceFile)
-			
+
 			with open(kodiSourceFile, 'w') as f:
 				f.write(
 """<sources>
@@ -197,9 +197,9 @@ if __name__ == '__main__':
 </sources>""" % (pesConfig.kodiDir, pesConfig.kodiDir, pesConfig.kodiDir))
 		else:
 			logging.debug("%s already exists, no need to create it" % kodiSourceFile)
-		
+
 		checkFile(pesConfig.fontFile)
-		
+
 		if pesConfig.cecEnabled:
 			pesConfig.cecEnabled = False
 			try:
@@ -210,9 +210,9 @@ if __name__ == '__main__':
 				logging.info("CEC module not found, disabling CEC functions")
 		else:
 			logging.debug("CEC disabled in pes.ini")
-		
+
 		app = PESApp(dimensions, pesConfig)
-		
+
 		if pesConfig.cecEnabled:
 			# set-up CEC
 			try:
@@ -240,9 +240,9 @@ if __name__ == '__main__':
 				pesConfig.cecEnabled = False
 				logging.error("CEC module initilisation failed, disabling CEC functions")
 				logging.error(e)
-		
+
 		app.setCecEnabled(pesConfig.cecEnabled)
-		
+
 		logging.info("loading GUI...")
 		signal.signal(signal.SIGINT, signalHandler)
 		signal.signal(signal.SIGHUP, signalHandler)
