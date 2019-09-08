@@ -110,11 +110,6 @@ else
 	fi
 fi
 
-# enable services
-header "Enabling services"
-run sudo systemctl enable chrony.service
-run sudo systemctl start chrony.service
-
 header "Creating /opt/sbin and populating"
 
 run sudo mkdir -p -v /opt/sbin
