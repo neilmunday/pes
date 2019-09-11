@@ -1,0 +1,1 @@
+../arch-common/auto-login.sh

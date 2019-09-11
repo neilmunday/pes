@@ -1,0 +1,1 @@
+../arch-common/clean-image.sh

@@ -1,0 +1,1 @@
+../arch-common/install-libcec.sh

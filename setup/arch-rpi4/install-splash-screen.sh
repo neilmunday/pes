@@ -1,0 +1,1 @@
+../arch-common/install-splash-screen.sh

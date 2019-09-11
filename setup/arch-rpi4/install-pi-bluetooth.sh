@@ -1,0 +1,1 @@
+../arch-rpi2/install-pi-bluetooth.sh

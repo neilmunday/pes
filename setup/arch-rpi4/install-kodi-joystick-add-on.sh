@@ -1,0 +1,1 @@
+../arch-common/install-kodi-joystick-add-on.sh
