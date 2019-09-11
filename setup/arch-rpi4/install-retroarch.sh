@@ -45,8 +45,9 @@ run sudo mkdir -p $retroArchConfigDir
 export CFLAGS="-mfpu=neon -mtune=cortex-a72 -march=armv8-a"
 export CXXFLAGS=$CFLAGS
 
-export PKG_CONFIG_PATH=/opt/sdl2/default/lib/pkgconfig
-
-run ./configure --prefix="$retroArchInstallDir" --disable-xmb --enable-udev --disable-ffmpeg --enable-networking --disable-pulse --disable-x11 --enable-sdl2  --enable-floathard --disable-opengl1 --enable-opengl --enable-opengles  --enable-opengles3 --disable-videocore --enable-neon --enable-kms
+run ./configure --prefix="$retroArchInstallDir" --disable-xmb --enable-udev --disable-ffmpeg --enable-networking --disable-pulse --disable-x11 --disable-sdl  --enable-floathard --disable-opengl1 --enable-opengl --enable-opengles  --enable-opengles3 --disable-videocore --enable-neon --enable-kms --enable-opengl_core --disable-discord
 run make -j 4 GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1
 run sudo make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1 install
+
+# now set video driver in global config
+run sudo sed -i -e "s/# video_threaded = false/video_threaded = true/" $retroArchConfigDir/retroarch.cfg
