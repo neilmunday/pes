@@ -39,5 +39,5 @@ export CFLAGS="-mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
 export CXXFLAGS=$CFLAGS
 
 run make
-checkFile stella_libretro.so
-run sudo cp  stella_libretro.so $retroArchCoresDir
+checkFile stella2014_libretro.so
+run sudo cp  stella2014_libretro.so $retroArchCoresDir

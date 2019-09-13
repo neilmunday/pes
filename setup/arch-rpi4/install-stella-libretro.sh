@@ -35,5 +35,5 @@ checkDir stella-libretro
 cd stella-libretro
 checkFile Makefile
 run make -j 4
-checkFile stella_libretro.so
-run sudo cp stella_libretro.so $retroArchCoresDir
+checkFile stella2014_libretro.so
+run sudo cp stella2014_libretro.so $retroArchCoresDir
