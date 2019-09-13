@@ -156,6 +156,7 @@ class PESApp(object):
 	def __init__(self, dimensions, pesConfig):
 		super(PESApp, self).__init__()
 		self.__dimensions = dimensions
+		self.__screenSize = None
 		self.config = pesConfig
 		self.timezones = []
 		self.currentTimezone = None
@@ -529,11 +530,11 @@ class PESApp(object):
 				output = ""
 				with open(userGles2n64ConfFile, 'r') as f:
 					for line in f:
-						result = re.sub(widthRe, r"\1=%d" % self.__dimensions[0], line)
+						result = re.sub(widthRe, r"\1=%d" % self.__screenSize[0], line)
 						if result != line:
 							output += result
 						else:
-							result = re.sub(heightRe, r"\1=%d" % self.__dimensions[1], line)
+							result = re.sub(heightRe, r"\1=%d" % self.__screenSize[1], line)
 							if result != line:
 								output += result
 							else:
@@ -632,6 +633,7 @@ class PESApp(object):
 			pesExit("PESApp.run: unable to get current video mode!")
 
 		logging.debug("PESApp.run: video mode (%d, %d), refresh rate: %dHz" % (videoMode.w, videoMode.h, videoMode.refresh_rate))
+		self.__screenSize = (videoMode.w, videoMode.h)
 		logging.debug("Using PySDL2 %s" % sdl2.__version__)
 		sdl2Version = sdl2.SDL_version()
 		sdl2.SDL_GetVersion(sdl2Version)
