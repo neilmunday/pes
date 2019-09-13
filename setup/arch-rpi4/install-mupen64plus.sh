@@ -57,8 +57,8 @@ SDL_LDLIBS=`$SDL2_CONFIG --libs`
 checkDir projects/unix
 cd projects/unix
 
-#run make -j 4 PREFIX=$PREFIX USE_GLES=1 VFP=1 NEON=1 VFP_HARD=1 SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j all
-#run sudo make PREFIX=$PREFIX USE_GLES=1 VFP=1 NEON=1 VFP_HARD=1 SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install
+run make -j 4 PREFIX=$PREFIX USE_GLES=1 VFP=1 NEON=1 VFP_HARD=1 SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j all
+run sudo make PREFIX=$PREFIX USE_GLES=1 VFP=1 NEON=1 VFP_HARD=1 SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install
 
 unset APIDIR
 
@@ -84,8 +84,8 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-#run make -j 4 PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j all
-#run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install
+run make -j 4 PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j all
+run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j install
 
 #
 # audio SDL
@@ -108,8 +108,8 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-#run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j 4 all
-#run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 install
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j 4 all
+run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 install
 
 #
 # input-sdl
@@ -133,8 +133,8 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-#run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j 4 all
-#run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 install
+run make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 -j 4 all
+run sudo make PREFIX=$PREFIX SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" V=1 install
 
 #
 # rsp-hle
@@ -158,8 +158,8 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-#run make PREFIX=$PREFIX V=1 -j 4 all
-#run sudo make PREFIX=$PREFIX V=1 install
+run make PREFIX=$PREFIX V=1 -j 4 all
+run sudo make PREFIX=$PREFIX V=1 install
 
 #
 # video-rice
@@ -196,7 +196,7 @@ component=mupen64plus-video-gles2n64
 
 if [ ! -e $component ]; then
 	header "Downloading $component"
-	run git clone https://github.com/mupen64plus/$component
+	run git clone https://github.com/ricrpi/$component
 	checkDir $component
 	cd $component
 else
