@@ -1,0 +1,1 @@
+../common/check-retroarch-libs.sh
