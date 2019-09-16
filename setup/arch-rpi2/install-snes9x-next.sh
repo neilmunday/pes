@@ -32,11 +32,11 @@ rmSourceDir "snes9x2010"
 header "Downloading SNES emulator - snes9x2010"
 
 run git clone git://github.com/libretro/snes9x2010
-checkDir snes9x2010 
+checkDir snes9x2010
 cd "snes9x2010"
 checkFile Makefile.libretro
 export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -O3"
 export CXXFLAGS=$CFLAGS
 run make platform=rpi2 -j -f Makefile.libretro
 checkFile snes9x2010_libretro.so
-run sudo cp snes9x2010_libretro.so $retroArchCoresDir/
+run sudo cp snes9x2010_libretro.so $retroArchCoresDir

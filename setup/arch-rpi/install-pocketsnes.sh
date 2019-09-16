@@ -38,4 +38,4 @@ export CFLAGS="-mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
 export CXXFLAGS=$CFLAGS
 run make
 checkFile snes9x2002_libretro.so
-run sudo cp snes9x2002_libretro.so $retroArchCoresDir/pocketsnes_libretro.so
+run sudo cp snes9x2002_libretro.so $retroArchCoresDir

@@ -36,4 +36,4 @@ checkDir snes9x2002
 cd "snes9x2002"
 run make -j
 checkFile snes9x2002_libretro.so
-run sudo cp snes9x2002_libretro.so $retroArchCoresDir/pocketsnes_libretro.so
+run sudo cp snes9x2002_libretro.so $retroArchCoresDir
