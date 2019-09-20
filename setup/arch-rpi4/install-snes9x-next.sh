@@ -31,7 +31,7 @@ rmSourceDir "snes9x2010"
 
 header "Downloading SNES emulator - snes9x2010"
 
-run git clone git://github.com/libretro/snes9x2010
+run git clone git://github.com/neilmunday/snes9x2010
 checkDir snes9x2010
 cd "snes9x2010"
 checkFile Makefile.libretro

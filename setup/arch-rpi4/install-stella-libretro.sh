@@ -25,15 +25,17 @@
 functions=`realpath $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../common/functions.sh`
 source $functions || exit 1
 
+cloneDir="stella2014-libretro"
+
 cd $buildDir
-rmSourceDir "stella-libretro"
+rmSourceDir $cloneDir
 
 header "Downloading Atari 2600 emulator"
 
-run git clone git://github.com/libretro/stella-libretro
-checkDir stella-libretro
-cd stella-libretro
+run git clone git://github.com/neilmunday/stella2014-libretro
+checkDir $cloneDir
+cd $cloneDir
 checkFile Makefile
-run make -j 4
+run make platform=rpi4 -j 4
 checkFile stella2014_libretro.so
 run sudo cp stella2014_libretro.so $retroArchCoresDir

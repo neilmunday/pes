@@ -32,7 +32,7 @@ header "Downloading MAME 2003 emulator"
 
 prj=mame2003-libretro
 
-run git clone https://github.com/libretro/$prj
+run git clone https://github.com/neilmunday/$prj
 checkDir $prj
 cd $prj
 run make -j 4 platform=rpi4
