@@ -58,6 +58,7 @@ for p in $patchDir/*.patch; do
 done
 cd ..
 run mkdir build
+cd build
 cmake -D SDL2_LIBRARY:PATH=/opt/sdl2/default/lib/libSDL2.so \
 -D SDL2_INCLUDE_DIR:PATH=/opt/sdl2/default/include/SDL2 \
 -D CMAKE_INSTALL_PREFIX:PATH=$installDir \
