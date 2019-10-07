@@ -66,6 +66,7 @@ cmake -D SDL2_LIBRARY:PATH=/opt/sdl2/default/lib/libSDL2.so \
 -D USING_X11_VULKAN=0 \
 ..
 make -j 4
+cd ..
 checkFile build/PPSSPPSDL
 checkDir build/assets
 run sudo cp -rv build/assets $installDir
