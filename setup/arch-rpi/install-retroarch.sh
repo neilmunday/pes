@@ -45,6 +45,6 @@ run sudo mkdir -p $retroArchConfigDir
 export CFLAGS="-O3 -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
 export CXXFLAGS=$CFLAGS
 
-run ./configure --prefix="$retroArchInstallDir"  --disable-xmb --enable-udev --disable-ffmpeg --enable-networking --disable-pulse --disable-x11 --enable-sdl --enable-floathard
+run ./configure --prefix="$retroArchInstallDir"  --disable-xmb --enable-udev --disable-ffmpeg --enable-networking --disable-pulse --disable-x11 --enable-sdl --enable-floathard --disable-opengl1
 run make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1
 run sudo make GLOBAL_CONFIG_DIR="$retroArchConfigDir" V=1 install
