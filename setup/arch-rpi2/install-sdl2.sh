@@ -63,7 +63,7 @@ run sudo rm -f /opt/sdl2/default
 run sudo ln -s $prefix /opt/sdl2/default
 
 header "Downloading SDL2 Image"
-sdl2ImageVersion=2.0.2
+sdl2ImageVersion=2.0.5
 sdl2ImageTar=$srcDir/SDL2_image-${sdl2ImageVersion}.tar.gz
 sdl2ImageDir=$buildDir/SDL2_image-${sdl2ImageVersion}
 
@@ -90,7 +90,7 @@ run make -j 2
 run sudo make install
 
 header "Downloading SDL2 TTF"
-sdl2TTFVersion=2.0.14
+sdl2TTFVersion=2.0.15
 sdl2TTFTar=$srcDir/SDL2_ttf-${sdl2TTFVersion}.tar.gz
 sdl2TTFDir=$buildDir/SDL2_ttf-${sdl2TTFVersion}
 
@@ -112,14 +112,6 @@ run cd $buildDir
 run tar xvfz $sdl2TTFTar
 checkDir $sdl2TTFDir
 run cd $sdl2TTFDir
-
-# apply patches
-patchDir="$rootDir/src/sdl2_ttf-patches"
-checkDir $patchDir
-for p in $patchDir/*.patch; do
-	echo "Applying patch ${p}..."
-	patch < $p
-done
 
 ./autogen.sh
 ./configure --prefix=$prefix --host=arm-raspberry-linux-gnueabihf --with-sdl-prefix=$prefix
