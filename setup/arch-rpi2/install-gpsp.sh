@@ -35,6 +35,6 @@ checkDir gpsp
 cd gpsp
 export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -O3"
 export CXXFLAGS=$CFLAGS
-run make -j
+run make -j 2
 checkFile gpsp_libretro.so
 run sudo cp -v gpsp_libretro.so $retroArchCoresDir
