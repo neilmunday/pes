@@ -4,11 +4,12 @@ PES Changelog
 PES 2.8
 -------
 
-Date: 2019-09-07
+Date: 2020-02-15
 
 Changes:
 
 * Added desiredScreenWidth and desiredScreenHeight settings to set maximum screen size for the PES GUI - useful for large screens.
+* Updated theGamesDb.net API URL for issue #43
 
 PES 2.7
 -------
