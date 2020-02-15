@@ -44,7 +44,7 @@ logging.getLogger("PIL").setLevel(logging.WARNING)
 
 # my theGamesDbApi public key - rate limited per IP per month
 API_KEY = "d12fb5ce1f84c6cb3cec2b89861551905540c0ab564a5a21b3e06e34b2206928"
-API_URL = "https://api.thegamesdb.net"
+API_URL = "https://api.thegamesdb.net/v1"
 
 class ConsoleTask(object):
 
