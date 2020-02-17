@@ -10,6 +10,7 @@ Changes:
 
 * Added desiredScreenWidth and desiredScreenHeight settings to set maximum screen size for the PES GUI - useful for large screens.
 * Updated theGamesDb.net API URL for issue #43
+* Updated RetroAchievements API for issue #44
 
 PES 2.7
 -------
