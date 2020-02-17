@@ -222,7 +222,9 @@ class RetroAchievementConn(object):
 	
 	def getUserSummary(self, user, recentGames):
 		logging.debug("RetroAchievementConn.getUserSummary: getting user %s and games %s" % (user, recentGames))
-		return self.__doRequest('API_GetUserSummary.php', {'u': user, 'g': recentGames, 'a': 5})
+		r = self.__doRequest('API_GetUserSummary.php', {'u': user, 'g': recentGames, 'a': 5})
+		logging.debug(r)
+		return r
 	
 	def saveBadge(self, badgeId, path, locked=False):
 		if locked:
@@ -368,14 +370,14 @@ class RetroAchievementsUpdateThread(Thread):
 			logging.error(e)
 			self.__fail()
 			return
-		
+	
 		logging.debug("RetroAchievementsUpdateThread.run: downloaded user stats ok!")
 		try:
 			con = sqlite3.connect(userPesDb)
 			con.row_factory = sqlite3.Row
 			cur = con.cursor()
 			userId = int(result['ID'])
-			cur.execute("INSERT OR REPLACE INTO `achievements_user` (`user_id`, `user_name`, `rank`, `total_points`, `total_truepoints`) VALUES (%d, '%s', %d, %d, %d);" % (userId, username.replace("'", "''"), int(result['Rank']), int(result['TotalPoints']), int(result['TotalTruePoints'])))
+			cur.execute("INSERT OR REPLACE INTO `achievements_user` (`user_id`, `user_name`, `rank`, `total_points`) VALUES (%d, '%s', %d, %d);" % (userId, username.replace("'", "''"), int(result['Rank']), int(result['Points'])))
 			cur.execute("SELECT COUNT(*) AS `total` FROM `games` WHERE `achievement_api_id` > 0;")
 			row = cur.fetchone()
 			logging.debug("RetroAchievementsUpdateThread.run: found %d games to process..." % row['total'])

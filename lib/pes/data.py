@@ -217,7 +217,7 @@ class Record(object):
 class AchievementUser(Record):
 	
 	def __init__(self, db, userId):
-		super(AchievementUser, self).__init__(db, 'achievements_user', ['user_id', 'user_name', 'rank', 'total_points', 'total_truepoints'], 'user_id', userId)
+		super(AchievementUser, self).__init__(db, 'achievements_user', ['user_id', 'user_name', 'rank', 'total_points'], 'user_id', userId)
 		
 	def getGame(self, gameId):
 		self.connect()
@@ -268,17 +268,11 @@ class AchievementUser(Record):
 	def getTotalPoints(self):
 		return int(self.getProperty('total_points'))
 	
-	def getTotalTruePoints(self):
-		return int(self.getProperty('total_truepoints'))
-	
 	def setName(self, name):
 		self.setProperty('user_name', name)
 		
 	def setTotalPoints(self, points):
 		self.setProperty('total_points', int(points))
-		
-	def setTotalTruePoints(self, points):
-		self.setProperty('total_truepoints', int(points))
 		
 class AchievementGame(Record):
 	

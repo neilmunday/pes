@@ -1146,7 +1146,7 @@ class PESLoadingThread(threading.Thread):
 			cur.execute('CREATE INDEX IF NOT EXISTS "console_thegamesdb_index" on consoles (thegamesdb_api_id ASC)')
 			cur.execute('CREATE TABLE IF NOT EXISTS `games_catalogue` (`short_name` TEXT, `full_name` TEXT)')
 			cur.execute('CREATE INDEX IF NOT EXISTS "games_catalogue_index" on games_catalogue (short_name ASC)')
-			cur.execute('CREATE TABLE IF NOT EXISTS `achievements_user`(`user_id` INTEGER PRIMARY KEY, `user_name` TEXT, `rank` INT, `total_points` INT, `total_truepoints` INT)')
+			cur.execute('CREATE TABLE IF NOT EXISTS `achievements_user`(`user_id` INTEGER PRIMARY KEY, `user_name` TEXT, `rank` INT, `total_points` INT)')
 			cur.execute('CREATE INDEX IF NOT EXISTS "achievements_user_index" on achievements_user (user_id ASC)')
 			cur.execute('CREATE TABLE IF NOT EXISTS `achievements_games`(`game_id` INTEGER PRIMARY KEY, `console_id` INT, `achievement_total` INT, `score_total` INT)')
 			cur.execute('CREATE INDEX IF NOT EXISTS "achievements_game_index" on achievements_games (game_id ASC)')
@@ -1938,7 +1938,7 @@ class HomeScreen(Screen):
 	def updateRecentBadges(self):
 		if self.__gamesAdded and self.app.achievementUser:
 			logging.debug("HomeScreen.updateRecentBadges: updating...")
-			self.__welcomeText = "Welcome to PES %s.\n\nPoints: %d (%d)\nRank: %d" % (self.app.achievementUser.getName(), self.app.achievementUser.getTotalPoints(), self.app.achievementUser.getTotalTruePoints(), self.app.achievementUser.getRank())
+			self.__welcomeText = "Welcome to PES %s.\n\nPoints: %d\nRank: %d" % (self.app.achievementUser.getName(), self.app.achievementUser.getTotalPoints(), self.app.achievementUser.getRank())
 			for b in self.__badgePanels:
 				self.removeUiObject(b)
 				b.destroy()
