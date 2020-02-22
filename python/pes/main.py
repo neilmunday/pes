@@ -14,7 +14,8 @@ if __name__ == "__main__":
 	parser.add_argument('-w', '--window', help='Run PES in a window', dest='window', action='store_true')
 	parser.add_argument('-v', '--verbose', help='Turn on debug messages', dest='verbose', action='store_true')
 	parser.add_argument('-l', '--log', help='File to log messages to', type=str, dest='logfile')
-	parser.add_argument('-p', '--profile', help='Turn on profiling', dest='profile', action='store_true')
+	parser.add_argument('-p', '--populate-db', help='Populate the PES DB with game info', dest='populateDb', action='store_true')
+	parser.add_argument('--delete-db', help='Delete the PES database before start-up', dest='deleteDb', action='store_true')
 	args = parser.parse_args()
 
 	logLevel = logging.INFO
@@ -28,6 +29,14 @@ if __name__ == "__main__":
 
 	logging.debug("PES %s, date: %s, author: %s" % (pes.VERSION_NUMBER, pes.VERSION_DATE, pes.VERSION_AUTHOR))
 	logging.debug("base dir: %s" % pes.baseDir)
+
+	if args.populateDb:
+		logging.info("PES will populate its database with game info for later use")
+
+	if args.deleteDb and os.path.exists(pes.userDb):
+		logging.info("Deleting %s" % pes.userDb)
+		os.remove(pes.userDb)
+
 	checkDir(pes.baseDir)
 	checkFile(pes.qmlMain)
 	checkDir(pes.qmlDir)
@@ -50,27 +59,27 @@ if __name__ == "__main__":
 
 	logging.info("loading settings...")
 	checkFile(pes.userPesConfigFile)
-	settings = Settings()
-	covertArtDir = settings.get("settings", "coverartDir")
+	userSettings = UserSettings(pes.userPesConfigFile)
+	covertArtDir = userSettings.get("settings", "coverartDir")
 	if covertArtDir == None:
 		pesExit("Could not find \"coverartDir\" parameter in \"settings\" section in %s" % pes.userPesConfigFile)
 	logging.debug("cover art dir: %s" % covertArtDir)
 	mkdir(covertArtDir)
-	badgeDir = settings.get("settings", "badgeDir")
+	badgeDir = userSettings.get("settings", "badgeDir")
 	if badgeDir == None:
 		pesExit("Could not find \"badgeDir\" parameter in \"settings\" section in %s" % pes.userPesConfigFile)
 	logging.debug("badge dir: %s" % badgeDir)
 	mkdir(badgeDir)
-	romsDir = settings.get("settings", "romsDir")
+	romsDir = userSettings.get("settings", "romsDir")
 	if romsDir == None:
 		pesExit("Could not find \"romsDir\" parameter in \"settings\" section in %s" % pes.userPesConfigFile)
 	logging.debug("ROMs dir: %s" % romsDir)
 	mkdir(romsDir)
 
-	romScraper = settings.get("settings", "romScraper")
+	romScraper = userSettings.get("settings", "romScraper")
 	if romScraper == None:
 		logging.warning("Could not find \"romScraper\" parameter in \"settings\" section in %s. Will use \"%s\" for this session." % (userPesConfigFile, romScrapers[0]))
-		settings.set("settings", "romScraper", romScrapers[0])
+		userSettings.set("settings", "romScraper", romScrapers[0])
 	elif romScraper not in pes.romScrapers:
 		logging.error("Unknown romScraper value: \"%s\" in \"settings\" section in %s. Will use \"%s\" instead for this session." % (romScraper, userPesConfigFile, romScrapers[0]))
 
@@ -83,5 +92,5 @@ if __name__ == "__main__":
 		pes.common.pesExit("failed to load SDL2 control pad mappings from: %s" % pes.userGameControllerFile)
 	logging.debug("loaded %d control pad mappings" % mappingsLoaded)
 
-	app = PESGuiApplication(sys.argv)
+	app = PESGuiApplication(sys.argv, args.populateDb)
 	app.run()

@@ -4,7 +4,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2017 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2019 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #
 
 from pes import *
+import configparser
 import csv
 import fcntl
 import logging
@@ -127,28 +128,68 @@ def scaleImage(ix, iy, bx, by):
 
 class Settings(object):
 
-	def __init__(self):
+	def __init__(self, f):
 		# open user's settings
-		self.__configparser = configparser.RawConfigParser()
-		self.__configparser.read(pes.userPesConfigFile)
+		self._configparser = configparser.RawConfigParser()
+		self._configparser.read(f)
+		self._path = f
+
+	def getSections(self):
+		return self._configparser.sections()
+
+	def set(self, section, prop, value):
+		self._configparser.set(section, prop, str(value))
+
+class UserSettings(Settings):
+
+	def __init__(self, f):
+		super(UserSettings, self).__init__(f)
 
 	def get(self, section, prop, propType="string"):
-		if not self.__configparser.has_section(section):
+		if not self._configparser.has_section(section):
 			logging.warning("No section \"%s\" in \"%s\"" % (section, pes.userPesConfigFile))
 			return None
-		if not self.__configparser.has_option(section, prop):
+		if not self._configparser.has_option(section, prop):
 			logging.warning("No property \"[%s]:%s\" in \"%s\"" % (section, prop, pes.userPesConfigFile))
 			return None
 		if propType == "string":
-			value = self.__configparser.get(section, prop)
+			value = self._configparser.get(section, prop)
 			if value == None or len(value) == 0:
 				return None
-			return value.replace("%%USERDIR%%", pes.userDir)
+			return value.replace("%%USERDIR%%", userDir)
 		logging.error("Settings.getValue: unsupported type \"%s\"" % propType)
 
-	def set(self, section, prop, value):
-		self.__configparser.set(section, prop, str(value))
+class ConsoleSettings(Settings):
 
+	def __init__(self, f):
+		super(ConsoleSettings, self).__init__(f)
+		self.__props = {
+			"thegamesdb_id": "int",
+			"achievement_id": "int",
+			"emulator": "str",
+			"image": "path",
+			"extensions": "str",
+			"command": "path",
+			"nocoverart": "path"
+		}
+
+		self.__optionalProps = ["achievement_id"]
+
+	def getOptions(self, c):
+		o = {}
+		# check each property exists
+		for prop, t in self.__props.items():
+			if not self._configparser.has_option(c, prop):
+				if prop in self.__optionalProps:
+					continue
+				raise Exception("%s has no option \"%s\" in %s" % (c, prop, self._path))
+			if t == "int":
+				o[prop] = self._configparser.getint(c, prop)
+			elif t == "path":
+				o[prop] = self._configparser.get(c, prop).replace("%%USERDIR%%", userDir).replace("%%BASE%%", baseDir)
+			else:
+				o[prop] = self._configparser.get(c, prop)
+		return o
 #
 #	StringMatcher class sourced from https://github.com/ztane/python-Levenshtein/blob/master/StringMatcher.py
 #	Author: Antti Haapala <antti@haapala.name>

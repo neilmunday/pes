@@ -29,6 +29,10 @@ ApplicationWindow {
 				console.warn("button: " + button)
 				console.warn(mainWindow.activeFocusItem.Keys.downPressed({ key: Qt.KeyDown }))
 			}
+
+			onPopulateDbProgress: {
+				populateDbProgressBar.avlue = progress
+			}
 	}
 
   Dialog {
@@ -147,104 +151,175 @@ ApplicationWindow {
     }
   }
 
-  ListModel {
-    id: menuModel
+	Text {
+		id: titleTxt
+		text: "Pi Entertainment System"
+		x: 0
+		y: 0
+		font.pointSize: 20
+		font.bold: true
+		font.family: "Arial"
+		color: Colour.text
+	}
 
-    ListElement {
-      name: "Home"
-    }
+	Text {
+		id: clockTxt
+		text: "Time"
+		x: mainWindow.width - clockTxt.width
+		y: 0
+		font.pointSize: 20
+		font.bold: true
+		font.family: "Arial"
+		color: Colour.text
+		width: 400
+	}
 
-    ListElement {
-      name: "NES"
-    }
-
-    ListElement {
-      name: "Mega Drive"
-    }
-  }
-
-  Component {
-    id: menuDelegate
-    Rectangle {
-      height: 50
-      width: parent.width
-      color: focus ? Colour.menuFocus : Colour.menuBg
-
-      Keys.onPressed: {
-
-      }
-
-      Text {
-        text: name
-        color: parent.focus ? Colour.text : Colour.menuText
-        font.pointSize: FontStyle.menuSize
-      }
-    }
-  }
-
-  Text {
-    id: titleTxt
-    text: "Pi Entertainment System"
-    x: 0
-    y: 0
-    font.pointSize: 20
-    font.bold: true
-    font.family: "Arial"
-    color: Colour.text
-  }
-
-  Text {
-    id: clockTxt
-    text: "Time"
-    x: mainWindow.width - clockTxt.width
-    y: 0
-    font.pointSize: 20
-    font.bold: true
-    font.family: "Arial"
-    color: Colour.text
-    width: 400
-  }
-
-  Timer {
-    interval: 1000
-    running: true
-    repeat: true
-    //onTriggered: clockTxt.text = PES.getTime()
+	Timer {
+		interval: 1000
+		running: true
+		repeat: true
+		//onTriggered: clockTxt.text = PES.getTime()
 		onTriggered: clockTxt.text = backend.getTime()
-  }
+	}
 
-  Rectangle {
-    id: headerLine
-    x: 0
-    y: 32
-    height: 2
-    width: mainWindow.width
-    color: Colour.line
-  }
+	Rectangle {
+		id: headerLine
+		x: 0
+		y: 32
+		height: 2
+		width: mainWindow.width
+		color: Colour.line
+	}
 
-  Rectangle {
-    id: menuRect
-    x: 0
-    y: headerLine.y + headerLine.height
-    width: 400
-    height: mainWindow.height - menuRect.y
-    color: Colour.menuBg
+	StackLayout {
+		id: screenLayout
+		x: 0
+		y: headerLine.y + headerLine.height + 1
+		width: parent.width
+		height: parent.height - (headerLine.y + headerLine.height + 1)
+		currentIndex: backend.getPopulateDb() ? 0: 1
 
-    Rectangle {
-      x: 0
-      y: parent.y + 20
-      width: parent.width
-      height: parent.height - this.y
-      color: parent.color
-      ListView {
-        id: menuView
-        anchors.fill: parent
-        focus: true
-        model: menuModel
-        delegate: menuDelegate
-        keyNavigationEnabled: true
-        keyNavigationWraps: true
-      }
-    }
-  }
+		Rectangle {
+			id: populateDbScreen
+			color: mainWindow.color
+
+			ColumnLayout {
+				spacing: 10
+
+				anchors {
+        	left: parent.left
+          right: parent.right
+          verticalCenter: parent.verticalCenter
+        }
+
+				Text {
+					id: populateDbText
+					color: Colour.text
+					font.pointSize: FontStyle.loadingSize
+					Layout.alignment: Qt.AlignCenter
+					text: "Creating PES database..."
+				}
+
+				ProgressBar {
+					id: populateDbProgressBar
+					from: 0
+					value: 0
+					to: 100
+					Layout.alignment: Qt.AlignCenter
+					Layout.preferredWidth: 500
+
+					background: Rectangle {
+						implicitWidth: 200
+						implicitHeight: 30
+						color: Colour.progressBarBg
+						radius: 3
+					}
+
+					contentItem: Item {
+						implicitWidth: 200
+						implicitHeight: 25
+
+						Rectangle {
+							width: populateDbProgressBar.visualPosition * parent.width
+							height: parent.height
+							radius: 2
+							color: Colour.progressBar
+						}
+					}
+
+					Component.onCompleted: {
+						if (backend.getPopulateDb()){
+							backend.populateDb();
+						}
+					}
+				}
+			}
+		}
+
+		Rectangle {
+			id: mainScreen
+			color: mainWindow.color
+
+		  ListModel {
+		    id: menuModel
+
+		    ListElement {
+		      name: "Home"
+		    }
+
+		    ListElement {
+		      name: "NES"
+		    }
+
+		    ListElement {
+		      name: "Mega Drive"
+		    }
+		  }
+
+		  Component {
+		    id: menuDelegate
+		    Rectangle {
+		      height: 50
+		      width: parent.width
+		      color: focus ? Colour.menuFocus : Colour.menuBg
+
+		      Keys.onPressed: {
+
+		      }
+
+		      Text {
+		        text: name
+		        color: parent.focus ? Colour.text : Colour.menuText
+		        font.pointSize: FontStyle.menuSize
+		      }
+		    }
+		  }
+
+		  Rectangle {
+		    id: menuRect
+		    x: 0
+		    y: parent.y
+		    width: 400
+		    height: parent.height
+		    color: Colour.menuBg
+
+		    Rectangle {
+		      x: 0
+		      y: parent.y + 20
+		      width: parent.width
+		      height: parent.height - this.y
+		      color: parent.color
+		      ListView {
+		        id: menuView
+		        anchors.fill: parent
+		        focus: true
+		        model: menuModel
+		        delegate: menuDelegate
+		        keyNavigationEnabled: true
+		        keyNavigationWraps: true
+		      }
+		    }
+		  }
+		}
+	}
 }
