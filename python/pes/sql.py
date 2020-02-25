@@ -29,8 +29,8 @@ from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
-def connect():
-	s = "sqlite:///%s" % pes.userDb
+def connect(db=pes.userDb):
+	s = "sqlite:///%s" % db
 	logging.debug("pes.sql.connect: connecting to: %s" % s)
 	return create_engine(s)
 
@@ -44,6 +44,9 @@ class Console(Base):
 	name = Column(String)
 	gamesDbId = Column(Integer, index=True) # FBA and MAMA use the same ID
 	retroId = Column(Integer, index=True) # Mega Drive & Gensis use same ID
+
+	def __repr__(self):
+		return "<Console id=%s name=%s gamesDbId=%s retroId=%s>" % (self.id, self.name, self.gamesDbId, self.retroId)
 
 class Game(Base):
 	__tablename__ = "game"
@@ -60,8 +63,8 @@ class Game(Base):
 
 	console = relationship("Console", back_populates="games")
 
-class GameCatalogue(Base):
-	__tablename__ = "game_catalogue"
+class MameGame(Base):
+	__tablename__ = "mame_game"
 
 	shortName = Column(String, primary_key=True)
 	name = Column(String)
@@ -74,6 +77,9 @@ class RetroAchievementGame(Base):
 	consoleId = Column(Integer, ForeignKey('console.id'))
 
 	console = relationship("Console", back_populates="retrogames")
+
+	def __repr__(self):
+		return "<RetroAchievementGame id=%d rasum=%s name=%s consoleId=%d>" % (self.id , self.rasum, self.name, self.consoleId)
 
 Console.games = relationship("Game", order_by=Game.id, back_populates="console")
 Console.retrogames = relationship("RetroAchievementGame", order_by=RetroAchievementGame.id, back_populates="console")
