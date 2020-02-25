@@ -23,7 +23,7 @@ import sys
 import logging
 
 VERSION_NUMBER = '3.0 (ALPHA)'
-VERSION_DATE = '2019-07-29'
+VERSION_DATE = '2020-02-25'
 VERSION_AUTHOR = 'Neil Munday'
 
 romScrapers = ['theGamesDb.net'] # list of ROM scrapers, default scraper is assumed to be at index 0
@@ -53,7 +53,6 @@ userKodiConfDir = os.path.join(userHomeDir, '.kodi')
 userPesConfDir = os.path.join(userConfDir, 'pes')
 userPesConfigFile = os.path.join(userPesConfDir, 'pes.ini')
 userConsolesConfigFile = os.path.join(userPesConfDir, 'consoles.ini')
-userGamesCatalogueFile = os.path.join(userPesConfDir, 'games_catalogue.ini')
 userGameControllerFile = os.path.join(userPesConfDir, 'gamecontrollerdb.txt')
 scriptFile = os.path.join(userDir, 'commands.sh')
 cecEnabled = False
