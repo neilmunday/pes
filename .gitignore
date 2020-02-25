@@ -17,3 +17,7 @@ images/
 log/
 roms/
 coverart/
+
+# Ignore the following data files:
+data/pes.db
+data/retro_games.json
