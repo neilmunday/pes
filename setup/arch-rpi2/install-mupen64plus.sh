@@ -31,9 +31,6 @@ SDL2_CONFIG=/opt/sdl2/default/bin/sdl2-config
 header "Building N64 emulator - mupenplus64"
 
 checkFile $SDL2_CONFIG
-# check that gcc v5 exists as this is needed to compile mupen64plus-video-gles2n64, see https://github.com/ricrpi/mupen64plus-video-gles2n64/issues/25
-checkFile /usr/bin/gcc-5
-checkFile /usr/bin/g++-5
 
 #
 # core
@@ -212,8 +209,8 @@ fi
 checkDir projects/unix
 cd projects/unix
 run make clean
-run make SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" PREFIX=$PREFIX V=1 VC=1 CC=gcc-5 CXX=g++-5 all
-run sudo make SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" PREFIX=$PREFIX V=1 VC=1 CC=gcc-5 CXX=g++-5 install
+run make SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" PREFIX=$PREFIX V=1 VC=1 CC=gcc CXX=g++ all
+run sudo make SDL_CFLAGS="$SDL_CFLAGS" SDL_LDLIBS="$SDL_LDLIBS" PREFIX=$PREFIX V=1 VC=1 CC=gcc CXX=g++ install
 # remove shared installation of gles2n64.conf so that PES' copy takes precedence
 run sudo rm -fv $PREFIX/share/mupen64plus/gles2n64.conf
 
