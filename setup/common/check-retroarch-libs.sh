@@ -37,6 +37,7 @@ gpsp_libretro.so
 mame2000_libretro.so
 mame2003_libretro.so
 mupen64plus_next_libretro.so
+picodrive_libretro.so
 snes9x2002_libretro.so
 snes9x2010_libretro.so
 stella2014_libretro.so
