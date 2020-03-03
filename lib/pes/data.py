@@ -760,13 +760,12 @@ class Game(Record):
 		if apiId <= 0:
 			return False
 		self.connect()
-		cur = self.doQuery('SELECT COUNT(*) AS `total` FROM `achievements_games` WHERE `game_id` = %d;' % apiId)
+		cur = self.doQuery('SELECT `achievement_total` FROM `achievements_games` WHERE `game_id` = %d;' % apiId)
 		row = cur.fetchone()
-		rtn = False
 		if row != None:
-			return int(row['total']) > 0
+			return int(row['achievement_total']) > 0	
 		self.disconnect()
-		return rtn
+		return False 
 
 	def isFavourite(self, yesNoMap=None):
 		fav = self.getProperty('favourite') == 1
