@@ -107,6 +107,7 @@ I would like to thank the following people/groups as without them PES would not 
 * Fredrik for testing and suggesting features for PES
 * nwildner for testing and suggesting features for PES
 * Albert Schmalzried for helping test PES
+* [Ginger Geek](https://www.ginergeeks.co.uk) for lending me his Raspberry Pi 4 to test PES
 
 BerryBoot Images
 ----------------
