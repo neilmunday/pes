@@ -1,1 +1,0 @@
-../arch-common/install-gcc54.sh

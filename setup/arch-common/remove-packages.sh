@@ -36,7 +36,6 @@ ruby
 binutils
 cmake
 gcc
-gcc54
 libyaml
 lua
 jsoncpp
