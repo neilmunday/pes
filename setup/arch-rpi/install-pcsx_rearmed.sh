@@ -32,6 +32,7 @@ header "Downloading PSX emulator - pcsx_rearmed"
 run git clone https://github.com/libretro/pcsx_rearmed
 checkDir "pcsx_rearmed"
 cd pcsx_rearmed
+git checkout 20a09b8ce3c86e1ebc97b260e32ef78abd508844
 export CFLAGS="-mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
 export CXXFLAGS=$CFLAGS
 run make -f Makefile.libretro HAVE_NEON=0 BUILTIN_GPU=peops ARCH=arm USE_DYNAREC=1
