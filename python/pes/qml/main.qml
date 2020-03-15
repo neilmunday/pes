@@ -14,6 +14,7 @@ ApplicationWindow {
   color: Colour.bg
   height: 600
   width: 800
+  visibility: "FullScreen"
 
   onClosing: backend.close()
 
@@ -22,16 +23,12 @@ ApplicationWindow {
 
 			onHomeButtonPress: {
 				dialog.open();
-	      popupMenuView.forceActiveFocus()
+	      popupMenuView.forceActiveFocus();
 			}
 
 			onControlPadButtonPress: {
-				console.warn("button: " + button)
-				console.warn(mainWindow.activeFocusItem.Keys.downPressed({ key: Qt.KeyDown }))
-			}
-
-			onPopulateDbProgress: {
-				populateDbProgressBar.avlue = progress
+				console.warn("button: " + button);
+				console.warn(mainWindow.activeFocusItem.Keys.downPressed({ key: Qt.KeyDown }));
 			}
 	}
 
@@ -156,9 +153,9 @@ ApplicationWindow {
 		text: "Pi Entertainment System"
 		x: 0
 		y: 0
-		font.pointSize: 20
+		font.pointSize: FontStyle.titleSize
 		font.bold: true
-		font.family: "Arial"
+		font.family: FontStyle.font
 		color: Colour.text
 	}
 
@@ -167,19 +164,20 @@ ApplicationWindow {
 		text: "Time"
 		x: mainWindow.width - clockTxt.width
 		y: 0
-		font.pointSize: 20
+		font.pointSize: FontStyle.titleSize
 		font.bold: true
-		font.family: "Arial"
+		font.family: FontStyle.font
 		color: Colour.text
-		width: 400
+		rightPadding: 5
 	}
 
 	Timer {
 		interval: 1000
 		running: true
 		repeat: true
-		//onTriggered: clockTxt.text = PES.getTime()
-		onTriggered: clockTxt.text = backend.getTime()
+		onTriggered: {
+      clockTxt.text = backend.getTime();
+    }
 	}
 
 	Rectangle {
@@ -191,135 +189,120 @@ ApplicationWindow {
 		color: Colour.line
 	}
 
-	StackLayout {
-		id: screenLayout
-		x: 0
-		y: headerLine.y + headerLine.height + 1
-		width: parent.width
-		height: parent.height - (headerLine.y + headerLine.height + 1)
-		currentIndex: backend.getPopulateDb() ? 0: 1
+  Rectangle {
+    x: 0
+    y: headerLine.y + headerLine.height + 1
+    width: parent.width
+    height: parent.height - (headerLine.y + headerLine.height + 1)
 
-		Rectangle {
-			id: populateDbScreen
-			color: mainWindow.color
+    id: mainScreen
+    color: mainWindow.color
 
-			ColumnLayout {
-				spacing: 10
+    ListModel {
+      id: menuModel
 
-				anchors {
-        	left: parent.left
-          right: parent.right
-          verticalCenter: parent.verticalCenter
+      ListElement {
+        name: "Home"
+      }
+    }
+
+    Component {
+      id: menuDelegate
+      Rectangle {
+        height: 50
+        width: parent.width
+        color: focus ? Colour.menuFocus : Colour.menuBg
+
+        Keys.onPressed: {
+
         }
 
-				Text {
-					id: populateDbText
-					color: Colour.text
-					font.pointSize: FontStyle.loadingSize
-					Layout.alignment: Qt.AlignCenter
-					text: "Creating PES database..."
-				}
+        Text {
+          text: name
+          color: parent.focus ? Colour.text : Colour.menuText
+          font.pointSize: FontStyle.menuSize
+        }
+      }
+    }
 
-				ProgressBar {
-					id: populateDbProgressBar
-					from: 0
-					value: 0
-					to: 100
-					Layout.alignment: Qt.AlignCenter
-					Layout.preferredWidth: 500
+    Rectangle {
+      id: menuRect
+      x: 0
+      y: 0
+      width: 400
+      height: parent.height
+      color: Colour.menuBg
 
-					background: Rectangle {
-						implicitWidth: 200
-						implicitHeight: 30
-						color: Colour.progressBarBg
-						radius: 3
-					}
+      Rectangle {
+        x: 0
+        y: parent.y
+        width: parent.width
+        height: parent.height - this.y
+        color: parent.color
 
-					contentItem: Item {
-						implicitWidth: 200
-						implicitHeight: 25
+        ScrollView {
+          width: parent.width
+          height: parent.height
+          clip: true
 
-						Rectangle {
-							width: populateDbProgressBar.visualPosition * parent.width
-							height: parent.height
-							radius: 2
-							color: Colour.progressBar
-						}
-					}
+          focus: true
 
-					Component.onCompleted: {
-						if (backend.getPopulateDb()){
-							backend.populateDb();
-						}
-					}
-				}
-			}
-		}
+          ListView {
+            id: menuView
+            anchors.fill: parent
+            focus: true
+            model: menuModel
+            delegate: menuDelegate
+            keyNavigationEnabled: true
+            keyNavigationWraps: false
+          }
+        }
+      }
+    }
 
-		Rectangle {
-			id: mainScreen
-			color: mainWindow.color
+    Component.onCompleted: {
+      var consoles = backend.getConsoles(true);
+      for (var i = 0; i < consoles.length; i++){
+        menuModel.append(consoles[i]);
+      }
+    }
+  }
 
-		  ListModel {
-		    id: menuModel
+	StackLayout {
+		id: screenLayout
+		x: menuRect.width + 1
+		y: headerLine.y + headerLine.height + 1
+		width: mainWindow.width - menuRect.width
+		height: parent.height - (headerLine.y + headerLine.height + 1)
+		currentIndex: 0
 
-		    ListElement {
-		      name: "Home"
-		    }
+    Rectangle {
+      id: homeScreen
+      width: parent.width
+      color: Colour.bg
 
-		    ListElement {
-		      name: "NES"
-		    }
+      Text {
+        id: welcomeText
+        padding: 10
+        text: "Welcome to PES!"
+        font.pointSize: FontStyle.headerSize
+    		font.bold: true
+    		font.family: FontStyle.font
+    		color: Colour.text
+      }
 
-		    ListElement {
-		      name: "Mega Drive"
-		    }
-		  }
-
-		  Component {
-		    id: menuDelegate
-		    Rectangle {
-		      height: 50
-		      width: parent.width
-		      color: focus ? Colour.menuFocus : Colour.menuBg
-
-		      Keys.onPressed: {
-
-		      }
-
-		      Text {
-		        text: name
-		        color: parent.focus ? Colour.text : Colour.menuText
-		        font.pointSize: FontStyle.menuSize
-		      }
-		    }
-		  }
-
-		  Rectangle {
-		    id: menuRect
-		    x: 0
-		    y: parent.y
-		    width: 400
-		    height: parent.height
-		    color: Colour.menuBg
-
-		    Rectangle {
-		      x: 0
-		      y: parent.y + 20
-		      width: parent.width
-		      height: parent.height - this.y
-		      color: parent.color
-		      ListView {
-		        id: menuView
-		        anchors.fill: parent
-		        focus: true
-		        model: menuModel
-		        delegate: menuDelegate
-		        keyNavigationEnabled: true
-		        keyNavigationWraps: true
-		      }
-		    }
-		  }
-		}
+      Text {
+        id: noGamesText
+        y: welcomeText.height + 10
+        padding: 10
+        text: "You have not added any games to PES yet. To do so press the Home button and select 'Update Games' option."
+        font.pointSize: FontStyle.bodySize
+    		font.bold: true
+    		font.family: FontStyle.font
+    		color: Colour.text
+        wrapMode: Text.Wrap
+        width: parent.width // must set width for wrapping to work
+      }
+    }
 	}
 }

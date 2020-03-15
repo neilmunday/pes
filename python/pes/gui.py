@@ -43,31 +43,17 @@ class BackEnd(QObject):
 	closeSignal = pyqtSignal()
 	controlPadButtonPress = pyqtSignal(int, arguments=['button'])
 	homeButtonPress = pyqtSignal()
-	populateDbProgress = pyqtSignal(int, arguments=['progress'])
 
 	def __init__(self, parent=None):
 		super(BackEnd, self).__init__(parent)
-		self.__populateDb = False
 		logging.debug("Backend.__init__: connecting to database: %s" % pes.userDb)
 		engine = pes.sql.connect()
-		session = sqlalchemy.orm.sessionmaker(bind=engine)()
+		self.__session = sqlalchemy.orm.sessionmaker(bind=engine)()
 		pes.sql.createAll(engine)
-		logging.info("Backend.__init__: loading console definitions from: %s" % pes.userConsolesConfigFile)
-		consoleSettings = ConsoleSettings(pes.userConsolesConfigFile)
-
-		for c in consoleSettings.getSections():
-			logging.debug("Backend.__init__: processing: %s" % c)
-			options = consoleSettings.getOptions(c)
-			if "achievement_id" in options:
-				console = pes.sql.Console(name=c, gamesDbId=options["thegamesdb_id"], retroId=options["achievement_id"])
-			else:
-				console = pes.sql.Console(name=c, gamesDbId=options["thegamesdb_id"])
-			session.add(console)
-
-		session.commit()
 
 	@pyqtSlot()
 	def close(self):
+		logging.debug("BackEnd.close: closing...")
 		self.closeSignal.emit()
 
 	def emitHomeButtonPress(self):
@@ -76,33 +62,33 @@ class BackEnd(QObject):
 	def emitControlPadButtonPress(self, button):
 		self.controlPadButtonPress.emit(button)
 
-	@pyqtSlot()
-	def populateDb(self):
-		logging.debug("Backend: beginning population of PES database")
-
-	@pyqtSlot(result=bool)
-	def getPopulateDb(self):
-		return self.__populateDb
+	@pyqtSlot(bool, result=list)
+	def getConsoles(self, withGames=False):
+		logging.debug("BackEnd.getConsoles: getting consoles, withGames = %s" % withGames)
+		consoleList = []
+		if withGames:
+			result = self.__session.query(pes.sql.Console).join(pes.sql.Game).all()
+		else:
+			result = self.__session.query(pes.sql.Console).all()
+		for c in result:
+			consoleList.append(c.getJson())
+		return consoleList
 
 	@pyqtSlot(result=str)
 	def getTime(self):
 		return datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
-	def setPopulateDb(self, populateDb):
-		self.__populateDb = populateDb
-
 class PESGuiApplication(QGuiApplication):
 
-	def __init__(self, argv, populateDb):
+	def __init__(self, argv, windowed=False):
 		super(PESGuiApplication, self).__init__(argv)
-		self.__populateDb = populateDb
+		self.__windowed = windowed
 		self.__running = True
 		self.__player1Controller = None
 		self.__player1ControllerIndex = None
 		self.__controlPadTotal = 0
 		self.__engine = None
 		self.__backend = BackEnd()
-		self.__backend.setPopulateDb(self.__populateDb)
 		self.__backend.closeSignal.connect(self.close)
 		self.__engine = QQmlApplicationEngine()
 		self.__engine.rootContext().setContextProperty("backend", self.__backend)
