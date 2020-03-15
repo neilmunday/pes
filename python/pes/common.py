@@ -61,16 +61,22 @@ def initConfig():
 	for root, dirs, files in os.walk(confDir):
 		userRoot = root.replace(baseDir, userDir)
 		for d in dirs:
-			dest = userRoot + os.sep + d
+			dest = os.path.join(userRoot, d)
 			if not os.path.exists(dest):
 				mkdir(dest)
 
 		for f in files:
-			dest = userRoot + os.sep + f
-			source = root + os.sep + f
+			dest = os.path.join(userRoot, f)
+			source = os.path.join(root, f)
 			if not os.path.exists(dest):
 				logging.debug("copying %s to %s" % (source, dest))
 				shutil.copy(source, dest)
+
+def initDb():
+	checkFile(masterDb)
+	if not os.path.exists(userDb):
+		logging.debug("initialising database...")
+		shutil.copy(masterDb, userDb)
 
 def mkdir(path):
 	if not os.path.exists(path):
@@ -147,10 +153,10 @@ class UserSettings(Settings):
 
 	def get(self, section, prop, propType="string"):
 		if not self._configparser.has_section(section):
-			logging.warning("No section \"%s\" in \"%s\"" % (section, pes.userPesConfigFile))
+			logging.warning("No section \"%s\" in \"%s\"" % (section, userPesConfigFile))
 			return None
 		if not self._configparser.has_option(section, prop):
-			logging.warning("No property \"[%s]:%s\" in \"%s\"" % (section, prop, pes.userPesConfigFile))
+			logging.warning("No property \"[%s]:%s\" in \"%s\"" % (section, prop, userPesConfigFile))
 			return None
 		if propType == "string":
 			value = self._configparser.get(section, prop)
