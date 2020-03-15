@@ -11,11 +11,8 @@ import sdl2
 if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description='Launch the Pi Entertainment System (PES)', add_help=True)
-	parser.add_argument('-w', '--window', help='Run PES in a window', dest='window', action='store_true')
 	parser.add_argument('-v', '--verbose', help='Turn on debug messages', dest='verbose', action='store_true')
 	parser.add_argument('-l', '--log', help='File to log messages to', type=str, dest='logfile')
-	parser.add_argument('-p', '--populate-db', help='Populate the PES DB with game info', dest='populateDb', action='store_true')
-	parser.add_argument('--delete-db', help='Delete the PES database before start-up', dest='deleteDb', action='store_true')
 	args = parser.parse_args()
 
 	logLevel = logging.INFO
@@ -30,13 +27,6 @@ if __name__ == "__main__":
 	logging.debug("PES %s, date: %s, author: %s" % (pes.VERSION_NUMBER, pes.VERSION_DATE, pes.VERSION_AUTHOR))
 	logging.debug("base dir: %s" % pes.baseDir)
 
-	if args.populateDb:
-		logging.info("PES will populate its database with game info for later use")
-
-	if args.deleteDb and os.path.exists(pes.userDb):
-		logging.info("Deleting %s" % pes.userDb)
-		os.remove(pes.userDb)
-
 	checkDir(pes.baseDir)
 	checkFile(pes.qmlMain)
 	checkDir(pes.qmlDir)
@@ -50,12 +40,13 @@ if __name__ == "__main__":
 	mkdir(pes.userRetroArchJoysticksConfDir)
 	mkdir(pes.userViceConfDir)
 	initConfig()
+	initDb()
 
 	checkFile(pes.userPesConfigFile)
-	checkFile(pes.userGamesCatalogueFile)
+	checkFile(pes.userDb)
 	checkFile(pes.userConsolesConfigFile)
 	checkFile(pes.userGameControllerFile)
-	checkFile(pes.rasumExe)
+	#checkFile(pes.rasumExe)
 
 	logging.info("loading settings...")
 	checkFile(pes.userPesConfigFile)
@@ -92,5 +83,5 @@ if __name__ == "__main__":
 		pes.common.pesExit("failed to load SDL2 control pad mappings from: %s" % pes.userGameControllerFile)
 	logging.debug("loaded %d control pad mappings" % mappingsLoaded)
 
-	app = PESGuiApplication(sys.argv, args.populateDb)
+	app = PESGuiApplication(sys.argv)
 	app.run()
