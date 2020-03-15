@@ -37,7 +37,11 @@ def connect(db=pes.userDb):
 def createAll(engine):
 	Base.metadata.create_all(engine)
 
-class Console(Base):
+class CustomBase(object):
+	def getJson(self):
+		return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+class Console(Base, CustomBase):
 	__tablename__ = "console"
 
 	id = Column(Integer, primary_key=True)
@@ -48,7 +52,7 @@ class Console(Base):
 	def __repr__(self):
 		return "<Console id=%s name=%s gamesDbId=%s retroId=%s>" % (self.id, self.name, self.gamesDbId, self.retroId)
 
-class Game(Base):
+class Game(Base, CustomBase):
 	__tablename__ = "game"
 
 	id = Column(Integer, primary_key=True)
@@ -63,13 +67,13 @@ class Game(Base):
 
 	console = relationship("Console", back_populates="games")
 
-class MameGame(Base):
+class MameGame(Base, CustomBase):
 	__tablename__ = "mame_game"
 
 	shortName = Column(String, primary_key=True)
 	name = Column(String)
 
-class RetroAchievementGame(Base):
+class RetroAchievementGame(Base, CustomBase):
 	__tablename__ = "retroachievement_game"
 	id = Column(Integer, primary_key=True)
 	rasum = Column(String, index=True)
