@@ -22,7 +22,7 @@ ApplicationWindow {
 	    target: backend
 
 			onHomeButtonPress: {
-				dialog.open();
+				pesDialog.open();
 	      popupMenuView.forceActiveFocus();
 			}
 
@@ -36,7 +36,7 @@ ApplicationWindow {
     id: closeDialog
     modal: true
     width: 500
-    height: 300
+    height: 150
     x: (parent.width - width) / 2
     y: (parent.height - height) / 2
 
@@ -47,7 +47,7 @@ ApplicationWindow {
     }
 
     ColumnLayout {
-      spacing: 50
+      spacing: 10
       Text {
         color: Colour.text
         font.pointSize: FontStyle.dialogSize
@@ -55,7 +55,7 @@ ApplicationWindow {
       }
 
       RowLayout {
-        spacing: 50
+        spacing: 10
 
         DialogButton {
 					id: exitYesBtn
@@ -85,23 +85,31 @@ ApplicationWindow {
         }
       }
     }
+
+		onOpened: {
+			exitYesBtn.forceActiveFocus()
+		}
   }
 
   Dialog {
-    id: dialog
+    id: pesDialog
     modal: true
     width: 500
-    height: 600
+    height: 274
     x: (parent.width - width) / 2
     y: (parent.height - height) / 2
 
     background: Rectangle {
-      color: Colour.dialogBg
+      color: Colour.menuBg
       border.color: Colour.line
     }
 
     ListModel {
       id: popupMenu
+
+      ListElement {
+        name: "Update Games"
+      }
 
       ListElement {
         name: "Settings"
@@ -125,27 +133,24 @@ ApplicationWindow {
       anchors.fill: parent
       focus: true
       model: popupMenu
-      delegate: menuDelegate
+      delegate: MenuDelegate {
+				Keys.onReturnPressed: PES.pesDialogEvent(text);
+			}
       keyNavigationEnabled: true
       keyNavigationWraps: true
     }
+
+		onOpened: popupMenuView.forceActiveFocus()
   }
 
   Shortcut {
     sequence: "Home"
-    onActivated: {
-      dialog.open();
-      popupMenuView.forceActiveFocus()
-    }
+    onActivated: pesDialog.open()
   }
 
   Shortcut {
     sequence: "Esc"
-    onActivated: {
-      console.debug("exit dialog");
-      closeDialog.open()
-			exitYesBtn.forceActiveFocus()
-    }
+    onActivated: closeDialog.open()
   }
 
 	Text {
@@ -206,25 +211,6 @@ ApplicationWindow {
       }
     }
 
-    Component {
-      id: menuDelegate
-      Rectangle {
-        height: 50
-        width: parent.width
-        color: focus ? Colour.menuFocus : Colour.menuBg
-
-        Keys.onPressed: {
-
-        }
-
-        Text {
-          text: name
-          color: parent.focus ? Colour.text : Colour.menuText
-          font.pointSize: FontStyle.menuSize
-        }
-      }
-    }
-
     Rectangle {
       id: menuRect
       x: 0
@@ -252,7 +238,9 @@ ApplicationWindow {
             anchors.fill: parent
             focus: true
             model: menuModel
-            delegate: menuDelegate
+            delegate: MenuDelegate {
+							Keys.onReturnPressed: PES.mainMenuEvent(text);
+						}
             keyNavigationEnabled: true
             keyNavigationWraps: false
           }
@@ -260,12 +248,7 @@ ApplicationWindow {
       }
     }
 
-    Component.onCompleted: {
-      var consoles = backend.getConsoles(true);
-      for (var i = 0; i < consoles.length; i++){
-        menuModel.append(consoles[i]);
-      }
-    }
+    Component.onCompleted: PES.updateMenuModel()
   }
 
 	StackLayout {
@@ -294,6 +277,7 @@ ApplicationWindow {
       Text {
         id: noGamesText
         y: welcomeText.height + 10
+        visible: false
         padding: 10
         text: "You have not added any games to PES yet. To do so press the Home button and select 'Update Games' option."
         font.pointSize: FontStyle.bodySize
@@ -303,6 +287,8 @@ ApplicationWindow {
         wrapMode: Text.Wrap
         width: parent.width // must set width for wrapping to work
       }
+
+      Component.onCompleted: PES.updateHomeScreen()
     }
 	}
 }

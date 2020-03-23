@@ -1,19 +1,42 @@
-function addLeadingZero(x) {
-  if (x >= 10){
-    return x;
-  }
-  return "0" + x;
+
+function getConsolesWithGames() {
+  return backend.getConsoles();
 }
 
-function getTime(){
-  var d = new Date();
-  var s = '';
-  var days = d.getDate();
-  var month = d.getMonth() + 1;
-  var year = d.getYear() + 1900;
-  var hours = d.getHours();
-  var mins = d.getMinutes();
-  var secs = d.getSeconds();
+function mainMenuEvent(text) {
+	switch(text) {
 
-  return addLeadingZero(hours) + ':' + addLeadingZero(mins) + ':' + addLeadingZero(secs) + ' ' + addLeadingZero(days) + '/' + addLeadingZero(month) + '/' + year;
+	}
+}
+
+function pesDialogEvent(text) {
+	switch(text) {
+		case "Update Games": {
+			break;
+		}
+		case "Exit": {
+			pesDialog.close();
+			closeDialog.open();
+			break;
+		}
+	}
+}
+
+function updateHomeScreen() {
+  if (menuModel.count == 1) {
+    noGamesText.visible = true;
+  }
+}
+
+function updateMenuModel() {
+  // remove existing entries
+  if (menuModel.count > 1) {
+    for (var i = menuModel.count - 1; i > 1; i--) {
+      menuModel.remove(i);
+    }
+  }
+  var consoles = getConsolesWithGames();
+  for (var i = 0; i < consoles.length; i++) {
+    menuModel.append(consoles[i]);
+  }
 }
