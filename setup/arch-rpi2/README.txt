@@ -29,7 +29,7 @@ wget http://archlinuxarm.org/os/ArchLinuxARM-rpi-2-latest.tar.gz
 mount /dev/sdd1 boot
 mount /dev/sdd2 root
 cd root
-tar xvfz ../ArchLinuxARM-rpi2-latest.tar.gz
+tar xvfz ../ArchLinuxARM-rpi-2-latest.tar.gz
 cd boot
 mv * ../../boot/
 
