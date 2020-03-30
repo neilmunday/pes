@@ -1,0 +1,53 @@
+#
+#    This file is part of the Pi Entertainment System (PES).
+#
+#    PES provides an interactive GUI for games console emulators
+#    and is designed to work on the Raspberry Pi.
+#
+#    Copyright (C) 2020 Neil Munday (neil@mundayweb.com)
+#
+#    PES is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    PES is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with PES.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+---
+
+- name: "add pi group"
+  group:
+    name: pi
+    state: present
+
+- name: "add sudoers group"
+  group:
+    name: sudoers
+    state: present
+
+- name: "create /etc/sudoers.d/sudoers"
+  copy:
+    src: sudoers
+    dest: /etc/sudoers.d/sudoers
+    owner: root
+    group: root
+    mode: 0700
+    validate: /usr/sbin/visudo -csf %s
+
+- name: "add pi user"
+  user:
+    name: pi
+    comment: pi
+    group: pi
+    groups: audio,input,video,users,sudoers
+    password: $6$GvT7CN63Xj0gDNQl$EuxZ1x/z6HjhK/ttjcsGzscBAnwftbI81CkJ1Y9FJwaCXyNKaiR9zRZ7dhScXTaz8/RytZwQZVUprQdROPGcG0
+    create_home: true
+    home: /home/pi
+    state: present
