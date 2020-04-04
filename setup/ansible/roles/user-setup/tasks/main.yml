@@ -51,3 +51,14 @@
     create_home: true
     home: /home/pi
     state: present
+
+- name: "remove alarm user"
+  user:
+    name: alarm
+    state: absent
+    force: yes
+
+- name: "remove alarm group"
+  group:
+    name: alarm
+    state: absent
