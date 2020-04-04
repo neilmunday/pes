@@ -21,16 +21,8 @@
 #
 
 ---
-- name: "performing initial set-up of PES"
-  hosts: localhost
-  connection: local
-  roles:
-    - name: install-packages
-      tags: [ install-packages ]
-    - name: user-setup
-      tags: [ user-setup ]
-    - name: customise-os
-      tags: [ customise-os ]
-    - name: timesyncd
-      tags: [ timesyncd ]
-      
+- name: restart systemd-timesyncd
+  service:
+    name: systemd-timesyncd
+    state: restarted
+  listen: "restart systemd-timesyncd"
