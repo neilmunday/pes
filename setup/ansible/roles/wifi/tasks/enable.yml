@@ -1,0 +1,56 @@
+#
+#    This file is part of the Pi Entertainment System (PES).
+#
+#    PES provides an interactive GUI for games console emulators
+#    and is designed to work on the Raspberry Pi.
+#
+#    Copyright (C) 2020 Neil Munday (neil@mundayweb.com)
+#
+#    PES is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    PES is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with PES.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+---
+- name: "create /etc/wpa_supplicant/wpa_supplicant-wlan0.conf"
+  template:
+    src: wpa_supplicant-wlan0.conf.j2
+    dest: /etc/wpa_supplicant/wpa_supplicant-wlan0.conf
+    owner: root
+    group: root
+    mode: 0600
+  notify:
+    - restart wlan0
+
+- name: "create /etc/systemd/network/wlan0.network"
+  copy:
+    src: wlan0.network
+    dest: /etc/systemd/network/wlan0.network
+    owner: root
+    group: root
+    mode: 0600
+
+- name: "create dhcpd hook"
+  file:
+    state: link
+    src: /usr/share/dhcpcd/hooks/10-wpa_supplicant
+    dest: /usr/lib/dhcpcd/dhcpcd-hooks/10-wpa_supplicant
+    owner: root
+    group: root
+  notify:
+    - restart dhcpcd
+
+- name: "enable wlan0"
+  service:
+    name: wpa_supplicant@wlan0
+    state: started
+    enabled: yes
