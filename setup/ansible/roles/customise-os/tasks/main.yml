@@ -21,8 +21,35 @@
 #
 
 ---
+
+- name: "set hostname"
+  hostname:
+    name: pes
+
+- name: "set timezone to Europe/London"
+  timezone:
+    name: Europe/London
+
+- name: "set keyboard layout to UK"
+  command: localectl set-keymap --no-convert uk
+
+- name: "disable DNSSEC - we don't have a RTC"
+  lineinfile:
+    path: /etc/systemd/resolved.conf
+    regexp: '^DNSSEC='
+    insertafter: '^#DNSSEC='
+    line: DNSSEC=no
+
 - name: "enable dhcpcd"
   service:
     name: dhcpcd
     state: started
     enabled: yes
+
+- name: "set-up root .bash_profile"
+  copy:
+    src: bash_profile
+    dest: /root/.bash_profile
+    owner: root
+    group: root
+    mode: 0600
