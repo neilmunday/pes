@@ -30,6 +30,7 @@
       - automake
       - bison
       - byacc
+      - dhcpcd
       - dosfstools
       - fakeroot
       - flex
