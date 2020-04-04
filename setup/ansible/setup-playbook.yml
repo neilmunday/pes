@@ -29,3 +29,6 @@
       tags: [ install-packages ]
     - name: user-setup
       tags: [ user-setup ]
+    - name: customise-os
+      tags: [ customise-os ]
+      
