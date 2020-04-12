@@ -35,6 +35,7 @@
       - fakeroot
       - flex
       - gcc
+      - git
       - cmake
       - crda
       - iw
@@ -44,6 +45,7 @@
       - kodi-rbp-eventclients
       - kodi-rbp-tools-texturepacker
       - make
+      - man
       - mesa
       - mesa-libgl
       - mc
