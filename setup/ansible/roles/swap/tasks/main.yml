@@ -21,17 +21,39 @@
 #
 
 ---
-- name: "performing initial set-up of PES"
-  hosts: localhost
-  connection: local
-  roles:
-    - name: install-packages
-      tags: [ install-packages ]
-    - name: user-setup
-      tags: [ user-setup ]
-    - name: customise-os
-      tags: [ customise-os ]
-    - name: timesyncd
-      tags: [ timesyncd ]
-    - name: swap
-      tags: [ swap ]  
+
+- name: "set fact"
+  set_fact:
+    swap_file: "/swap"
+
+- name: "check for swap file"
+  stat:
+    path: "{{ swap_file }}"
+  register: swap_file_check
+
+- name: "create swap file"
+  command: fallocate -l 128M {{ swap_file }}
+  when: not swap_file_check.stat.exists
+
+- name: "set swap file permissions"
+  file:
+    path: "{{ swap_file }}"
+    owner: root
+    group: root
+    mode: 0600
+
+- name: "format swap file"
+  command: mkswap {{ swap_file }}
+  when: not swap_file_check.stat.exists
+
+- name: "add fstab entry for swap file"
+  mount:
+    name: none
+    src: "{{ swap_file }}"
+    fstype: swap
+    opts: defaults
+    state: present
+
+- name: "turn swap on"
+  command: swapon {{ swap_file }}
+  when: not swap_file_check.stat.exists
