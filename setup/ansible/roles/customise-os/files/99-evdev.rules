@@ -1,0 +1,2 @@
+# Ansible managed
+KERNEL=="event*", NAME="input/%k", MODE="666"

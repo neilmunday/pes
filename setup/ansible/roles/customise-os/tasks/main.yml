@@ -33,6 +33,20 @@
 - name: "set keyboard layout to UK"
   command: localectl set-keymap --no-convert uk
 
+- name: "disable core files"
+  lineinfile:
+    path: /etc/systemd/system.conf
+    regexp: '^DumpCore='
+    insertafter: '^#DumpCore='
+    line: DumpCore=no
+
+- name: "limit journal file to 50MB"
+  lineinfile:
+    path: /etc/systemd/journald.conf
+    regexp: '^SystemMaxUse='
+    insertafter: '^#SystemMaxUse='
+    line: SystemMaxUse=50M
+
 - name: "disable DNSSEC - we don't have a RTC"
   lineinfile:
     path: /etc/systemd/resolved.conf
@@ -46,10 +60,42 @@
     state: started
     enabled: yes
 
+- name: "add udev rules for USB control pads"
+  copy:
+    src: 99-evdev.rules
+    dest: /etc/udev/rules.d/99-evdev.rules
+    owner: root
+    group: root
+    mode: 0644
+
 - name: "set-up root .bash_profile"
   copy:
     src: bash_profile
     dest: /root/.bash_profile
     owner: root
     group: root
+    mode: 0600
+
+- name: "set-up root .bashrc"
+  copy:
+    src: bashrc
+    dest: /root/.bashrc
+    owner: root
+    group: root
+    mode: 0600
+
+- name: "set-up pi .bash_profile"
+  copy:
+    src: bash_profile
+    dest: /home/pi/.bash_profile
+    owner: pi
+    group: pi
+    mode: 0600
+
+- name: "set-up pi .bashrc"
+  copy:
+    src: bashrc
+    dest: /home/pi/.bashrc
+    owner: pi
+    group: pi
     mode: 0600

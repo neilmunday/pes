@@ -1,2 +1,7 @@
-alias ll='ls -l'
+#
+# ~/.bash_profile
+#
 
+# Ansible managed
+
+[[ -f ~/.bashrc ]] && . ~/.bashrc
