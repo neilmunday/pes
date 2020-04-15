@@ -99,3 +99,10 @@
     owner: pi
     group: pi
     mode: 0600
+
+- name: "set-up makepkg.conf"
+  lineinfile:
+    path: /etc/makepkg.conf
+    regexp: '^MAKEFLAGS='
+    insertafter: '^#MAKEFLAGS='
+    line: MAKEFLAGS="-j {{ ansible_processor_vcpus }}"
