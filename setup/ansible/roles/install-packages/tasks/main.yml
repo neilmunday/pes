@@ -32,6 +32,7 @@
       - byacc
       - dhcpcd
       - dosfstools
+      - dtc
       - fakeroot
       - flex
       - gcc
