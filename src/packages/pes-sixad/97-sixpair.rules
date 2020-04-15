@@ -1,0 +1,2 @@
+SUBSYSTEM=="usb", ATTRS{idVendor}=="054c", ENV{idProduct}="0268", RUN+="/usr/bin/sixpair"
+SUBSYSTEM=="input", ATTR{name}=="PLAYSTATION(R)3 Controller*", RUN+="/usr/bin/sixpair"

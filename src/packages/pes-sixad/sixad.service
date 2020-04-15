@@ -1,0 +1,13 @@
+[Unit]
+Description=SixAxis daemon
+After=sys-subsystem-bluetooth-devices-hci0.device
+Requires=sys-subsystem-bluetooth-devices-hci0.device
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/sixad-bin 0 0 0
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,70 @@
+pkgname=('pes-sixad')
+pkgver=1.5.1.74
+pkgrel=1
+pkgdesc="PlayStation 3 SixAxis daemon and utilities based on qtsixa"
+arch=('i686' 'x86_64' 'armv6h' 'armv7h')
+license=('GPL')
+depends=('bluez' 'bluez-libs' 'libusb-compat')
+makedepends=('patch' 'bluez-libs')
+conflicts=('sixpair' 'qtsixa')
+replaces=('qtsixa')
+source=(git+git://github.com/falkTX/qtsixa
+	makefile.patch
+	sixad.service
+	uinput.patch
+	97-sixpair.rules
+)
+md5sums=('SKIP' '0f27258594bca11e444627c53b295c04' '2dae9f66764d5446159e6af5e72aaded' '6205d115842120a629a94d88fc8f0822' '456716430e080cdcc2d1851c85675ed7')
+
+pkgver() {
+  cd "$srcdir"/qtsixa
+
+  version=$(grep "QtSixA version" qtsixa/gui/main.py | sed 's/  print "QtSixA version: //' | sed 's/"//')
+  revision=$(git rev-list --count HEAD)
+
+  echo $version.$revision
+}
+
+prepare() {
+	cd "$srcdir"/qtsixa/sixad
+	patch < "$srcdir"/makefile.patch
+	patch < "$srcdir"/uinput.patch
+	cd "$srcdir"/qtsixa
+	sed -i 's:/sbin/:/bin/:g' qtsixa/gui/qtsixa_main.py
+	sed -i 's: /bin/: /usr/bin/:g' qtsixa/gui/qtsixa_main.py
+	sed -i 's:/sbin/:/bin/:g' utils/Makefile
+	sed -i 's:/sbin/:/bin/:g' sixad/Makefile
+	sed -i 's: /sbin/: /usr/bin/:g' sixad/sixad
+	sed -i 's: /usr/sbin/: /usr/bin/:g' sixad/sixad
+	sed -i 's:/sbin/:/bin/:g' sixad/bluetooth.cpp
+}
+
+build() {
+	cd "$srcdir"/qtsixa/sixad
+	make || exit 1
+	cd "$srcdir"/qtsixa/utils
+	gcc -lusb -o sixpair sixpair.c || exit 1
+}
+
+package() {
+	install -d "$pkgdir"/usr/lib/systemd/system/
+	install -m 644 "$srcdir"/sixad.service "$pkgdir"/usr/lib/systemd/system/
+	install -d "$pkgdir"/etc/udev/rules.d
+	install -m 644 "$srcdir"/97-sixpair.rules "$pkgdir"/etc/udev/rules.d/
+	cd "$srcdir"/qtsixa/sixad
+	install -d "$pkgdir"/etc/default/
+	install -d "$pkgdir"/etc/logrotate.d/
+	install -d "$pkgdir"/usr/bin/
+	install -d "$pkgdir"/var/lib/sixad/
+	install -d "$pkgdir"/var/lib/sixad/profiles/
+	#install -m 644 sixad.default "$pkgdir"/etc/default/sixad
+	#install -m 644 sixad.log "$pkgdir"/etc/logrotate.d/sixad
+	#install -m 755 sixad "$pkgdir"/usr/bin/
+	install -m 755 bins/sixad-bin "$pkgdir"/usr/bin/
+	install -m 755 bins/sixad-sixaxis "$pkgdir"/usr/bin/
+	install -m 755 bins/sixad-remote "$pkgdir"/usr/bin/
+	install -m 755 bins/sixad-3in1 "$pkgdir"/usr/bin/
+	install -m 755 bins/sixad-raw "$pkgdir"/usr/bin/
+	cd "$srcdir"/qtsixa/utils
+	install -m 755 sixpair "$pkgdir"/usr/bin/
+}
