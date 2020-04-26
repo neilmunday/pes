@@ -43,6 +43,7 @@ Edit ~/rpi/boot/cmdline.txt and uncomment the Turbo over clocking section.
 
 Also set check the following are set:
 
+	hdmi_ignore_edid=0xa5000080
 	gpu_mem=384
 	dtparam=audio=on
 	dtoverlay=vc4-fkms-v3d
