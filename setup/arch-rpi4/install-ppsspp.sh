@@ -46,7 +46,7 @@ for p in $patchDir/*.patch; do
 	echo "Applying patch ${p}..."
 	patch < $p
 done
-run ./linux_rpi.sh
+#run ./linux_rpi.sh
 cd ..
 # apply SDL patches
 cd SDL
@@ -59,12 +59,24 @@ done
 cd ..
 run mkdir build
 cd build
-cmake -D SDL2_LIBRARY:PATH=/opt/sdl2/default/lib/libSDL2.so \
+#cmake -D SDL2_LIBRARY:PATH=/opt/sdl2/default/lib/libSDL2.so \
+#-D SDL2_INCLUDE_DIR:PATH=/opt/sdl2/default/include/SDL2 \
+#-D CMAKE_INSTALL_PREFIX:PATH=$installDir \
+#-D CMAKE_TOOLCHAIN_FILE=../cmake/Toolchains/raspberry.armv7.cmake \
+#-D USING_X11_VULKAN=0 \
+#..
+cmake -D CMAKE_INSTALL_PREFIX:PATH=$installDir \
+-D SDL2_LIBRARY:PATH=/opt/sdl2/default/lib/libSDL2.so \
 -D SDL2_INCLUDE_DIR:PATH=/opt/sdl2/default/include/SDL2 \
--D CMAKE_INSTALL_PREFIX:PATH=$installDir \
--D CMAKE_TOOLCHAIN_FILE=../cmake/Toolchains/raspberry.armv7.cmake \
--D USING_X11_VULKAN=0 \
-..
+-DARMV7=ON \
+-DUSING_EGL=OFF \
+-DUSING_GLES2=ON \
+-DUSING_X11_VULKAN=OFF \
+-DUSE_WAYLAND_WSI=OFF \
+-DUSING_FBDEV=ON \
+-DUSING_QT_UI='OFF' \
+-DUSE_FFMPEG=yes \
+-DUSE_SYSTEM_FFMPEG=yes ..
 make -j 4
 cd ..
 checkFile build/PPSSPPSDL
