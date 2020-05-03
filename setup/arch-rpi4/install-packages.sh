@@ -37,7 +37,7 @@ run sudo pacman -S bluez-libs bluez-utils \
 	autoconf automake bison byacc flex gcc git cmake make patch pkg-config scons swig vim wget xa \
 	libusb-compat linuxconsole \
 	python2 python2-pip python2-imaging \
-	ffmpeg freetype2 \
+	freetype2 \
 	dosfstools parted \
 	mc \
 	rsync \
