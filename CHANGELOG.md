@@ -1,6 +1,15 @@
 PES Changelog
 =============
 
+PES 2.9
+-------
+
+Date: 2021-03-04
+
+Changes:
+
+* Incorporated https://github.com/Pi-Entertainment-System/rasum to address issue #47
+
 PES 2.8
 -------
 
