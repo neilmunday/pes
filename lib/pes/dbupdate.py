@@ -261,16 +261,14 @@ class ConsoleTask(object):
 					achievementApiId = -1
 					if self.console.getAchievementApiId() != "NULL":
 						# work out rasum (if applicable)
-						if consoleName == "NES":
-							command = "%s -t nes \"%s\"" % (rasumExe, rom)
-						else:
-							command = "%s \"%s\"" % (rasumExe, rom)
+						command = "%s -i %s '%s'" % (rasumExe, self.console.getAchievementApiId(), rom)
 						process = Popen(command, stdout=PIPE, stderr=PIPE, shell=True)
 						stdout, stderr = process.communicate()
 						if process.returncode != 0:
 							logging.error("Failed to run command: %s\nstdout: %s\nstderr: %s\n" % (command, stdout, stderr))
 						else:
 							rasum = stdout.replace("\n", "")
+							logging.debug("rasum for %s is: \"%s\"" % (rom, rasum))
 							# now look-up achievement API ID from retroachievements.org
 							try:
 								request = urllib2.Request("http://www.retroachievements.org/dorequest.php", urllib.urlencode({'r': 'gameid', 'm': rasum}))
