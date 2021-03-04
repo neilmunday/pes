@@ -6,7 +6,7 @@
 #    PES provides an interactive GUI for games console emulators
 #    and is designed to work on the Raspberry Pi.
 #
-#    Copyright (C) 2020 Neil Munday (neil@mundayweb.com)
+#    Copyright (C) 2021 Neil Munday (neil@mundayweb.com)
 #
 #    PES is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -27,12 +27,13 @@ source $functions || exit 1
 
 header "Installing rasum"
 
-rasum="$rootDir/src/rasum/rasum.c"
-checkFile $rasum
 run cd $buildDir
 rmSourceDir rasum
-run mkdir rasum
+run git clone https://github.com/Pi-Entertainment-System/rasum
+checkDir rasum
 cd rasum
-run gcc -lcrypto -lssl -o rasum $rasum
+run git submodule init
+run git submodule update
+run make
 run checkFile rasum
 run sudo install -D -m 0755 -v rasum $pesDir/bin/rasum
