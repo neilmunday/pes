@@ -25,7 +25,7 @@
 functions=`realpath $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../common/functions.sh`
 source $functions || exit 1
 
-VERSION="2.0.12"
+VERSION="2.0.14"
 
 sdl2Tar=$srcDir/SDL2-${VERSION}.tar.gz
 sdl2Dir=$buildDir/SDL2-${VERSION}
@@ -119,7 +119,7 @@ run make -j 2
 run sudo make install
 
 header "Download SDL GFX"
-sdl2GFXVersion=1.0.3
+sdl2GFXVersion=1.0.4
 sdl2GFXTar=$srcDir/SDL2_gfx-${sdl2GFXVersion}.tar.gz
 sdl2GFXDir=$buildDir/SDL2_gfx-${sdl2GFXVersion}
 
