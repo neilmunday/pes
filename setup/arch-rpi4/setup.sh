@@ -37,20 +37,11 @@ run $setupDir/install-packages.sh
 header "Installing yaourt..."
 run $setupDir/install-yaourt.sh
 
-header "Installing bluez-ps3.."
-run $setupDir/install-bluez-ps3.sh
-
 header "Customising OS..."
 run $setupDir/customise-os.sh
 
-header "Installing GCC 5.4"
-run $setupDir/install-gcc54.sh
-
 header "Installing splash screen..."
 run $setupDir/install-splash-screen.sh
-
-header "Installing Raspberry Pi 3 Bluetooth support..."
-run $setupDir/install-pi-bluetooth.sh
 
 header "Setting up PS3 Bluetooth control pad support.."
 run $setupDir/install-qtsixad.sh
@@ -82,6 +73,7 @@ run $setupDir/install-stella-libretro.sh
 run $setupDir/install-ppsspp.sh
 run $setupDir/install-blueMSX-libretro.sh
 run $setupDir/install-vice.sh
+run $setupDir/install-mupen64plus-nx.sh
 
 header "Installing rasum..."
 run $setupDir/install-rasum.sh
