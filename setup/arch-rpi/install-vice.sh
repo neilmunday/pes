@@ -25,7 +25,7 @@
 functions=`realpath $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../common/functions.sh`
 source $functions || exit 1
 
-version=3.3
+version=3.5
 
 cd $buildDir
 
@@ -48,7 +48,7 @@ export CFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -I/op
 export CXXFLAGS=$CFLAGS
 export PATH=/opt/sdl2/default/bin:$PATH
 
-run ./configure --prefix=$PREFIX --enable-sdlui2 --disable-sdlui --without-pulse --without-oss
+run ./configure --prefix=$PREFIX --enable-sdlui2 --disable-sdlui --without-pulse --without-oss --disable-pdf-docs
 run make V=1
 run sudo make install
 
