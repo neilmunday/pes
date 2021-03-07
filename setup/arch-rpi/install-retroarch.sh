@@ -37,7 +37,7 @@ checkDir $retroarchDir
 header "Building RetroArch"
 
 cd $retroarchDir
-run git checkout tags/v1.7.8.3
+run git checkout 9086d241a7f20208cf279f6a7e877ae7bdca325d
 
 run sudo mkdir -p $retroArchCoresDir
 run sudo mkdir -p $retroArchConfigDir
