@@ -9,6 +9,12 @@ Date: 2021-03-04
 Changes:
 
 * Incorporated https://github.com/Pi-Entertainment-System/rasum to address issue #47
+* Added RetroArch assets
+* Updated Vice to version 3.5
+* Updated SDL2 to version 2.0.14
+* Updated RetroArch to commit 9086d241a7f20208cf279f6a7e877ae7bdca325d (v1.90 + updates)
+* Updated mupen64plus-libretro-nx to commit b494ebf2da202f67dbd88c3c915262bb58f1c6ba
+* Removed install-pi-bluetooth.sh install-bluez-ps3.sh as no longer required with recent Arch Linux updates
 
 PES 2.8
 -------
