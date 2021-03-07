@@ -38,4 +38,4 @@ export CFLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -O3"
 export CXXFLAGS=$CFLAGS
 run make -j
 checkFile snes9x2002_libretro.so
-run sudo cp snes9x2002_libretro.so $retroArchCoresDir/pocketsnes_libretro.so
+run sudo cp snes9x2002_libretro.so $retroArchCoresDir/
