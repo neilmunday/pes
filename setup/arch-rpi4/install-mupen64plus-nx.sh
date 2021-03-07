@@ -32,6 +32,7 @@ rmSourceDir "mupen64plus-libretro-nx"
 run git clone https://github.com/libretro/mupen64plus-libretro-nx
 checkDir mupen64plus-libretro-nx
 cd mupen64plus-libretro-nx
+run git checkout b494ebf2da202f67dbd88c3c915262bb58f1c6ba
 run make -j 4 WITH_DYNAREC=arm platform=rpi4 V=1
 checkFile mupen64plus_next_libretro.so
 run sudo cp -v mupen64plus_next_libretro.so $retroArchCoresDir
