@@ -39,14 +39,14 @@ Check that ~/rpi/boot/cmdline.txt contains:
 
 This option tells the boot loader which device to use as the root partition. In our case it must be the second partition on the SD card.
 
-Edit ~/rpi/boot/cmdline.txt and uncomment the Turbo over clocking section.
-
-Also set check the following are set:
+Edit ~/rpi/boot/config.txt and check the following are set:
 
 	gpu_mem=384
 	dtparam=audio=on
 	disable_overscan=0
 	overscan_scale=1
+	dtparam=krnbt=on
+  enable_uart=0
 
 The extra GPU RAM is required for some of the emulators, e.g. Mupen64Plus and the "dtpara=audio" parameter enables the ALSA kernel module required for sound.
 
@@ -104,11 +104,7 @@ Edit /etc/motd and set as you wish, e.g. sudo nano /etc/motd
 
 	Welcome to the Pi Entertainment System (PES)
 
-	Image Version: 2015-08-17 (Raspberry Pi 2, Arm7)
-
-	PES Version: 1.4
-
-	Website: http://pes.mundayweb.com
+	Website: https://pes.mundayweb.com
 
 Check out the PES git repo:
 

@@ -39,9 +39,7 @@ Check that ~/rpi/boot/cmdline.txt contains:
 
 This option tells the boot loader which device to use as the root partition. In our case it must be the second partition on the SD card.
 
-Edit ~/rpi/boot/cmdline.txt and uncomment the Turbo over clocking section.
-
-Also set check the following are set:
+Edit ~/rpi/boot/config.txt and check the following are set:
 
 	hdmi_ignore_edid=0xa5000080
 	gpu_mem=384
@@ -49,6 +47,8 @@ Also set check the following are set:
 	dtoverlay=vc4-fkms-v3d
 	disable_overscan=0
 	overscan_scale=1
+	dtparam=krnbt=on
+  enable_uart=0
 
 The extra GPU RAM is required for some of the emulators, e.g. Mupen64Plus and the "dtpara=audio" parameter enables the ALSA kernel module required for sound.
 
@@ -106,11 +106,7 @@ Edit /etc/motd and set as you wish, e.g. sudo nano /etc/motd
 
 	Welcome to the Pi Entertainment System (PES)
 
-	Image Version: 2015-08-17 (Raspberry Pi 2, Arm7)
-
-	PES Version: 1.4
-
-	Website: http://pes.mundayweb.com
+	Website: https://pes.mundayweb.com
 
 Check out the PES git repo:
 
@@ -128,7 +124,7 @@ Note: the /data partition will be automatically created when PES first loads.
 
 Now put the kettle on for the next step (you might need to leave this going overnight):
 
-	cd ~/pes/setup/arch-rpi2
+	cd ~/pes/setup/arch-rpi4
 	./setup.sh
 
 Or you can opt to run each "install-" script yourself. Note: not all are run by setup.sh as some install emulators etc. that are not production ready.

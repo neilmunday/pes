@@ -39,7 +39,7 @@ Check that ~/rpi/boot/cmdline.txt contains:
 
 This option tells the boot loader which device to use as the root partition. In our case it must be the second partition on the SD card.
 
-Edit ~/rpi/boot/cmdline.txt and uncomment the Turbo over clocking section.
+Edit ~/rpi/boot/config.txt and uncomment the Turbo over clocking section.
 
 Also set check:
 
@@ -104,11 +104,7 @@ Edit /etc/motd and set as you wish, e.g. sudo nano /etc/motd
 
 	Welcome to the Pi Entertainment System (PES)
 
-	Image Version: 2015-08-17 (Raspberry Pi, Arm6)
-
-	PES Version: 1.4
-
-	Website: http://pes.mundayweb.com
+	Website: https://pes.mundayweb.com
 
 Check out the PES git repo:
 
