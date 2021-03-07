@@ -60,6 +60,7 @@ run $setupDir/install-libcec.sh
 
 header "Installing up RetroArch..."
 run $setupDir/install-retroarch.sh
+run $setupDir/install-retroarch-assets.sh
 
 header "Installing emulator cores..."
 run $setupDir/install-beetle-pce-fast-libretro.sh
