@@ -710,6 +710,9 @@ class List(UIObject):
 		for l in self.__listeners:
 			l.processListEvent(self, eventType, item)
 
+	def getMenu(self):
+		return self.__menu
+
 	def processEvent(self, event):
 		if self.visible and self.hasFocus():
 			if event.type == sdl2.SDL_KEYUP:

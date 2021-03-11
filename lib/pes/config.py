@@ -77,6 +77,12 @@ class PESConfig(object):
 			logging.warning("PESConfig.init: Kodi command not found, disabling Kodi menu item")
 			self.kodiCommand = None
 
+		# audio settings
+		if self.__configParser.has_section("Audio"):
+			self.audioDevice = self.__configParser.get("Audio", "device")
+		else:
+			self.audioDevice = None
+
 		# RetroAchievements settings
 		if self.__configParser.has_section("RetroAchievements"):
 			self.retroAchievementsUserName = self.__configParser.get("RetroAchievements", "username")
@@ -116,4 +122,6 @@ class PESConfig(object):
 			self.__configParser.write(f)
 
 	def set(self, section, option, value):
+		if not self.__configParser.has_section(section):
+			self.__configParser.add_section(section)
 		self.__configParser.set(section, option, value)
