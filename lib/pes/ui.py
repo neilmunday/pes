@@ -50,10 +50,11 @@ class Menu(object):
 	LISTEN_ITEM_INSERTED = 4
 	LISTEN_ITEM_TOGGLED = 5
 
-	def __init__(self, items):
+	def __init__(self, items, canToggleAll=True):
 		super(Menu, self).__init__()
 		self.__selected = 0
 		self.__items = items
+		self.__canToggleAll = canToggleAll
 		self.__listeners = []
 		logging.debug("Menu.init: Menu initialised")
 
@@ -131,13 +132,18 @@ class Menu(object):
 		self.__items = sorted(self.__items, key=lambda item: item.getText())
 
 	def toggleAll(self, toggle):
-		for i in self.__items:
-			if i.isToggable():
-				i.toggle(toggle)
-				self.__fireListenEvent(Menu.LISTEN_ITEM_TOGGLED, i)
+		if self.__canToggleAll or (not self.__canToggleAll and not toggle):
+			for i in self.__items:
+				if i.isToggable():
+					i.toggle(toggle)
+					self.__fireListenEvent(Menu.LISTEN_ITEM_TOGGLED, i)
+		else:
+			raise Exception("Menu.toggleAll: cannot toggle all when canToggleAll is False!")
 
 	def toggle(self, i, t):
 		if i >= 0 and i < len(self.__items):
+			if not self.__canToggleAll:
+				self.toggleAll(False)
 			if self.__items[i].isToggable():
 				self.__items[i].toggle(t)
 				self.__fireListenEvent(Menu.LISTEN_ITEM_TOGGLED, self.__items[i])
