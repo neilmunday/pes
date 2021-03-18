@@ -33,8 +33,6 @@ rmSourceDir "vice-libretro"
 run git clone https://github.com/libretro/vice-libretro
 checkDir "vice-libretro"
 cd vice-libretro
-export CFLAGS="-mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s"
-export CXXFLAGS=$CFLAGS
-make -j 2
+make 
 run sudo cp vice_x64_libretro.so $retroArchCoresDir
 
