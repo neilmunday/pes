@@ -15,6 +15,7 @@ Changes:
 * Updated RetroArch to commit 9086d241a7f20208cf279f6a7e877ae7bdca325d (v1.90 + updates)
 * Updated mupen64plus-libretro-nx to commit b494ebf2da202f67dbd88c3c915262bb58f1c6ba
 * Removed install-pi-bluetooth.sh install-bluez-ps3.sh as no longer required with recent Arch Linux updates
+* Add the ability for the user to specify the ALSA audio device to use
 
 PES 2.8
 -------
