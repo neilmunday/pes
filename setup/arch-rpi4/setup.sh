@@ -72,7 +72,7 @@ run $setupDir/install-mame2003-libretro.sh
 run $setupDir/install-stella-libretro.sh
 run $setupDir/install-ppsspp.sh
 run $setupDir/install-blueMSX-libretro.sh
-run $setupDir/install-vice.sh
+run $setupDir/install-vice-libretro.sh
 run $setupDir/install-mupen64plus-nx.sh
 
 header "Installing rasum..."

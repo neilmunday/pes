@@ -25,32 +25,14 @@
 functions=`realpath $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../common/functions.sh`
 source $functions || exit 1
 
-cores="
-genesis_plus_gx_libretro.so
-mednafen_pce_fast_libretro.so
-bluemsx_libretro.so
-fbalpha_libretro.so
-fceumm_libretro.so
-fuse_libretro.so
-gambatte_libretro.so
-gpsp_libretro.so
-mame2000_libretro.so
-mame2003_libretro.so
-mupen64plus_next_libretro.so
-picodrive_libretro.so
-pcsx_rearmed_libretro.so
-snes9x2002_libretro.so
-snes9x2010_libretro.so
-stella2014_libretro.so
-vice_x64_libretro.so
-"
+cd $buildDir
 
-for f in $cores; do
-        path="$retroArchCoresDir/$f"
-        echo -n "checking: $path: "
-        if [ -e $path ]; then
-                echo "OK"
-        else
-                echo "MISSING!"
-        fi
-done
+header "Downloading C64 emulator - Vice"
+
+rmSourceDir "vice-libretro"
+run git clone https://github.com/libretro/vice-libretro
+checkDir "vice-libretro"
+cd vice-libretro
+make 
+run sudo cp vice_x64_libretro.so $retroArchCoresDir
+

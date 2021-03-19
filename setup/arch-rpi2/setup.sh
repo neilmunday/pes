@@ -50,7 +50,7 @@ header "Installing SDL2..."
 run $setupDir/install-sdl2.sh
 
 header "Installing libcec and Python bindings"
-run $setupDir/install-libcec.sh
+run $setupDir/install-libcec-kms.sh
 
 header "Installing up RetroArch..."
 run $setupDir/install-retroarch.sh
@@ -72,7 +72,7 @@ run $setupDir/install-mame2003-libretro.sh
 run $setupDir/install-stella-libretro.sh
 run $setupDir/install-ppsspp.sh
 run $setupDir/install-blueMSX-libretro.sh
-run $setupDir/install-vice.sh
+run $setupDir/install-vice-libretro.sh
 
 header "Installing Mupen64Plus..."
 run $setupDir/install-mupen64plus.sh
