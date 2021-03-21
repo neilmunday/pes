@@ -50,7 +50,7 @@ header "Installing SDL2..."
 run $setupDir/install-sdl2.sh
 
 header "Installing libcec and Python bindings"
-run $setupDir/install-libcec-kms.sh
+run $setupDir/install-libcec.sh
 
 header "Installing up RetroArch..."
 run $setupDir/install-retroarch.sh
@@ -84,7 +84,7 @@ header "Setting up Samba..."
 run $setupDir/install-samba.sh
 
 header "Setting up Kodi..."
-run $setupDir/install-yaourt.sh
+run $setupDir/install-kodi.sh
 run $setupDir/install-kodi-joystick-add-on.sh
 
 header "Setting up auto login..."
