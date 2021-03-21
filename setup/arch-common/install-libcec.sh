@@ -28,7 +28,7 @@ source $functions || exit 1
 cd $buildDir
 rmSourceDir "libcec"
 
-version=4.0.4
+version=6.0.2
 
 header "Downloading libcec"
 
