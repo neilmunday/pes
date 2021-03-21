@@ -16,6 +16,7 @@ Changes:
 * Updated mupen64plus-libretro-nx to commit b494ebf2da202f67dbd88c3c915262bb58f1c6ba
 * Removed install-pi-bluetooth.sh install-bluez-ps3.sh as no longer required with recent Arch Linux updates
 * Add the ability for the user to specify the ALSA audio device to use
+* For Raspberry Pi2/3, added install-kodi.sh script to build Kodi 18.9 for /opt/vc drivers as Arch Linux now uses Kodi 19 KMS version
 
 PES 2.8
 -------
