@@ -124,6 +124,6 @@ run sudo make install
 run sudo rm -f /opt/kodi/current
 run sudo ln -s /opt/kodi/${KODI_VERSION}/current /opt/kodi/current
 
-run sudo pacman -S mesa
+run sudo pacman --noconfirm -S mesa
 
 echo "Done"
