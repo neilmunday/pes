@@ -27,3 +27,7 @@ source $functions || exit 1
 
 run sudo rsync -av --exclude bin/rasum ../../bin ../../conf.d ../../resources ../../lib $pesDir/
 run sudo chown -R root:root $pesDir
+
+if [ -x /opt/kodi/current/bin/kodi ]; then
+	run sed -i -r 's#/usr/bin/kodi#/opt/kodi/current/bin/kodi#' $pesDir/conf.d/pes/pes.ini
+fi

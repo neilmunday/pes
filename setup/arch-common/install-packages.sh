@@ -27,9 +27,6 @@ source $functions || exit 1
 
 # install packages
 
-# Note: as of PES 2.3, bluez and bluez-plugins are provided by the
-# bluez-ps3 package from the AUR - see install-bluez-ps.sh
-
 # initialise pacman keyring
 run sudo  pacman-key --populate archlinuxarm
 
@@ -47,8 +44,13 @@ run sudo pacman -S bluez-libs bluez-utils \
 	p7zip zip unzip \
 	sdl \
 	mkinitcpio \
-	kodi-rbp kodi-rbp-eventclients kodi-rbp-tools-texturepacker kodi-rbp-dev kodi-platform \
 	fakeroot
+
+# don't use use Arch Linux package for Kodi on Raspberry Pi 2/3
+# the Arch Linux package for this platform uses Kodi 19 which requires KMS overlay
+if [ `uname -m` != "armv7l" ]; then
+	run sudo pacman kodi-rbp kodi-rbp-eventclients kodi-rbp-tools-texturepacker kodi-rbp-dev kodi-platform
+fi
 
 run sudo pip2 install --upgrade pip
 run sudo pip2 install python-Levenshtein

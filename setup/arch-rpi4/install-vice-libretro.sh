@@ -33,6 +33,6 @@ rmSourceDir "vice-libretro"
 run git clone https://github.com/libretro/vice-libretro
 checkDir "vice-libretro"
 cd vice-libretro
-make -j 2
+run make -j 4
 run sudo cp vice_x64_libretro.so $retroArchCoresDir
 
