@@ -122,7 +122,7 @@ run cmake --build . -v -j 4
 run sudo rm -rf /opt/kodi/${KODI_VERSION}
 run sudo make install
 run sudo rm -f /opt/kodi/current
-run sudo ln -s /opt/kodi/${KODI_VERSION}/current /opt/kodi/current
+run sudo ln -s /opt/kodi/${KODI_VERSION} /opt/kodi/current
 
 run sudo pacman --noconfirm -S mesa
 
