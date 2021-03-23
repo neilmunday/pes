@@ -56,3 +56,4 @@ run sudo pip2 install --upgrade pip
 run sudo pip2 install python-Levenshtein
 run sudo pip2 install reparted
 run sudo pip2 install fstab
+run sudo pip2 install pyalsaaudio
