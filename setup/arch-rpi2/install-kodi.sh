@@ -32,17 +32,19 @@ cd $buildDir
 header "Building Kodi"
 
 # need to remove MESA to make build work
-if pacman -Q libglvnd > /dev/null 2>&1; then
-  run sudo pacman --noconfirm -R libglvnd
-fi
 if pacman -Q mesa > /dev/null 2>&1; then
-  run sudo pacman --noconfirm -R mesa
+  run sudo pacman --noconfirm -R libglvnd mesa
+fi
+
+# install build dependencies
+if ! pacman -Q jdk-openjdk > /dev/null 2>&1; then
+  run sudo pacman --noconfirm -S jdk-openjdk ghostscript
 fi
 
 #rmSourceDir xbmc
 if [ ! -d xbmc ]; then
   run git clone https://github.com/PIPplware/xbmc
-  checkdir xbmc
+  checkDir xbmc
   cd xbmc
   run git checkout leia_backports
 else
@@ -117,13 +119,40 @@ run rm -rf $KODI_BUILD_DIR/CMakeCache.txt $KODI_BUILD_DIR/CMakeFiles $KODI_BUILD
 
 CXXFLAGS=${EXTRA_FLAGS} CFLAGS=${EXTRA_FLAGS} LDFLAGS="-L/opt/vc/lib" cmake ${KODI_OPTS} ${REPO_DIR}/
 
-run cmake --build . -v -j 4
+run cmake --build . -v -j 3 
 
 run sudo rm -rf /opt/kodi/${KODI_VERSION}
 run sudo make install
 run sudo rm -f /opt/kodi/current
 run sudo ln -s /opt/kodi/${KODI_VERSION} /opt/kodi/current
 
+# install additional components
+components=
+  'kodi-addon-dev' \
+  'kodi-eventclients-dev' \
+  'kodi-eventclients-common' \
+  'kodi-eventclients-ps3' \
+  'kodi-eventclients-kodi-send' \
+  'kodi-tools-texturepacker'
+
+for comp in $components; do
+  run DESTDIR=/opt/kodi/${KODI_VERSION} cmake -DCMAKE_INSTALL_COMPONENT=$comp -P cmake_install.cmake
+done
+
+# remove build dependencies
+run sudo pacman --noconfirm -R \
+	jdk-openjdk \
+	java-environment-common \
+	java-runtime-common \
+	jre-openjdk \
+	jre-openjdk-headless \
+	libnet \
+	ghostscript \
+	ijs \
+	libpaper \
+	run-parts
+
+# put mesa back
 run sudo pacman --noconfirm -S mesa
 
 echo "Done"
