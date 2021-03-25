@@ -55,5 +55,5 @@ CFLAGS="-I/opt/kodi/current/include" CXXFLAGS="-I/opt/kodi/current/include" cmak
   ..
 
 run make -j 4
-run sudo make -j 4 DESTDIR=/opt/kodi/current install
+run sudo make -j 4 install
 
