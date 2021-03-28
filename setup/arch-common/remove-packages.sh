@@ -56,7 +56,7 @@ raspberrypi-firmware-examples
 
 for p in $packages; do
 	echo "Removing $p"
-	sudo pacman -R $p
+	sudo pacman --noconfirm -R $p
 done
 
 exit 0
