@@ -46,7 +46,7 @@ Edit ~/rpi/boot/config.txt and check the following are set:
 	disable_overscan=0
 	overscan_scale=1
 	dtparam=krnbt=on
-  enable_uart=0
+	enable_uart=0
 
 The extra GPU RAM is required for some of the emulators, e.g. Mupen64Plus and the "dtpara=audio" parameter enables the ALSA kernel module required for sound.
 
