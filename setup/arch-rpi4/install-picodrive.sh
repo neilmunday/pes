@@ -33,6 +33,8 @@ rmSourceDir "picodrive"
 run git clone https://github.com/libretro/picodrive.git
 checkDir "picodrive"
 cd picodrive
+# checkout working version of configure, ref: https://github.com/libretro/picodrive/issues/147
+run git checkout a97dd5cded0d9e4b0391054e7c839e368eabe2c3 configure
 run git submodule init
 run git submodule update
 run ./configure
