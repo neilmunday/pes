@@ -41,12 +41,13 @@ This option tells the boot loader which device to use as the root partition. In 
 
 Edit ~/rpi/boot/config.txt and check the following are set:
 
-	gpu_mem=384
+	gpu_mem=512
 	dtparam=audio=on
 	disable_overscan=0
 	overscan_scale=1
 	dtparam=krnbt=on
 	enable_uart=0
+	cec_osd_name=PES
 
 The extra GPU RAM is required for some of the emulators, e.g. Mupen64Plus and the "dtpara=audio" parameter enables the ALSA kernel module required for sound.
 
