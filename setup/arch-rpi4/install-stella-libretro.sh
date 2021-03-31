@@ -32,7 +32,7 @@ rmSourceDir $cloneDir
 
 header "Downloading Atari 2600 emulator"
 
-run git clone git://github.com/libretro/stella-libretro
+run git clone git://github.com/libretro/stella2014-libretro
 checkDir $cloneDir
 cd $cloneDir
 checkFile Makefile
