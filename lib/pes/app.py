@@ -2501,7 +2501,7 @@ class SettingsScreen(Screen):
 								menuItems.append(m)
 						audioMenu = Menu(menuItems, False)
 						audioListY = self.__descriptionLabel.y + self.__descriptionLabel.height + 10
-						self.__audioList = self.addUiObject(List(self.renderer, self.__descriptionLabel.x + self.__toggleMargin, audioListY, 300, self.screenRect[3] - audioListY, audioMenu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, drawBackground=True))
+						self.__audioList = self.addUiObject(List(self.renderer, self.__descriptionLabel.x + self.__toggleMargin, audioListY, 500, self.screenRect[3] - audioListY, audioMenu, self.app.bodyFont, self.app.textColour, self.app.textColour, self.app.menuSelectedBgColour, self.app.menuTextColour, drawBackground=True))
 					if self.__audioSaveButton == None:
 						screenDimensions = self.app.getDimensions()
 						self.__audioSaveButton = self.addUiObject(Button(self.renderer, screenDimensions[0] - 160, screenDimensions[1] - 60, 150, 50, "Save", self.app.bodyFont, self.app.textColour, self.app.menuSelectedBgColour, self.saveSettings))
