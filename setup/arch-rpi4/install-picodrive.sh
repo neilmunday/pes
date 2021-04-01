@@ -33,10 +33,9 @@ rmSourceDir "picodrive"
 run git clone https://github.com/libretro/picodrive.git
 checkDir "picodrive"
 cd picodrive
-# checkout working version of configure, ref: https://github.com/libretro/picodrive/issues/147
-run git checkout a97dd5cded0d9e4b0391054e7c839e368eabe2c3 configure
 run git submodule init
 run git submodule update
-run ./configure
-make -f Makefile.libretro platform=armv ARM_ASM=1 use_fame=0 use_cyclone=1 use_sh2drc=1 use_svpdrc=1 use_cz80=1 use_drz80=0
+export CFLAGS="-march=armv7-a -mfloat-abi=hard -mfpu=vfpv3-d16"
+export CXXFLAGS=$CFLAGS
+make -j 4 -f Makefile.libretro platform=armv ARM_ASM=1 use_fame=0 use_cyclone=1 use_sh2drc=1 use_svpdrc=1 use_cz80=1 use_drz80=0
 run sudo cp picodrive_libretro.so $retroArchCoresDir

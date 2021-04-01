@@ -32,12 +32,10 @@ header "Downloading MegaDrive emulator - PicoDrive"
 rmSourceDir "picodrive"
 run git clone https://github.com/libretro/picodrive.git
 checkDir "picodrive"
-cd picodrive 
+cd picodrive
 run git submodule init
 run git submodule update
-run ./configure
 export CFLAGS="-marm -mword-relocations -fomit-frame-pointer -ffast-math -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -O3"
 export CXXFLAGS=$CFLAGS
-make -f Makefile.libretro platform=armv ARM_ASM=1 use_fame=0 use_cyclone=1 use_sh2drc=1 use_svpdrc=1 use_cz80=1 use_drz80=0
+make  -j 2 -f Makefile.libretro platform=armv ARM_ASM=1 use_fame=0 use_cyclone=1 use_sh2drc=1 use_svpdrc=1 use_cz80=1 use_drz80=0
 run sudo cp picodrive_libretro.so $retroArchCoresDir
-
