@@ -42,7 +42,6 @@ run sudo pacman -S bluez-libs bluez-utils \
 	fbset mesa mesa-libgl alsa-utils \
 	crda iw wpa_supplicant \
 	p7zip zip unzip \
-	sdl \
 	mkinitcpio \
 	fakeroot
 

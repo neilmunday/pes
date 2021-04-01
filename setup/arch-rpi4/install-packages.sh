@@ -45,7 +45,6 @@ run sudo pacman -S bluez-libs bluez-utils \
 	fbset mesa mesa-libgl alsa-utils \
 	crda iw wpa_supplicant \
 	p7zip zip unzip \
-	sdl \
 	mkinitcpio \
 	kodi-rbp4 kodi-platform kodi-rbp-eventclients kodi-rbp-tools-texturepacker kodi-rbp4-dev \
 	fakeroot
@@ -55,4 +54,3 @@ run sudo pip2 install python-Levenshtein
 run sudo pip2 install reparted
 run sudo pip2 install fstab
 run sudo pip2 install pyalsaaudio
-
