@@ -32,7 +32,20 @@ rmSourceDir "mupen64plus-libretro-nx"
 run git clone https://github.com/libretro/mupen64plus-libretro-nx
 checkDir mupen64plus-libretro-nx
 cd mupen64plus-libretro-nx
-run git checkout b494ebf2da202f67dbd88c3c915262bb58f1c6ba
+
+# this is the latest version as of April 2021 but performance is really bad
+#run git checkout b494ebf2da202f67dbd88c3c915262bb58f1c6ba
+
+# this commit sound works but not graphics
+#run git checkout a9a34b89cd63848e08eb117423148b135e420202
+
+# this version from September 2019 works
+run git checkout 16d96924d8a31483bfd0b2d1bc39dc6e319d4352
+# checkout GGC 10 patches
+run git checkout a9a34b89cd63848e08eb117423148b135e420202  mupen64plus-core/src/main/workqueue.h mupen64plus-core/src/device/r4300/idec.h
+
+#export CFLAGS="-march=armv7-a -mfloat-abi=hard -mfpu=vfpv3-d16"
+#export CXXFLAGS=$CFLAGS
 run make -j 4 WITH_DYNAREC=arm platform=rpi4 V=1
 checkFile mupen64plus_next_libretro.so
 run sudo cp -v mupen64plus_next_libretro.so $retroArchCoresDir
