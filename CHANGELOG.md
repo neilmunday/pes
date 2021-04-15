@@ -17,6 +17,7 @@ Changes:
 * Removed install-pi-bluetooth.sh install-bluez-ps3.sh as no longer required with recent Arch Linux updates
 * Add the ability for the user to specify the ALSA audio device to use
 * For Raspberry Pi2/3, added install-kodi.sh script to build Kodi 18.9 for /opt/vc drivers as Arch Linux now uses Kodi 19 KMS version
+* For Raspberry Pi 1, removed Kodi as no longer supported by Arch Linux
 
 PES 2.8
 -------
