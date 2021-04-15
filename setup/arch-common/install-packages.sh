@@ -45,9 +45,10 @@ run sudo pacman -S bluez-libs bluez-utils \
 	mkinitcpio \
 	fakeroot
 
+# Kodi not supported anymore on Raspberry Pi 1 and
 # don't use use Arch Linux package for Kodi on Raspberry Pi 2/3
 # the Arch Linux package for this platform uses Kodi 19 which requires KMS overlay
-if [ `uname -m` != "armv7l" ]; then
+if [ `uname -m` != "armv6l" ] && [ `uname -m` != "armv7l" ]; then
 	run sudo pacman kodi-rbp kodi-rbp-eventclients kodi-rbp-tools-texturepacker kodi-rbp-dev kodi-platform
 fi
 
