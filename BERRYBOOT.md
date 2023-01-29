@@ -8,9 +8,9 @@ This guide will tell you how to create a an image file that you can use with [Be
 
 To convert a PES image into a BerryBoot image you will need to perform the following steps:
 
-1. Remove the mounting of the root file system from */etc/fstab*.
-2. Edit */home/pi/.bash_pes* to prevent the creation of the */data* FAT32 partition.
-3. Remove the */home/pi/pes* symbolic link.
+1. Remove the mounting of the root file system from `/etc/fstab`.
+2. Edit `/home/pi/.bash_pes` to prevent the creation of the `/data` FAT32 partition.
+3. Remove the `/home/pi/pes` symbolic link.
 4. Install BerryBoot to your SD card.
 5. Install the PES BerryBoot image.
 
@@ -38,17 +38,23 @@ mount /dev/loop0p2 /mnt
 
 ### Modify /etc/fstab
 
-Remove the mounting of the root file system from */etc/fstab*:
+Remove the mounting of the root file system from `/etc/fstab`:
 
 ```
 sudo sed -i 's/^\/dev\/mmcblk/#\0/g' /mnt/etc/fstab
 ```
 
+Remove the mounting of the swap file from `/etc/fstab`:
+
+```
+sudo sed -i 's/^\/swapfile/#\0/g' /mnt/etc/fstab
+```
+
 ### Update /home/pi/.bash_pes
 
-We now need to update */home/pi/.bash_pes* in the image so that the */data* partition is not created. This is because each BerryBoot operating system can only have one partition.
+We now need to update `/home/pi/.bash_pes` in the image so that the `/data` partition is not created. This is because each BerryBoot operating system can only have one partition.
 
-Therefore **remove** the following lines from */mnt/home/pi/.bash_pes* and save the file:
+Therefore **remove** the following lines from `/mnt/home/pi/.bash_pes` and save the file:
 
 ```
 if [ ! -d /data/pes ]; then
@@ -108,7 +114,7 @@ Once you get to the BerryBoot menu editor screen proceed as follows:
 
 1. Hold down the left mouse button on the *Add OS* menu button and select *Install from USB stick*
 2. Select the PES BerryBoot image, e.g. pes-2.3-2017-11-23-rpi2-3-berryboot.img256
-3. Once installed select *Edit Config* and go to the *config.txt* and change the GPU memory to 384.
+3. Once installed select *Edit Config* and go to the `config.txt` and change the GPU memory to 384.
 
 Now you can click *Exit* to reboot your Rapsberry Pi. Once rebooted you should now see the PES BerryBoot image as an OS that you can boot.
 
